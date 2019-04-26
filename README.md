@@ -46,3 +46,9 @@ Otherwise, install by yourself the following required python packages:
 ## Testing 
 
 
+## Contact
+
+Main contact: Juan Medrano (juanmedrano.ec09@gmail.com), Eugene Auh (egauh@naver.com ), Yonghee Park(qkrdydgml93@naver.com)
+
+
+
