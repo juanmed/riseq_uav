@@ -7,7 +7,6 @@ import tf
 
 # messages import
 from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import Imu
 from riseq_common.msg import riseq_uav_state
 
 # other imports
@@ -24,7 +23,7 @@ class fgTrueStatePublisher():
 		self.state_pub = rospy.Publisher("riseq/tests/uav_fg_true_state", riseq_uav_state, queue_size = 10)
 
 		# create message filter
-		self.pose_sub = rospy.Subscriber('riseq/tests/uav_fg_pose', PoseStamped, self.state_calculation)
+		self.pose_sub = rospy.Subscriber('riseq/tests/uav_fg_true_pose', PoseStamped, self.state_calculation)
 
 		# Initialize pose
 		try:
