@@ -12,24 +12,25 @@ from riseq_common.msg import riseq_uav_state
 # other imports
 import numpy as np
 
-class fgTrueStatePublisher():
+class optiTrackTrueStatePublisher():
 
 	def __init__(self):
 		"""
-		Initialize drone state for publishing ground truth of simulated drone in Flightgoggles
+		Initialize drone state for publishing ground truth state of a 
+		real physical drone being tracked by the OptiTrack Object Tracker
 		"""
 
 		# create topic uav state publisher 
-		self.state_pub = rospy.Publisher("riseq/tests/uav_fg_true_state", riseq_uav_state, queue_size = 10)
+		self.state_pub = rospy.Publisher("riseq/tests/uav_optitrack_true_state", riseq_uav_state, queue_size = 10)
 
 		# create message filter
-		self.pose_sub = rospy.Subscriber('riseq/tests/uav_fg_true_pose', PoseStamped, self.state_calculation)
+		self.pose_sub = rospy.Subscriber('/vrpn_client_node/hexarotor/pose', PoseStamped, self.state_calculation)
 
 		# Initialize pose
 		try:
-			init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+			init_pose = rospy.get_param("/riseq/uav_init_pose")
 		except:
-			print("/uav/flightgoggles_uav_dynamics/init_pose parameter is unavailable")
+			print("/riseq/uav_init_pose parameter is unavailable")
 			print("Initializing pose as:  \n pose = [0,0,0] \norientation = [0,0,0,1]")
 			init_pose = [0,0,0,0,0,0,1]
 		
@@ -138,14 +139,14 @@ if __name__ == '__main__':
 	try:
 
 		# init node
-		rospy.init_node('riseq_fg_true_state_publisher', anonymous = True)
+		rospy.init_node('riseq_ot_true_state_publisher', anonymous = True)
 
-		# create true state publisher for flight goggles simulator
-		true_state_pub = fgTrueStatePublisher()
+		# create true state publisher for optitrack object tracker
+		true_state_pub = optiTrackTrueStatePublisher()
 
-		rospy.loginfo('Flightgoggles True State Publisher Started')
+		rospy.loginfo('OptiTrack True State Publisher Started')
 		rospy.spin()
-		rospy.loginfo('Flightgoggles True State Publisher Terminated')
+		rospy.loginfo('OptiTrack True State Publisher Terminated')
 	except rospy.ROSInterruptException:
 		print("ROS Terminated.")
 		pass
