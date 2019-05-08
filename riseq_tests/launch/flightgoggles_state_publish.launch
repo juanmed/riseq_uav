@@ -1,0 +1,12 @@
+<launch>
+
+		<!-- Set Parameters. Wait times per node to wait for simulator -->
+  		<param name="/riseq/true_state_publish_rate" value="200" type="int"/>
+
+
+		<!-- Start nodes -->
+		<node pkg="rqt_plot" name="rqt_plot" type="rqt_plot"/>
+		<node pkg="riseq_tests" name="riseq_fg_true_pose_publisher" type="riseq_fg_true_pose_publisher.py"/>
+		<node pkg="riseq_tests" name="riseq_fg_true_state_publisher" type="riseq_fg_true_state_publisher.py"/>
+		
+</launch>
