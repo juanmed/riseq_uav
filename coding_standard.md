@@ -63,6 +63,16 @@ riseq_control
 riseq_estimation
 riseq_firmware
 
+#### ROS Parameters
+
+Parameters stored in the parameter server must follow the following pattern:
+
+'riseq/<parameter_name>'
+
+For example:
+'riseq/controller_mode'
+'riseq/update_frequency'
+
 ### Variable, Function and Class Names
 
 ## Folder Structure Convention
