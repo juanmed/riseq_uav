@@ -24,7 +24,7 @@ def publish_fg_uav_pose():
 
     # Set true state publish rate
     try:
-        publish_rate = int(rospy.get_param("/riseq/true_state_publish_rate"))
+        publish_rate = int(rospy.get_param("riseq/true_state_publish_rate"))
     except:
         print("/riseq/true_state_publish_rate parameter is unavailable")
         print("Will publish true state at 100hz")
