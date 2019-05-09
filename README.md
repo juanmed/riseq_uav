@@ -15,18 +15,24 @@ Welcome! This repository contains code for autonomous navigation algorithms deve
 ## Installation
 
 1. Install [ROS-Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu) and [git](https://help.ubuntu.com/lts/serverguide/git.html.en)
-2. Create a catkin workspace, clone our repository and build. For this, in the folder of your preference:
+2. Since we will use the 'catkin build' commmand, install catkin build tools:
+
+```bash
+sudo apt-get install python-catkin-tools
+```
+
+3. Create a catkin workspace, clone our repository and build. For this, in the folder of your preference:
 
 ```bash
 mkdir -p ~/riseq_ws/src
 cd ~/riseq_ws/src
-git clone https://github.com/juanmed/riseq_uav
+git clone https://github.com/juanmed/riseq_uav .
 cd ..
 catkin build
 echo 'source ~/riseq_ws/devel/setup.bash' >> ~/.bashrc
 source ~/.bashrc
 ```
-3. Installing required packages. We have a requirements.txt to make package installation easier. Go to the 'src' folder of the previously created workspace and:
+4. Installing required packages. We have a requirements.txt to make package installation easier. Go to the 'src' folder of the previously created workspace and:
 
 
 ```bash

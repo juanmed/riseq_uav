@@ -1,0 +1,19 @@
+<launch>
+	<!-- Set Parameters -->
+  		<param name="riseq/mass" value="1.0" type="double"/>
+  		<param name="riseq/thrust_coeff" value="0.00000191" type="double"/>
+  		<param name="riseq/torque_coeff" value="0.00000026" type="double"/>
+  		<param name="riseq/max_rotor_speed" value="2200" type="int"/>
+  		<param name="riseq/rotor_count" value="4" type="int"/>
+      <param name="riseq/gravity" value="9.81" type="double"/>
+      <param name="riseq/true_state_publish_rate" value="200" type="int"/>
+      <param name="riseq/controller_state_input" value="fg_true_state" type="str"/>
+      <param name="riseq/controller_type" value="euler_angle_controller" type="str"/>
+      <param name="riseq/trajectory_wait" value="2" type="int"/>
+      <param name="riseq/high_level_control_wait_time" value="1" type="int"/>
+  	<!-- Start nodes -->
+  		<node pkg="riseq_tests" name="riseq_fg_true_pose_publisher" type="riseq_fg_true_pose_publisher.py"/>
+  		<node pkg="riseq_tests" name="riseq_fg_true_state_publisher" type="riseq_fg_true_state_publisher.py"/>
+      <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py" />
+  		<node pkg="riseq_control" name="riseq_high_level_control_publisher" type="riseq_high_level_control_publisher.py" output="screen"/>
+</launch>
