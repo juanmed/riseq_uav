@@ -1,0 +1,13 @@
+<launch>
+	<!-- Set Parameters -->
+  		<param name="riseq/mass" value="1" type="int"/>
+  		<param name="riseq/thrust_coeff" value="0.00131" type="double"/>
+  		<param name="riseq/torque_coeff" value="0.000131" type="double"/>
+  		<param name="riseq/max_rotor_speed" value="2200" type="int"/>
+  		<param name="riseq/rotor_count" value="4" type="int"/>
+
+  	<!-- Start nodes -->
+  		<node pkg="riseq_tests" name="riseq_fg_true_pose_publisher" type="riseq_fg_true_pose_publisher.py"/>
+  		<node pkg="riseq_tests" name="riseq_fg_true_state_publisher" type="riseq_fg_true_state_publisher.py"/>
+  		<node pkg="riseq_control" name="riseq_high_level_control_publisher" type="riseq_high_level_control_publisher.py"/>
+</launch>

@@ -1,0 +1,13 @@
+Header header
+geometry_msgs/Pose pose
+geometry_msgs/Twist twist
+geometry_msgs/Vector3 ua
+geometry_msgs/Vector3 ub
+geometry_msgs/Vector3 uc
+float64[] rot
+geometry_msgs/Vector3 acc
+geometry_msgs/Vector3 jerk
+geometry_msgs/Vector3 snap
+float64 yaw
+float64 yawdot
+float64 yawddot
