@@ -240,7 +240,7 @@ def compute_ref(trajectory):
     # make angular velocity vector w
     w_ = np.matrix([[w_x.item(0)], [w_y.item(0)], [w_z.item(0)]])
 
-    # get vector of torque inputs u2, u3, u4
+    # get vector of torque inputs ux =  u2, u3, u4
     u_x = get_ux(w_dot_, w_)  # get_ux(w_dot_,w_)
 
     # get rotation matrix from base frame to world frame
