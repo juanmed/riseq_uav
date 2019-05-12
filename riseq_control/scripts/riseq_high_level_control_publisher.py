@@ -15,6 +15,11 @@
 # [4] Lee, T., Leok, M., & McClamroch, N. H. (2010). 
 #     Control of Complex Maneuvers for a Quadrotor UAV using 
 #     Geometric Methods on SE(3) {1}, (i). https://doi.org/10.1002/asjc.0000
+# [5] Mclain, T., Beard, R. W., Mclain, T. ;, Beard, R. W. ;, Leishman, R. C.
+#     Differential Flatness Based Control of a Rotorcraft For Aggressive Maneuvers 
+#     (September), 2688-2693. Retrieved 
+#     from https://scholarsarchive.byu.edu/facpub%0Ahttps://scholarsarchive.byu.edu/facpub/1949
+# [6]  
  
 
 #ros imports
@@ -25,10 +30,7 @@ import tf
 from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
-
-# for flightgoggles
-from mav_msgs.msg import RateThrust
-
+from mav_msgs.msg import RateThrust             # for flightgoggles
     
 import riseq_tests.df_flat as df_flat
 import control_gains as gains
@@ -41,7 +43,7 @@ class uav_High_Level_Controller():
 
         # high level control publisher
         self.hlc_pub = rospy.Publisher('riseq/control/uav_high_level_control', riseq_high_level_control, queue_size = 10)
-
+        
         # flightgoggles publisher 
         self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
 
@@ -154,6 +156,7 @@ class uav_High_Level_Controller():
         psi, theta, phi = tf.transformations.euler_from_quaternion(ori_quat, axes = 'rzyx')
         Rwb = tf.transformations.quaternion_matrix(ori_quat)         # this is an homogenous world to body transformation
         Rbw = Rwb[0:3,0:3].T    # body to world transformation, only rotation part
+        angular_velocity = np.array([[state.twist.angular.x],[state.twist.angular.y],[state.twist.angular.z]])
 
         # ------------------------------------ #
         #  Thrust and Orientation Computation  #
@@ -161,12 +164,12 @@ class uav_High_Level_Controller():
         if(self.position_control_loops == 0):   # Update desired thrust and desired orientation
 
             # extract reference values
-            p_ref = np.array([trajectory.pose.position.x, trajectory.pose.position.y, trajectory.pose.position.z]).reshape(3,1)
-            v_ref = np.array([trajectory.twist.linear.x, trajectory.twist.linear.y, trajectory.twist.linear.z]).reshape(3,1)
+            p_ref = np.array([[trajectory.pose.position.x], [trajectory.pose.position.y], [trajectory.pose.position.z]])
+            v_ref = np.array([[trajectory.twist.linear.x], [trajectory.twist.linear.y], [trajectory.twist.linear.z]])
 
             # extract real values
-            p = np.array([state.pose.position.x, state.pose.position.y, state.pose.position.z]).reshape(3,1)
-            v = np.array([state.twist.linear.x, state.twist.linear.y, state.twist.linear.z]).reshape(3,1)
+            p = np.array([[state.pose.position.x], [state.pose.position.y], [state.pose.position.z]])
+            v = np.array([[state.twist.linear.x], [state.twist.linear.y], [state.twist.linear.z]])
 
             # ---------------------------------------------- #
             #                POSITION CONTROL                #
@@ -264,21 +267,17 @@ class uav_High_Level_Controller():
 
         hlc_msg.thrust.z = self.T
         hlc_msg.rot = self.Rbw_des.flatten().tolist()
-        hlc_msg.angular_velocity.x = w_des[0][0]
-        hlc_msg.angular_velocity.y = w_des[1][0]
-        hlc_msg.angular_velocity.z = w_des[2][0]
+        hlc_msg.angular_velocity.x = angular_velocity[0][0]
+        hlc_msg.angular_velocity.y = angular_velocity[1][0]
+        hlc_msg.angular_velocity.z = angular_velocity[2][0]
+        hlc_msg.angular_velocity_des.x = w_des[0][0]
+        hlc_msg.angular_velocity_des.y = w_des[1][0]
+        hlc_msg.angular_velocity_des.z = w_des[2][0]
+        hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
+        hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
+        hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
         self.hlc_pub.publish(hlc_msg)
         rospy.loginfo(hlc_msg)
-
-        # publish to flightgoggles...just for testing
-        fg_msg = RateThrust()
-        fg_msg.header.stamp = rospy.Time.now()  
-        fg_msg.header.frame_id = 'uav/imu'
-        fg_msg.thrust.z = self.T
-        fg_msg.angular_rates.x = w_des[0][0]
-        fg_msg.angular_rates.y = w_des[1][0]
-        fg_msg.angular_rates.z = w_des[2][0]
-        self.fg_publisher.publish(fg_msg)
 
 
     def euler_angular_velocity_des(self, euler, euler_ref, euler_dot_ref,gain):
