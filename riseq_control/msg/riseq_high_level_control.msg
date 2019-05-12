@@ -1,4 +1,6 @@
 Header header
 geometry_msgs/Vector3 thrust
 geometry_msgs/Vector3 angular_velocity
+geometry_msgs/Vector3 angular_velocity_des
+geometry_msgs/Vector3 angular_velocity_dot_ref
 float64[] rot
