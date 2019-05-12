@@ -1,9 +1,5 @@
+import rospy
 import numpy as np
-
-
-# import model.params # import params
-
-# from math import sin, cos, asin, atan2, sqrt
 
 def RotToRPY_ZYX(R):
     """
@@ -188,7 +184,6 @@ def get_uc(w_, ori):
 
     return u_c
 
-
 def compute_ref(trajectory):
     """
         Compute all reference states and inputs from the given desired trajectory point using
@@ -245,7 +240,7 @@ def compute_ref(trajectory):
     # make angular velocity vector w
     w_ = np.matrix([[w_x.item(0)], [w_y.item(0)], [w_z.item(0)]])
 
-    # get vector of torque inputs u2, u3, u4
+    # get vector of torque inputs ux =  u2, u3, u4
     u_x = get_ux(w_dot_, w_)  # get_ux(w_dot_,w_)
 
     # get rotation matrix from base frame to world frame
@@ -285,31 +280,37 @@ def compute_ref(trajectory):
     # because that is the result from the differential flatness output selection
     return [pos_traj.T, vel_traj.T, or_, w_, u_a, u_b, u_c, u_1, u_x, R_, acc_traj.T, jerk_traj.T, snap_traj.T, yaw_traj, yaw_dot_traj, yaw_ddot_traj]
 
-"""
-# define constants
-g =  params.g #9.81 #m/s2
-b = 0.01  # air drag/friction force
-#c = 0.2 #air friction constant
-# quadrotor physical constants
-m = params.m #0.18  #kg  mass of the quadrotor
-#I = np.matrix([[0.00025, 0, 2.55e-6],
-#              [0, 0.000232, 0],
-#              [2.55e-6, 0, 0.0003738]]);
-I = np.matrix(params.I)
-invI = np.matrix(params.invI)
-"""
+try:
+    # define constants
+    g = rospy.get_param("riseq/gravity")  # m/s2
+    b = 0.01  # air drag/friction force
+    # c = 0.2 #air friction constant
 
-# define constants
-g = 9.81  # m/s2
-b = 0.01  # air drag/friction force
-# c = 0.2 #air friction constant
+    # quadrotor physical constants
+    m = rospy.get_param("riseq/mass")  # kg  mass of the quadrotor
+    Ktao = rospy.get_param("riseq/torque_coeff")  # Drag torque constant for motors
+    Kt = rospy.get_param("riseq/thrust_coeff") # Thrust constant for motors
+    Ixx = rospy.get_param("riseq/Ixx")
+    Iyy = rospy.get_param("riseq/Iyy")
+    Izz = rospy.get_param("riseq/Izz")
+    I = np.matrix([[Ixx, 0, 0],
+                   [0, Iyy, 0],
+                   [0, 0, Izz]]);
 
-# quadrotor physical constants
-m = 1  # kg  mass of the quadrotor
-Ktao = 0.02  # Drag torque constant for motors
-Kt = 0.2  # Thrust constant for motors
-I = np.matrix([[0.0049, 0, 0],
-               [0, 0.0049, 0],
-               [0, 0, 0.0049]]);
+    invI = np.linalg.inv(I)
+except:
+    print("WARNING: Quadrotor parameters not found. \nUsing default values.")
+    # define constants
+    g = 9.81  # m/s2
+    b = 0.01  # air drag/friction force
+    # c = 0.2 #air friction constant
 
-invI = np.linalg.inv(I)
+    # quadrotor physical constants
+    m = 1  # kg  mass of the quadrotor
+    Ktao = 0.02  # Drag torque constant for motors
+    Kt = 0.2  # Thrust constant for motors
+    I = np.matrix([[0.0049, 0, 0],
+                   [0, 0.0049, 0],
+                   [0, 0, 0.0049]]);
+
+    invI = np.linalg.inv(I)
