@@ -197,7 +197,7 @@ def pub_traj():
             traj.ua.y = uay
             traj.ua.z = uaz
 
-            traj.ub.x = np.linalg.norm(ref_traj[5])  # ubx
+            traj.ub.x = ubx
             traj.ub.y = uby
             traj.ub.z = ubz
 
