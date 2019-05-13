@@ -111,7 +111,7 @@ class uav_High_Level_Controller():
         self.max_rotor_speed = rospy.get_param("riseq/max_rotor_speed")
         self.rotor_count = rospy.get_param("riseq/rotor_count")
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
-
+        self.min_thrust = 0.0
 
         self.position_control_frequency_ratio = 10       # This is the factor by which the high_level_controller is slower
                                                          # than low_level controller
@@ -197,7 +197,7 @@ class uav_High_Level_Controller():
             wzb = np.dot(Rbw, self.e3)          # body z-axis expressed in world frame
             self.Traw = self.mass*np.dot(wzb.T,a_des)[0][0]            # Necessary thrust
             #         ****        Input saturation  *      ****
-            self.T = self.saturate_scalar(self.Traw, self.max_thrust)    # Maximum possible thrust
+            self.T = self.saturate_scalar_minmax(self.Traw, self.max_thrust, self.min_thrust)    # Maximum possible thrust
 
             # ---------------------------------------------- #
             #             DESIRED ORIENTATION                #
@@ -386,6 +386,31 @@ class uav_High_Level_Controller():
         self.fg_publisher.publish(thrust_msg)
         rospy.loginfo(thrust_msg)
         rospy.loginfo("Published body vertical thrust: {}".format(thrust))
+
+    def saturate_scalar_minmax(self, value, max_value, min_value):
+        """
+        @ description saturation function for a scalar with definded maximum and minimum value
+        See Q. Quan. Introduction to Multicopter Design (2017), Ch11.3, page 265 for reference
+        """
+        mean = (max_value + min_value)/2.0
+        half_range = (max_value - min_value)/2.0
+        return self.saturate_vector_dg(value-mean, half_range) + mean
+
+
+    # saturation function for vectors
+    def saturate_vector_dg(self, v, max_value):
+        """
+        @description saturation function for the magnitude of a vector with maximum magnitude 
+        and guaranteed direction.
+        See Q. Quan. Introduction to Multicopter Design (2017), Ch. 10.2 for reference
+        """
+        mag = np.linalg.norm(v)
+        if( mag < max_value):
+            return v
+        else:
+            return np.dot(v/mag,max_value)  # return vector in same direction but maximum possible magnitude
+
+
 
 if __name__ == '__main__':
     try:
