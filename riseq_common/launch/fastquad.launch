@@ -1,0 +1,3 @@
+<launch>
+	<rosparam command="load" file="$(find riseq_common)/config/drones/fastquad.yaml"/>
+</launch>
