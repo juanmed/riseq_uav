@@ -7,7 +7,10 @@ import tf
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
-#from mav_msgs.msg import RateThrust             # for flightgoggles
+if(rospy.get_param("riseq/environment") == "simulator"):
+    from mav_msgs.msg import RateThrust             # for flightgoggles
+else:
+    pass
 
 import control_gains as gains
 import numpy as np
@@ -15,12 +18,17 @@ import numpy as np
 class uav_Low_Level_Controller():
 
     def __init__(self):
+        # determine environment
+        environment = rospy.get_param("riseq/environment")
 
         # low level control publisher
         self.llc_pub = rospy.Publisher('riseq/control/uav_low_level_control', riseq_low_level_control, queue_size = 10)
 
         # flightgoggles publisher 
-        #self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+        if(environment == "simulator"):
+            self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+        else:
+            pass
 
         # high level control subscriber
         self.hlc_sub = rospy.Subscriber('riseq/control/uav_high_level_control', riseq_high_level_control, self.feedback_linearization_controller)
@@ -49,7 +57,7 @@ class uav_Low_Level_Controller():
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
         
-	environment = rospy.get_param("riseq/environment")
+	
 	if(environment == "simulator"):
 	    self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)

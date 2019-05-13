@@ -299,7 +299,7 @@ try:
 
     invI = np.linalg.inv(I)
 except:
-    print("WARNING: Quadrotor parameters not found. \nUsing default values.")
+    print("WARNING: Quadrotor parameters not found for differential flatness df_flat.py. \nUsing default values.")
     # define constants
     g = 9.81  # m/s2
     b = 0.01  # air drag/friction force
