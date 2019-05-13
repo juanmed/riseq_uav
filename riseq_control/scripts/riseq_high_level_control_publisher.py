@@ -295,7 +295,7 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
         self.hlc_pub.publish(hlc_msg)
-        rospy.loginfo(hlc_msg)
+        #rospy.loginfo(hlc_msg)
 
 
     def euler_angular_velocity_des(self, euler, euler_ref, euler_dot_ref,gain):
