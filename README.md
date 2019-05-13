@@ -51,6 +51,30 @@ Otherwise, install by yourself the following required python packages:
 
 ## Testing 
 
+#### MIT FlightGoggles Simulator
+
+We have developed our algorithms to work with the MIT's [flightgoggles simulator](https://github.com/mit-fast/FlightGoggles). Follow the steps in their [wiki](https://github.com/mit-fast/FlightGoggles/wiki) to install it. Then:
+
+```bash
+roslaunch riseq_common flightgoggles_control.launch
+```
+
+#### On a real drone
+
+This code repository is still very crude and runs the algorithms directly with no user interface for common actions like (start, stop, arm, disarm, trajectory settings, etc). For this reason running this code base in any real platform MUST FOLLOW ALL SAFETY CAUTIONS.
+
+We use [Optitrack](https://optitrack.com/) for object tracking, [Jetson Nano](https://developer.nvidia.com/embedded/buy/jetson-nano-devkit) as onboard computer and a custom drone named FastQuad. To install various required software on Jetson Nano (like PCA9685 PWM driver, VRPN Client, etc) refer to [this repository](https://github.com/juanmed/nano_gpio).
+
+Then, connect to Jetson Nano through SSH and launch:
+
+```bash
+ssh user@<jetson_nano_ip_address>
+roslaunch riseq_common fastquad.launch
+```
+
+
+
+
 
 ## Contact
 
