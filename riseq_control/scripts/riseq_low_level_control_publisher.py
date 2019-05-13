@@ -19,13 +19,13 @@ class uav_Low_Level_Controller():
 
     def __init__(self):
         # determine environment
-        environment = rospy.get_param("riseq/environment")
+        self.environment = rospy.get_param("riseq/environment")
 
         # low level control publisher
         self.llc_pub = rospy.Publisher('riseq/control/uav_low_level_control', riseq_low_level_control, queue_size = 10)
 
         # flightgoggles publisher 
-        if(environment == "simulator"):
+        if(self.environment == "simulator"):
             self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
         else:
             pass
@@ -57,17 +57,20 @@ class uav_Low_Level_Controller():
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
         
-	
-	if(environment == "simulator"):
-	    self.dpr = np.array([-8.0]) 
+    
+        if(self.environment == "simulator"):
+            self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
-	    self.Kr = self.Kr.item(0,0)
-	elif(environment == "embedded_computer"):
-	    self.Kr = 8.0
-	else:
-	    print("riseq/environment parameter not found. Setting Kr =1.0")
-	    self.Kr = 1.0
+            self.Kr = self.Kr.item(0,0)
+        elif(self.environment == "embedded_computer"):
+            self.Kr = 8.0
+        else:
+            print("riseq/environment parameter not found. Setting Kr =1.0")
+            self.Kr = 1.0
 
+        # --------------------------------- #
+        #  Initialize PCA9685 PWM driver    #
+        # --------------------------------- #
 
 
 
@@ -101,7 +104,14 @@ class uav_Low_Level_Controller():
         generalized_input = np.concatenate((T,M),axis=0)    
         w_i = np.dot(self.invB, generalized_input)
         w_i = map(lambda a: np.sqrt(a) if a>0 else -np.sqrt(-a), w_i.flatten())
-        print(w_i)
+
+        # convert to duty cycles for PCA9685 Chip
+        if(self.environment == 'embedded_computer'):
+            w_i = map(lambda a: a + 5.0, w_i)
+            self.writeToPCA9685(w_i)
+        else:
+            pass   
+        #print(w_i)
         # ------------------------------ #
         #       Publish message          #
         # ------------------------------ #
@@ -114,18 +124,21 @@ class uav_Low_Level_Controller():
         llc_msg.torque.z = M[0][0]
         llc_msg.rotor_speeds = w_i
         self.llc_pub.publish(llc_msg)
-        rospy.loginfo(llc_msg)
+        #rospy.loginfo(llc_msg)
 
 
         # publish to flightgoggles
-        #fg_msg = RateThrust()
-        #fg_msg.header.stamp = rospy.Time.now()  
-        #fg_msg.header.frame_id = 'uav/imu'
-        #fg_msg.thrust.z = hlc.thrust.z
-        #fg_msg.angular_rates.x = angular_velocity_des[0][0]
-        #fg_msg.angular_rates.y = angular_velocity_des[1][0]
-        #fg_msg.angular_rates.z = angular_velocity_des[2][0]
-        #self.fg_publisher.publish(fg_msg)
+        if (self.environment == 'simulator'):
+            fg_msg = RateThrust()
+            fg_msg.header.stamp = rospy.Time.now()  
+            fg_msg.header.frame_id = 'uav/imu'
+            fg_msg.thrust.z = hlc.thrust.z
+            fg_msg.angular_rates.x = angular_velocity_des[0][0]
+            fg_msg.angular_rates.y = angular_velocity_des[1][0]
+            fg_msg.angular_rates.z = angular_velocity_des[2][0]
+            self.fg_publisher.publish(fg_msg)
+        else:
+            pass
 
     # definitely need a better name for this
     def feedback_linearization_torque(self, angular_velocity, angular_velocity_des, angular_velocity_dot_ref, gain):
@@ -150,6 +163,21 @@ class uav_Low_Level_Controller():
         M = np.dot(self.Inertia, ub) + np.cross(angular_velocity, np.dot(self.Inertia, angular_velocity), axis = 0)
 
         return M
+
+    def get_duty_cycles(self, w_i):
+        """
+        @description Given an array of inputs, convert them to duty cycles values
+        to be used for PWM control of rotor speeds. This is to be used in the Jetson
+        Nano board with PCA9685 PWM Driver connected through I2C port
+        The operation performed on each element i of the array is: 
+
+        duty_cycle_i = element_i + 5
+        """
+        return map(lambda a: a + 5 , w_i)
+
+    def writeToPCA9685(w_i):
+        return 0
+
 
 if __name__ == '__main__':
     try:
