@@ -72,7 +72,7 @@ class uav_Low_Level_Controller():
         self.B = np.array([[kt,         kt,      kt,      kt],
                            [q*r*kt, q*r*kt, -q*r*kt, -q*r*kt],
                            [-q*r*kt, q*r*kt, q*r*kt, -q*r*kt],
-                           [-kq,        kq,       -kq,    kq]])
+                           [+kq,        -kq,    +kq,     -kq]])
 
         self.invB = np.linalg.inv(self.B)
 
