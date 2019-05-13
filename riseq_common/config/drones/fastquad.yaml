@@ -9,8 +9,8 @@ riseq:
     true_state_publish_rate: 200
     controller_state_input: 'true_state'
     controller_type: 'euler_angle_controller'
-    trajectory_wait: 2
-    high_level_control_wait_time: 1
+    trajectory_wait: 20
+    high_level_control_wait_time: 19
     Ixx: 0.02972 
     Iyy: 0.03072
     Izz: 0.05738

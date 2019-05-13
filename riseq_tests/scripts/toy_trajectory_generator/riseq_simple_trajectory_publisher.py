@@ -32,7 +32,7 @@ class Trajectory_Generator2():
         # Compute trajectory waypoints #
         # ---------------------------- #
 
-        self.waypoints = self.get_gate_waypoints()
+        self.waypoints = self.get_vertical_waypoints(0.5)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
