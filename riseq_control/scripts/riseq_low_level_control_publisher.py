@@ -57,10 +57,20 @@ class uav_Low_Level_Controller():
         kt = rospy.get_param("riseq/thrust_coeff")
         kq = rospy.get_param("riseq/torque_coeff")
         r  = rospy.get_param("riseq/arm_length")
-        self.B = np.array([[kt, kt, kt, kt],
-                           [0., r*kt, 0, -r*kt],
-                           [-r*kt, 0., r*kt, 0.],
-                           [-kq, kq, -kq, kq]])
+
+        # for drones with rotors aligned to +X, +Y, -X, -Y axis
+        #self.B = np.array([[kt, kt, kt, kt],
+        #                   [0., r*kt, 0, -r*kt],
+        #                   [-r*kt, 0., r*kt, 0.],
+        #                   [-kq, kq, -kq, kq]])
+        
+        # for drones with rotors located at 45 degrees from +X, +Y, -X, -Y axis
+        q = np.sqrt(2.0)/2.0
+        self.B = np.array([[kt,         kt,      kt,      kt],
+                           [q*r*kt, q*r*kt, -q*r*kt, -q*r*kt],
+                           [-q*r*kt, q*r*kt, q*r*kt, -q*r*kt],
+                           [-kq,        kq,       -kq,    kq]])
+
         self.invB = np.linalg.inv(self.B)
 
         # Gains for euler angle for desired angular velocity
