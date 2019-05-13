@@ -7,8 +7,17 @@ import tf
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
+
 if(rospy.get_param("riseq/environment") == "simulator"):
     from mav_msgs.msg import RateThrust             # for flightgoggles
+elif(rospy.get_param("riseq/environment") == "embedded_computer"):
+    # import Jetson GPIO for communication with PCA9685
+    import sys
+    sys.path.append('/opt/nvidia/jetson-gpio/lib/python')
+    sys.path.append('/opt/nvidia/jetson-gpio/lib/python/Jetson/GPIO')
+    sys.path.append('/home/nvidia/repositories/nano_gpio/gpio_env/lib/python2.7/site-packages/periphery/')
+    import Jetson.GPIO as GPIO
+    from pca9685_driver import Device
 else:
     pass
 
@@ -71,15 +80,15 @@ class uav_Low_Level_Controller():
         # --------------------------------- #
         #  Initialize PCA9685 PWM driver    #
         # --------------------------------- #
-
-
-
+        if (self.environment == "embedded_computer"):
+            self.pwm_device = self.initPCA9685()
+        else:
+            pass
 
     def kai_allibert_control_torque(self, w, w_des, w_dot_ref, gain):
         K_omega = gain
         M = -K_omega*(w - w_des) + np.cross(w,np.dot(params.I,w_des), axis = 0) + np.dot(params.I, w_dot_ref)
         return np.array(M)
-
 
     def feedback_linearization_controller(self,hlc):
         """
@@ -107,11 +116,11 @@ class uav_Low_Level_Controller():
 
         # convert to duty cycles for PCA9685 Chip
         if(self.environment == 'embedded_computer'):
-            w_i = map(lambda a: a + 5.0, w_i)
-            self.writeToPCA9685(w_i)
+            w_i = map(lambda a: a + 5.0, w_i)   # add offset
+            self.set_duty_cycles(self.pwm_device ,w_i)
         else:
             pass   
-        #print(w_i)
+        print(w_i)
         # ------------------------------ #
         #       Publish message          #
         # ------------------------------ #
@@ -175,9 +184,71 @@ class uav_Low_Level_Controller():
         """
         return map(lambda a: a + 5 , w_i)
 
-    def writeToPCA9685(w_i):
+    def writeToPCA9685(self, w_i):
         return 0
 
+    def set_channel_duty_cycle(self, pwmdev, channel, dt):
+        """
+        @pwmdev a Device class object already configured
+        @channel Channel or PIN number in PCA9685 to configure 0-15
+        @dt desired duty cycle
+        """
+        val = (dt*4095)//100
+        pwmdev.set_pwm(channel,val)
+
+    def initPCA9685(self):
+        """
+        @description configure Jetson Nano GPIO for communication with PCA9685
+        @return a PCA9685 Device object to communicate with PCA9685 chip
+        """
+        GPIO.setmode(GPIO.BOARD)
+        mode = GPIO.getmode()
+        print("Jetson Nano GPIO Mode: {}".format(mode))
+
+        # discover I2C devices
+        i2c_devs = Device.get_i2c_bus_numbers()
+        print("The following /dev/i2c-* devices were found:\n{}".format(i2c_devs))
+
+        # Create I2C device
+        working_devs = list()
+        print("Looking out which /dev/i2c-* devices is connected to PCA9685")
+        for dev in i2c_devs:
+            try:
+                pca9685 = Device(0x40,dev)
+                # Set duty cycle
+                pca9685.set_pwm(5, 2047)
+
+                # set pwm freq
+                pca9685.set_pwm_frequency(1000)
+                print("Device {} works!".format(dev))
+                working_devs.append(dev)
+            except:
+                print("Device {} does not work.".format(dev))
+
+        # Select any working device, for example, the first one
+        print("Configuring PCA9685 connected to /dev/i2c-{} device.".format(working_devs[0]))
+        pca9685 = Device(0x40, working_devs[0])
+
+        # ESC work at 50Hz
+        pca9685.set_pwm_frequency(50)
+
+        # Set slow speed duty cycles
+        self.set_channel_duty_cycle(pca9685, 0, 5.4)
+        self.set_channel_duty_cycle(pca9685, 1, 5.4)
+        self.set_channel_duty_cycle(pca9685, 2, 5.4)
+        self.set_channel_duty_cycle(pca9685, 3, 5.4)
+
+        return pca9685
+
+    def set_duty_cycles(self, pwmdev, dts):
+        """
+        @description Set the duty cycle for 4 PWM Channels in a PCA9685 device
+        @pwmdev PCA9685 Device object with a configured frequency 
+        @dts array for duty cycles to set. First element is duty cycle for PCA9685 Channel 0,
+        2nd element for PCA9685 Channel 1, 3rd element for PCA9685 Channel 2..etc. Up to Channel 15.
+        """ 
+        for channel, dt in enumerate(dts):
+            self.set_channel_duty_cycle(pwmdev, channel, dt)
 
 if __name__ == '__main__':
     try:
