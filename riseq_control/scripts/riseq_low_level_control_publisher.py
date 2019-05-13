@@ -238,6 +238,11 @@ class uav_Low_Level_Controller():
         self.set_channel_duty_cycle(pca9685, 2, 5.4)
         self.set_channel_duty_cycle(pca9685, 3, 5.4)
 
+        # configure rest of channels to 0 duty cycle
+        rest = np.arange(4,16,1)
+        for channel in rest:
+            self.set_channel_duty_cycle(pca9685, channel, 0.0)
+
         return pca9685
 
     def set_duty_cycles(self, pwmdev, dts):
