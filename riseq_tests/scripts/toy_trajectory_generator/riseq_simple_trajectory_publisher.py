@@ -32,7 +32,7 @@ class Trajectory_Generator2():
         # Compute trajectory waypoints #
         # ---------------------------- #
 
-        self.waypoints = self.get_vertical_waypoints(0.5)
+        self.waypoints = self.get_vertical_waypoints(1.0)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -128,9 +128,8 @@ def pub_traj():
     traj_gen = Trajectory_Generator2()
     # traj_gen = Trajectory_Generator_Test()
 
+    # IMPORTANT WAIT TIME! DO NOT DELETE!
     rospy.sleep(0.1)
-
-    # IMPORTANT WAIT TIME!
     # If this is not here, the "start_time" in the trajectory generator is 
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
