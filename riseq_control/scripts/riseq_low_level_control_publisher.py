@@ -57,6 +57,9 @@ class uav_Low_Level_Controller():
         kt = rospy.get_param("riseq/thrust_coeff")
         kq = rospy.get_param("riseq/torque_coeff")
         r  = rospy.get_param("riseq/arm_length")
+        self.max_rotor_speed = rospy.get_param("riseq/max_rotor_speed")
+        self.max_xy_torque = r*kt*(self.max_rotor_speed**2)
+        self.max_z_torque = kq*(self.max_rotor_speed**2)
 
         # for drones with rotors aligned to +X, +Y, -X, -Y axis
         #self.B = np.array([[kt, kt, kt, kt],
@@ -76,8 +79,6 @@ class uav_Low_Level_Controller():
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-        
-    
         if(self.environment == "simulator"):
             self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
@@ -117,6 +118,11 @@ class uav_Low_Level_Controller():
         # ------------------------------ #
         M = self.feedback_linearization_torque(angular_velocity, angular_velocity_des, angular_velocity_dot_ref, self.Kr)
 
+        # saturate control torque. Apply both maximum limits consequtively
+        # the small one will be applied
+        M = utils.saturate_vector_dg(M,self.max_xy_torque)
+        #M = utils.saturate_vector_dg(M,self.max_z_torque)
+
         # ------------------------------ #
         #   Rotor Speed Calculation      #
         # ------------------------------ #
@@ -130,7 +136,10 @@ class uav_Low_Level_Controller():
             offset = 5.0
             w_i = map(lambda a: utils.saturate_scalar_minmax(a + offset, 10.0, 5.0), w_i)   # add offset
             self.set_duty_cycles(self.pwm_device ,w_i)
+        elif(self.environment == "simulator"):
+            w_i = map(lambda a: utils.saturate_scalar_minmax(a, self.max_rotor_speed, 0.0), w_i) 
         else:
+            # implement no saturation
             pass   
         #print(w_i)
         # ------------------------------ #
