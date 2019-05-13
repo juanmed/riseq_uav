@@ -57,7 +57,12 @@
 
 
 import rospy
-import control as ctl
+environment = rospy.get_param("riseq/environment")
+if(environment == "simulator"):
+	import control as ctl
+else:	
+	# do not import control as it is not available
+	pass
 import numpy as np 
 
 # In general    u = Nu*r - K(x -Nx*r) = -K*x + (Nu + K*Nx)*r

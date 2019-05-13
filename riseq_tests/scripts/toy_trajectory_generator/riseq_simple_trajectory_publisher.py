@@ -13,10 +13,26 @@ import trajgen2_helper as trajGen3D
 class Trajectory_Generator2():
     def __init__(self):
 
-        # first compute waypoints: the first one is the initial position
-        # and orientation, and the rest are the position of the gates
 
-        self.waypoints = self.get_gate_waypoints()
+
+        # initialize time for trajectory generator
+        self.start_time = rospy.get_time()
+
+        # initialize heading
+	environment = rospy.get_param("riseq/environment")
+        if (environment == "simulator"):
+            self.init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+	elif (environment == "embedded_computer"):
+            self.init_pose = rospy.get_param("riseq/init_pose")
+	else:
+	    print("riseq/init_pose not available, defaulting to [0,0,0,0,0,0,1]")
+	    self.init_pose = [0,0,0,0,0,0,1]
+
+	self.init_pose = [float(a) for a in self.init_pose]
+	# ---------------------------- #
+	# Compute trajectory waypoints #
+	# ---------------------------- #
+        self.waypoints = self.get_vertical_waypoints(0.5)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -27,15 +43,9 @@ class Trajectory_Generator2():
         print(self.coeff_y)
         print("coeff Z:")
         print(self.coeff_z)
-
-        # initialize time for trajectory generator
-        self.start_time = rospy.get_time()
-
-        # initialize heading
-        init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
-        init_quat = [init_pose[3],init_pose[4],init_pose[5],init_pose[6]]
+        init_quat =[self.init_pose[3],self.init_pose[4],self.init_pose[5],self.init_pose[6]]
         yaw, pitch, roll = tf.transformations.euler_from_quaternion(init_quat, axes = "rzyx")
-        #print("Roll: {}, Pitch: {}, Yaw: {}".format(roll, pitch, yaw))
+        print("Init Roll: {}, Pitch: {}, Yaw: {}".format(roll, pitch, yaw))
         trajGen3D.yaw = yaw
         trajGen3D.current_heading = np.array([np.cos(yaw),np.sin(yaw)])
         #print("Yaw: {}, Heading: {}".format(trajGen3D.yaw,trajGen3D.current_heading))
@@ -58,11 +68,11 @@ class Trajectory_Generator2():
         gate_names = rospy.get_param("/uav/gate_names")
 
         # First waypoint is initial position
-        init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+        #init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
         waypoints = np.zeros((len(gate_names)+1,3))
-        waypoints[0][0] = init_pose[0]
-        waypoints[0][1] = init_pose[1]
-        waypoints[0][2] = init_pose[2]
+        waypoints[0][0] = self.init_pose[0]
+        waypoints[0][1] = self.init_pose[1]
+        waypoints[0][2] = self.init_pose[2]
 
         for i,name in enumerate(gate_names):
             gate_data = rospy.get_param("/uav/"+name)
@@ -85,11 +95,10 @@ class Trajectory_Generator2():
     def get_vertical_waypoints(self, height):
 
         # First waypoint is initial position
-        init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
         waypoints = np.zeros((2,3))
-        waypoints[0][0] = init_pose[0]
-        waypoints[0][1] = init_pose[1]
-        waypoints[0][2] = init_pose[2]   
+        waypoints[0][0] = self.init_pose[0]
+        waypoints[0][1] = self.init_pose[1]
+        waypoints[0][2] = self.init_pose[2]   
         
         # now add a waypoint exactly 1m above the drone 
         waypoints[1][0] = waypoints[0][0]
@@ -101,8 +110,7 @@ class Trajectory_Generator2():
 def pub_traj():
 
     # init node
-    # rospy.init_node('uav_ref_trajectory_publisher', anonymous = True)
-    rospy.init_node('uav_ref_trajectory_input_publisher', anonymous=True)
+    rospy.init_node('riseq_uav_simple_trajectory_publisher', anonymous=True)
 
     # create topic for publishing ref trajectory
     traj_publisher = rospy.Publisher('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory, queue_size=10)
@@ -128,7 +136,7 @@ def pub_traj():
     # time for the trajectory will be degenerated
 
     # publish at 10Hz
-    rate = rospy.Rate(200.0)
+    rate = rospy.Rate(100.0)
 
     while not rospy.is_shutdown():
         
@@ -228,8 +236,6 @@ def pub_traj():
             rospy.loginfo(traj)
             rate.sleep()
 
-            #traj_gen.trajectory_update(time)
-
         except Exception:
             rospy.loginfo('People...we have a problem: {}'.format(Exception))
             continue
@@ -237,8 +243,9 @@ def pub_traj():
 
 if __name__ == '__main__':
     try:
-        rospy.loginfo("UAV Trajectory Publisher Created")
+        rospy.loginfo("UAV Simple Trajectory Publisher Created")
         pub_traj()
+	rospy.loginfo("UAV Simple Trajectory Publisher Terminated")
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass
