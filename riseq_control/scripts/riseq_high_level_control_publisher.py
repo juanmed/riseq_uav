@@ -30,7 +30,11 @@ import tf
 from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
-#from mav_msgs.msg import RateThrust             # for flightgoggles
+
+if(rospy.get_param("riseq/environment") == "simulator"):
+    from mav_msgs.msg import RateThrust             # for flightgoggles
+else:
+    pass
     
 import riseq_tests.df_flat as df_flat
 import control_gains as gains
@@ -40,12 +44,17 @@ import numpy as np
 class uav_High_Level_Controller():
 
     def __init__(self):
+        # determine environment
+        environment = rospy.get_param("riseq/environment")
 
         # high level control publisher
         self.hlc_pub = rospy.Publisher('riseq/control/uav_high_level_control', riseq_high_level_control, queue_size = 10)
         
-        # flightgoggles publisher 
-        #self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+        # flightgoggles publisher
+        if(environment == "simulator"): 
+            self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+        else:
+            pass
 
         # reference trajectory subscriber
         #self.reftraj_sub = message_filters.Subscriber('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory)
@@ -133,7 +142,7 @@ class uav_High_Level_Controller():
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-	environment = rospy.get_param("riseq/environment")
+	
 	if (environment == "simulator"):
             self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
@@ -387,7 +396,7 @@ class uav_High_Level_Controller():
     def publish_thrust(self, thrust):
         """
         @description publish thrust values to 'wake up' flightgoggles 
-        simulator
+        simulator. It assumes flightgoggles simulator is running
         """
         # create single message
         thrust_msg = RateThrust()
@@ -398,7 +407,7 @@ class uav_High_Level_Controller():
 
 if __name__ == '__main__':
     try:
-        rospy.init_node('uav_input_publisher', anonymous = True)
+        rospy.init_node('riseq_high_level_control', anonymous = True)
 
         # Wait some time before running. This is to adapt to some simulators
         # which require some 'settling time'
@@ -416,12 +425,8 @@ if __name__ == '__main__':
 
         high_level_controller = uav_High_Level_Controller()
 
-        # set to True if using flightgoogles simulator. 
-        # This will send some thrust commands to the simulator in order to 'wake up' the IMU
-        # This is important for the simulator to start correctly 
-        flightgoggles = False
-
-        if(flightgoggles):
+        # if simulator is flightgoggles, this step MUST be done
+        if(rospy.get_param("riseq/environment") == "simulator"):
             rate = rospy.Rate(100)
             for i in range(10):
                 high_level_controller.publish_thrust(9.9) 
