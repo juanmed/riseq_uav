@@ -175,6 +175,9 @@ class uav_Low_Level_Controller():
         """
         return map(lambda a: a + 5 , w_i)
 
+    def writeToPCA9685(w_i):
+        return 0
+
 
 if __name__ == '__main__':
     try:
