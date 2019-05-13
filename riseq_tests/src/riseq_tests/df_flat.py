@@ -240,7 +240,7 @@ def compute_ref(trajectory):
     # make angular velocity vector w
     w_ = np.matrix([[w_x.item(0)], [w_y.item(0)], [w_z.item(0)]])
 
-    # get vector of torque inputs u2, u3, u4
+    # get vector of torque inputs ux =  u2, u3, u4
     u_x = get_ux(w_dot_, w_)  # get_ux(w_dot_,w_)
 
     # get rotation matrix from base frame to world frame
@@ -299,7 +299,7 @@ try:
 
     invI = np.linalg.inv(I)
 except:
-    print("WARNING: Quadrotor parameters not found. \nUsing default values.")
+    print("WARNING: Quadrotor parameters not found for differential flatness df_flat.py. \nUsing default values.")
     # define constants
     g = 9.81  # m/s2
     b = 0.01  # air drag/friction force
