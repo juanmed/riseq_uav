@@ -11,28 +11,28 @@ import trajgen2_helper as trajGen3D
 
 
 class Trajectory_Generator2():
+
     def __init__(self):
-
-
 
         # initialize time for trajectory generator
         self.start_time = rospy.get_time()
 
         # initialize heading
-	environment = rospy.get_param("riseq/environment")
+        environment = rospy.get_param("riseq/environment")
         if (environment == "simulator"):
             self.init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
-	elif (environment == "embedded_computer"):
+        elif (environment == "embedded_computer"):
             self.init_pose = rospy.get_param("riseq/init_pose")
-	else:
-	    print("riseq/init_pose not available, defaulting to [0,0,0,0,0,0,1]")
-	    self.init_pose = [0,0,0,0,0,0,1]
+        else:
+            print("riseq/init_pose not available, defaulting to [0,0,0,0,0,0,1]")
+            self.init_pose = [0,0,0,0,0,0,1]
 
-	self.init_pose = [float(a) for a in self.init_pose]
-	# ---------------------------- #
-	# Compute trajectory waypoints #
-	# ---------------------------- #
-        self.waypoints = self.get_vertical_waypoints(0.5)
+        self.init_pose = [float(a) for a in self.init_pose]
+        # ---------------------------- #
+        # Compute trajectory waypoints #
+        # ---------------------------- #
+
+        self.waypoints = self.get_gate_waypoints()
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -102,8 +102,8 @@ class Trajectory_Generator2():
         
         # now add a waypoint exactly 1m above the drone 
         waypoints[1][0] = waypoints[0][0]
-        waypoints[1][1] = waypoints[0][1]
-        waypoints[1][2] = waypoints[0][2] + height
+        waypoints[1][1] = waypoints[0][1] - height
+        waypoints[1][2] = waypoints[0][2] 
 
         return waypoints  
 
@@ -233,7 +233,7 @@ def pub_traj():
 
             # publish message
             traj_publisher.publish(traj)
-            rospy.loginfo(traj)
+            #rospy.loginfo(traj)
             rate.sleep()
 
         except Exception:
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     try:
         rospy.loginfo("UAV Simple Trajectory Publisher Created")
         pub_traj()
-	rospy.loginfo("UAV Simple Trajectory Publisher Terminated")
+        rospy.loginfo("UAV Simple Trajectory Publisher Terminated")
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass
