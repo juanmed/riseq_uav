@@ -7,6 +7,7 @@ import tf
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
+import riseq_tests.utils as utils 
 
 if(rospy.get_param("riseq/environment") == "simulator"):
     from mav_msgs.msg import RateThrust             # for flightgoggles
@@ -116,11 +117,12 @@ class uav_Low_Level_Controller():
 
         # convert to duty cycles for PCA9685 Chip
         if(self.environment == 'embedded_computer'):
-            w_i = map(lambda a: a + 5.0, w_i)   # add offset
+            offset = 5.0
+            w_i = map(lambda a: utils.saturate_scalar_minmax(a + offset, 10.0, 5.0), w_i)   # add offset
             self.set_duty_cycles(self.pwm_device ,w_i)
         else:
             pass   
-        print(w_i)
+        #print(w_i)
         # ------------------------------ #
         #       Publish message          #
         # ------------------------------ #
@@ -133,7 +135,7 @@ class uav_Low_Level_Controller():
         llc_msg.torque.z = M[0][0]
         llc_msg.rotor_speeds = w_i
         self.llc_pub.publish(llc_msg)
-        #rospy.loginfo(llc_msg)
+        rospy.loginfo(llc_msg)
 
 
         # publish to flightgoggles
@@ -193,7 +195,7 @@ class uav_Low_Level_Controller():
         @channel Channel or PIN number in PCA9685 to configure 0-15
         @dt desired duty cycle
         """
-        val = (dt*4095)//100
+        val = int((dt*4095)//100)
         pwmdev.set_pwm(channel,val)
 
     def initPCA9685(self):
@@ -210,6 +212,7 @@ class uav_Low_Level_Controller():
         print("The following /dev/i2c-* devices were found:\n{}".format(i2c_devs))
 
         # Create I2C device
+        """
         working_devs = list()
         print("Looking out which /dev/i2c-* devices is connected to PCA9685")
         for dev in i2c_devs:
@@ -227,7 +230,9 @@ class uav_Low_Level_Controller():
 
         # Select any working device, for example, the first one
         print("Configuring PCA9685 connected to /dev/i2c-{} device.".format(working_devs[0]))
-        pca9685 = Device(0x40, working_devs[0])
+        pca9685 = Device(0x40, working_devs[0]) 
+        """
+        pca9685 = Device(0x40, 1)    # Immediately set a working device, this assumes PCA9685 is connected to I2C channel 1
 
         # ESC work at 50Hz
         pca9685.set_pwm_frequency(50)
