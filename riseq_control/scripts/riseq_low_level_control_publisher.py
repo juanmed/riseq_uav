@@ -7,7 +7,7 @@ import tf
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
-from mav_msgs.msg import RateThrust             # for flightgoggles
+#from mav_msgs.msg import RateThrust             # for flightgoggles
 
 import control_gains as gains
 import numpy as np
@@ -20,7 +20,7 @@ class uav_Low_Level_Controller():
         self.llc_pub = rospy.Publisher('riseq/control/uav_low_level_control', riseq_low_level_control, queue_size = 10)
 
         # flightgoggles publisher 
-        self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+        #self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
 
         # high level control subscriber
         self.hlc_sub = rospy.Subscriber('riseq/control/uav_high_level_control', riseq_high_level_control, self.feedback_linearization_controller)
@@ -48,8 +48,17 @@ class uav_Low_Level_Controller():
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-        self.dpr = np.array([-8.0]) 
-        self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
+        
+	environment = rospy.get_param("riseq/environment")
+	if(environment == "simulator"):
+	    self.dpr = np.array([-8.0]) 
+            self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
+	    self.Kr = self.Kr.item(0,0)
+	elif(environment == "embedded_computer"):
+	    self.Kr = 8.0
+	else:
+	    print("riseq/environment parameter not found. Setting Kr =1.0")
+	    self.Kr = 1.0
 
 
 
@@ -75,7 +84,7 @@ class uav_Low_Level_Controller():
         # ------------------------------ #
         #   Control Torque Calculation   #
         # ------------------------------ #
-        M = self.feedback_linearization_torque(angular_velocity, angular_velocity_des, angular_velocity_dot_ref, self.Kr.item(0,0))
+        M = self.feedback_linearization_torque(angular_velocity, angular_velocity_des, angular_velocity_dot_ref, self.Kr)
 
         # ------------------------------ #
         #   Rotor Speed Calculation      #
@@ -101,14 +110,14 @@ class uav_Low_Level_Controller():
 
 
         # publish to flightgoggles
-        fg_msg = RateThrust()
-        fg_msg.header.stamp = rospy.Time.now()  
-        fg_msg.header.frame_id = 'uav/imu'
-        fg_msg.thrust.z = hlc.thrust.z
-        fg_msg.angular_rates.x = angular_velocity_des[0][0]
-        fg_msg.angular_rates.y = angular_velocity_des[1][0]
-        fg_msg.angular_rates.z = angular_velocity_des[2][0]
-        self.fg_publisher.publish(fg_msg)
+        #fg_msg = RateThrust()
+        #fg_msg.header.stamp = rospy.Time.now()  
+        #fg_msg.header.frame_id = 'uav/imu'
+        #fg_msg.thrust.z = hlc.thrust.z
+        #fg_msg.angular_rates.x = angular_velocity_des[0][0]
+        #fg_msg.angular_rates.y = angular_velocity_des[1][0]
+        #fg_msg.angular_rates.z = angular_velocity_des[2][0]
+        #self.fg_publisher.publish(fg_msg)
 
     # definitely need a better name for this
     def feedback_linearization_torque(self, angular_velocity, angular_velocity_des, angular_velocity_dot_ref, gain):

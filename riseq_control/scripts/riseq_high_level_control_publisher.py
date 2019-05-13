@@ -30,7 +30,7 @@ import tf
 from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
-from mav_msgs.msg import RateThrust             # for flightgoggles
+#from mav_msgs.msg import RateThrust             # for flightgoggles
     
 import riseq_tests.df_flat as df_flat
 import control_gains as gains
@@ -45,7 +45,7 @@ class uav_High_Level_Controller():
         self.hlc_pub = rospy.Publisher('riseq/control/uav_high_level_control', riseq_high_level_control, queue_size = 10)
         
         # flightgoggles publisher 
-        self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+        #self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
 
         # reference trajectory subscriber
         #self.reftraj_sub = message_filters.Subscriber('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory)
@@ -96,7 +96,7 @@ class uav_High_Level_Controller():
         else:
             print('riseq/controller_type parameter not recognized. Defaulting to geometric_controller')
             print(' The only possible types are: euler_angle_controller, geometric_controller')
-            ts.registerCallback(self.geometric_controller)
+            ts.registerCallback(self.euler_angle_controller)
 
 
 
@@ -133,8 +133,17 @@ class uav_High_Level_Controller():
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-        self.dpr = np.array([-8.0]) 
-        self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
+	environment = rospy.get_param("riseq/environment")
+	if (environment == "simulator"):
+            self.dpr = np.array([-8.0]) 
+            self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
+	    self.Kr = self.Kr.item(0,0)
+	elif (environment == "embedded_computer"):
+	    self.Kr = 8.
+	else:
+	    print("riseq/environment parameter not found. Setting Kr = 1")
+	    self.Kr = 1
+	    
 
     def euler_angle_controller(self, state, trajectory):
         """
@@ -258,7 +267,7 @@ class uav_High_Level_Controller():
         #euler_ref = np.array([[phi_ref],[theta_ref],[psi_ref]])
         euler_des = np.array(df_flat.RotToRPY_ZYX(self.Rbw_des))  # get desired roll, pitch, yaw angles
         euler_dot_ref = np.array([[trajectory.uc.x], [trajectory.uc.y],[trajectory.uc.z]])
-        w_des = self.euler_angular_velocity_des(euler, euler_des, euler_dot_ref, self.Kr.item(0,0))
+        w_des = self.euler_angular_velocity_des(euler, euler_des, euler_dot_ref, self.Kr)
 
         # Fill out message
         hlc_msg = riseq_high_level_control()
@@ -410,7 +419,7 @@ if __name__ == '__main__':
         # set to True if using flightgoogles simulator. 
         # This will send some thrust commands to the simulator in order to 'wake up' the IMU
         # This is important for the simulator to start correctly 
-        flightgoggles = True
+        flightgoggles = False
 
         if(flightgoggles):
             rate = rospy.Rate(100)
