@@ -257,10 +257,10 @@ class uav_Low_Level_Controller():
         pca9685.set_pwm_frequency(50)
 
         # Set slow speed duty cycles
-        self.set_channel_duty_cycle(pca9685, 0, 5.4)
-        self.set_channel_duty_cycle(pca9685, 1, 5.4)
-        self.set_channel_duty_cycle(pca9685, 2, 5.4)
-        self.set_channel_duty_cycle(pca9685, 3, 5.4)
+        self.set_channel_duty_cycle(pca9685, 0, 5.0)
+        self.set_channel_duty_cycle(pca9685, 1, 5.0)
+        self.set_channel_duty_cycle(pca9685, 2, 5.0)
+        self.set_channel_duty_cycle(pca9685, 3, 5.0)
 
         # configure rest of channels to 0 duty cycle
         rest = np.arange(4,16,1)
@@ -279,14 +279,24 @@ class uav_Low_Level_Controller():
         for channel, dt in enumerate(dts):
             self.set_channel_duty_cycle(pwmdev, channel, dt)
 
+    def set_rotors_off(self):
+        """
+        @description set duty cycles for all rotors to minimum (5%)
+        """
+        self.set_channel_duty_cycle(self.pwm_device, 0, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 1, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 2, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 3, 5.0)
+
 if __name__ == '__main__':
     try:
         rospy.init_node('riseq_low_level_control', anonymous = True)
 
         low_level_controller = uav_Low_Level_Controller()
-
         rospy.loginfo(' Low Level Controller Started! ')
         rospy.spin()
+        low_level_controller.set_rotors_off()
+        rospy.loginfo(' Rotors duty cycle set to 5% to finish. ')
         rospy.loginfo(' High Level Controller Terminated.')
 
     except rospy.ROSInterruptException:
