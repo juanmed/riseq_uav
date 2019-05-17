@@ -32,7 +32,7 @@ class Trajectory_Generator2():
         # Compute trajectory waypoints #
         # ---------------------------- #
 
-        self.waypoints = self.get_vertical_waypoints(1.0)
+        self.waypoints = self.get_vertical_waypoints(0.1)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -53,7 +53,7 @@ class Trajectory_Generator2():
 
 
     def compute_reference_traj(self, time):
-        vel = 3     #max vel = 3
+        vel = 0.05     #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
@@ -102,8 +102,8 @@ class Trajectory_Generator2():
         
         # now add a waypoint exactly 1m above the drone 
         waypoints[1][0] = waypoints[0][0]
-        waypoints[1][1] = waypoints[0][1] - height
-        waypoints[1][2] = waypoints[0][2] 
+        waypoints[1][1] = waypoints[0][1] 
+        waypoints[1][2] = waypoints[0][2] + height
 
         return waypoints  
 
