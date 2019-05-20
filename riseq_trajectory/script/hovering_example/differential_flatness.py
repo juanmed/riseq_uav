@@ -22,12 +22,19 @@ gravity = rospy.get_param("riseq/gravity", 9.81) # m/s2
 b = 0.01  # air drag/friction force
 # c = 0.2 #air friction constant
 
+
 def get_trajectory(solution, order, time_scaling, ref_time):
     flat_output = compute_output(solution, order, time_scaling, ref_time)
     ref_trajectory = compute_ref(flat_output)
     return ref_trajectory
 
+
 def compute_output(solution, order, time_scaling, ref_time):
+    """
+    get coefficient of each trajectory [x y z psi]
+    position --> until 4th derivative
+    yaw --> until 2nd derivative
+    """
     solution = np.hstack(solution)
 
     # Getting coefficient of position, velocity, acceleration, jerk, snap of x y z

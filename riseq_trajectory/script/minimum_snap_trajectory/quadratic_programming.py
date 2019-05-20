@@ -5,6 +5,13 @@ import compute_matrix
 
 
 def qp_solution(order, waypoint, keyframe, current_state, time):
+    """
+    Function for calculating quadratic programming
+    qp(P, q, G, h, A, b)
+    min { 1/2 c.T * P * c + q * c } ---------- c is array of polynomial of flat output [ x y z psi ].
+    G, b : Inequality Constraint ( Corridor Constraint, Minimum Maximum speed)
+    A, b : Equality Constraint ( Way point Constraint, Derivative Constraint)
+    """
     # change format of keyframe
     # m : segment number
     # time scaling : time which is taken for each segment
