@@ -7,6 +7,7 @@ import tf
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
+import riseq_tests.utils as utils 
 
 if(rospy.get_param("riseq/environment") == "simulator"):
     from mav_msgs.msg import RateThrust             # for flightgoggles
@@ -56,17 +57,28 @@ class uav_Low_Level_Controller():
         kt = rospy.get_param("riseq/thrust_coeff")
         kq = rospy.get_param("riseq/torque_coeff")
         r  = rospy.get_param("riseq/arm_length")
-        self.B = np.array([[kt, kt, kt, kt],
-                           [0., r*kt, 0, -r*kt],
-                           [-r*kt, 0., r*kt, 0.],
-                           [-kq, kq, -kq, kq]])
+        self.max_rotor_speed = rospy.get_param("riseq/max_rotor_speed")
+        self.max_xy_torque = r*kt*(self.max_rotor_speed**2)
+        self.max_z_torque = kq*(self.max_rotor_speed**2)
+
+        # for drones with rotors aligned to +X, +Y, -X, -Y axis
+        #self.B = np.array([[kt, kt, kt, kt],
+        #                   [0., r*kt, 0, -r*kt],
+        #                   [-r*kt, 0., r*kt, 0.],
+        #                   [-kq, kq, -kq, kq]])
+        
+        # for drones with rotors located at 45 degrees from +X, +Y, -X, -Y axis
+        q = np.sqrt(2.0)/2.0
+        self.B = np.array([[kt,         kt,      kt,      kt],
+                           [q*r*kt, q*r*kt, -q*r*kt, -q*r*kt],
+                           [-q*r*kt, q*r*kt, q*r*kt, -q*r*kt],
+                           [+kq,        -kq,    +kq,     -kq]])
+
         self.invB = np.linalg.inv(self.B)
 
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-        
-    
         if(self.environment == "simulator"):
             self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
@@ -106,6 +118,11 @@ class uav_Low_Level_Controller():
         # ------------------------------ #
         M = self.feedback_linearization_torque(angular_velocity, angular_velocity_des, angular_velocity_dot_ref, self.Kr)
 
+        # saturate control torque. Apply both maximum limits consequtively
+        # the small one will be applied
+        M = utils.saturate_vector_dg(M,self.max_xy_torque)
+        #M = utils.saturate_vector_dg(M,self.max_z_torque)
+
         # ------------------------------ #
         #   Rotor Speed Calculation      #
         # ------------------------------ #
@@ -116,11 +133,15 @@ class uav_Low_Level_Controller():
 
         # convert to duty cycles for PCA9685 Chip
         if(self.environment == 'embedded_computer'):
-            w_i = map(lambda a: a + 5.0, w_i)   # add offset
+            offset = 5.0
+            w_i = map(lambda a: utils.saturate_scalar_minmax(a + offset, self.max_rotor_speed + offset, 5.0), w_i)   # add offset
             self.set_duty_cycles(self.pwm_device ,w_i)
+        elif(self.environment == "simulator"):
+            w_i = map(lambda a: utils.saturate_scalar_minmax(a, self.max_rotor_speed, 0.0), w_i) 
         else:
+            # implement no saturation
             pass   
-        print(w_i)
+        #print(w_i)
         # ------------------------------ #
         #       Publish message          #
         # ------------------------------ #
@@ -133,7 +154,7 @@ class uav_Low_Level_Controller():
         llc_msg.torque.z = M[0][0]
         llc_msg.rotor_speeds = w_i
         self.llc_pub.publish(llc_msg)
-        #rospy.loginfo(llc_msg)
+        rospy.loginfo(llc_msg)
 
 
         # publish to flightgoggles
@@ -193,7 +214,7 @@ class uav_Low_Level_Controller():
         @channel Channel or PIN number in PCA9685 to configure 0-15
         @dt desired duty cycle
         """
-        val = (dt*4095)//100
+        val = int((dt*4095)//100)
         pwmdev.set_pwm(channel,val)
 
     def initPCA9685(self):
@@ -210,6 +231,7 @@ class uav_Low_Level_Controller():
         print("The following /dev/i2c-* devices were found:\n{}".format(i2c_devs))
 
         # Create I2C device
+        """
         working_devs = list()
         print("Looking out which /dev/i2c-* devices is connected to PCA9685")
         for dev in i2c_devs:
@@ -227,16 +249,18 @@ class uav_Low_Level_Controller():
 
         # Select any working device, for example, the first one
         print("Configuring PCA9685 connected to /dev/i2c-{} device.".format(working_devs[0]))
-        pca9685 = Device(0x40, working_devs[0])
+        pca9685 = Device(0x40, working_devs[0]) 
+        """
+        pca9685 = Device(0x40, 1)    # Immediately set a working device, this assumes PCA9685 is connected to I2C channel 1
 
         # ESC work at 50Hz
         pca9685.set_pwm_frequency(50)
 
         # Set slow speed duty cycles
-        self.set_channel_duty_cycle(pca9685, 0, 5.4)
-        self.set_channel_duty_cycle(pca9685, 1, 5.4)
-        self.set_channel_duty_cycle(pca9685, 2, 5.4)
-        self.set_channel_duty_cycle(pca9685, 3, 5.4)
+        self.set_channel_duty_cycle(pca9685, 0, 5.0)
+        self.set_channel_duty_cycle(pca9685, 1, 5.0)
+        self.set_channel_duty_cycle(pca9685, 2, 5.0)
+        self.set_channel_duty_cycle(pca9685, 3, 5.0)
 
         # configure rest of channels to 0 duty cycle
         rest = np.arange(4,16,1)
@@ -255,14 +279,24 @@ class uav_Low_Level_Controller():
         for channel, dt in enumerate(dts):
             self.set_channel_duty_cycle(pwmdev, channel, dt)
 
+    def set_rotors_off(self):
+        """
+        @description set duty cycles for all rotors to minimum (5%)
+        """
+        self.set_channel_duty_cycle(self.pwm_device, 0, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 1, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 2, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 3, 5.0)
+
 if __name__ == '__main__':
     try:
         rospy.init_node('riseq_low_level_control', anonymous = True)
 
         low_level_controller = uav_Low_Level_Controller()
-
         rospy.loginfo(' Low Level Controller Started! ')
         rospy.spin()
+        low_level_controller.set_rotors_off()
+        rospy.loginfo(' Rotors duty cycle set to 5% to finish. ')
         rospy.loginfo(' High Level Controller Terminated.')
 
     except rospy.ROSInterruptException:

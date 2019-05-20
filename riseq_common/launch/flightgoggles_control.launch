@@ -1,0 +1,12 @@
+<launch>
+    <rosparam command="load" file="$(find riseq_common)/config/drones/flightgoggles.yaml"/>
+
+    <!-- Start nodes -->
+        <node pkg="riseq_tests" name="riseq_fg_true_pose_publisher" type="riseq_fg_true_pose_publisher.py"/>
+        <node pkg="riseq_tests" name="riseq_fg_true_state_publisher" type="riseq_fg_true_state_publisher.py"/>
+        <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py"/>
+        <node pkg="riseq_control" name="riseq_high_level_control_publisher" type="riseq_high_level_control_publisher.py"/>
+        <node pkg="riseq_control" name="riseq_low_level_control_publisher" type="riseq_low_level_control_publisher.py" output="screen" />
+        <node pkg="rqt_plot" name="rqt_plot" type="rqt_plot"/>
+</launch>
+

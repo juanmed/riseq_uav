@@ -24,11 +24,11 @@ class optiTrackTrueStatePublisher():
 		self.state_pub = rospy.Publisher("riseq/tests/uav_ot_true_state", riseq_uav_state, queue_size = 10)
 
 		# create message filter
-		self.pose_sub = rospy.Subscriber('/vrpn_client_node/hexarotor003/pose', PoseStamped, self.state_calculation)
+		self.pose_sub = rospy.Subscriber('/vrpn_client_node/fastquad/pose', PoseStamped, self.state_calculation)
 
 		# Initialize pose
 		try:
-			init_pose = rospy.get_param("/riseq/uav_init_pose")
+			init_pose = rospy.get_param("riseq/init_pose")
 		except:
 			print("/riseq/uav_init_pose parameter is unavailable")
 			print("Initializing pose as:  \n pose = [0,0,0] \norientation = [0,0,0,1]")
@@ -79,7 +79,7 @@ class optiTrackTrueStatePublisher():
 		# @todo check if time delta > 0 to make the calculations
 		# time delta dt
 		time_delta = pose_msg.header.stamp - self.t1
-		time_delta = time_delta.to_sec() 		# convert to floating point
+		time_delta = 0.008333333 #time_delta.to_sec() 		# convert to floating point
 		self.t1 = pose_msg.header.stamp  		# prepare for next time step
 
 		# init velocity
