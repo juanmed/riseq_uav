@@ -313,7 +313,7 @@ class TrajectoryGenerator:
 if __name__ == "__main__":
     ### Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
-    traj_gen = TrajectoryGenerator()
+
     # traj_gen.optimal_time()
 
     ### CProfile method
@@ -330,6 +330,7 @@ if __name__ == "__main__":
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
+    traj_gen = TrajectoryGenerator()
     try:
         rospy.loginfo("UAV Trajectory Publisher Created")
         traj_gen.pub_traj()

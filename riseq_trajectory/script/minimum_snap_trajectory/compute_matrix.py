@@ -3,6 +3,9 @@ from cvxopt import matrix, spdiag
 
 
 class QpMatrix:
+    """
+    Contain every function for computing matrix which is used at quadratic programming
+    """
     def __init__(self, order, m, keyframe, k_r, k_psi, time_scaling):
         self.order = order
         self.m = m
@@ -27,6 +30,10 @@ class QpMatrix:
                 self.poly_coef[i][t] = values
 
     def compute_p(self, mu_r, mu_psi):
+        """
+         min { 1/2 c.T * P * c + q * c }
+        Build P matrix
+        """
         p = []
         polynomial_r = np.ones(self.order + 1)
         for i in range(0, self.k_r):
@@ -78,8 +85,11 @@ class QpMatrix:
         return p
 
     def waypoint_constraint(self):
-        # way point constraint
-        # In each segment, start and end of polynomial must satisfy way point constraint
+        """
+         way point constraint
+        In each segment, start and end of polynomial must satisfy way point constraint
+        Drone need to pass these points
+        """
 
         A1 = np.zeros((2 * self.m * self.n, self.n * (self.order + 1) * self.m))
         b1 = np.ones(2 * self.m * self.n)
