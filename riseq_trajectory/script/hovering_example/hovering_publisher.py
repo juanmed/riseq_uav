@@ -18,25 +18,41 @@ class Hovering:
     """
     def __init__(self):
         # create publisher for publishing ref trajectory
-        self.traj_publisher = rospy.Publisher('riseq_uav_trajectory', riseq_uav_trajectory, queue_size=10)
+        #self.traj_publisher = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_publisher = rospy.Publisher('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # 4 output
         # 5th polynomial order
         self.n = 4
         self.order = 5
 
+        # Init_pose
+        environment = rospy.get_param("riseq/environment")
+        if (environment == "simulator"):
+            self.init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+        elif (environment == "embedded_computer"):
+            self.init_pose = rospy.get_param("riseq/init_pose")
+        else:
+            print("riseq/init_pose not available, defaulting to [0,0,0,0,0,0,1]")
+            self.init_pose = [0,0,0,0,0,0,1]
+
+        # Initialize heading
+        init_quat = [self.init_pose[3], self.init_pose[4], self.init_pose[5], self.init_pose[6]]
+        yaw, pitch, roll = tf.transformations.euler_from_quaternion(init_quat, axes="rzyx")
         # Make two way point for moving simply
-        self.init_point = np.array([0, 0, 0, 0])
-        self.final_point = np.array([1, 1, 2, 0])
+        distance = 3
+        moving = [1, 1, 1, 0]
+        self.start_point = np.array([self.init_pose[0], self.init_pose[1], self.init_pose[2], yaw])
+        self.final_point = np.array([self.init_pose[0] + moving[0], self.init_pose[1] + moving[1], self.init_pose[2] + moving[2], yaw])
 
         # Time to take to move.
-        self.total_time = 1
+        self.total_time = 3
 
         # Get Polynomial which goes upward
-        # self.solution = mv.go_upward(self.order, self.total_time, self.final_point[2])
+        # self.solution = mv.go_upward(self.order, self.total_time, self.start_point, distance)
 
         # Get Polynomial which goes to final point.
-        self.solution = mv.go_along(self.order, self.total_time, self.final_point)
+        self.solution = mv.go_along(self.order, self.total_time, self.start_point, self.final_point)
 
         self.start_time = rospy.get_time()
         #self.start_time = rospy.get_rostime().secs
@@ -145,6 +161,8 @@ class Hovering:
             traj.yawdot = yawdot
             traj.yawddot = yawddot
 
+            print type(yaw)
+
             # publish message
             self.traj_publisher.publish(traj)
             rospy.loginfo(traj)
@@ -153,6 +171,13 @@ class Hovering:
 if __name__ == "__main__":
     # Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
+
+    # wait time for simulator to get ready...
+    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
+    while (rospy.Time.now().to_sec() < wait_time):
+        if ((int(rospy.Time.now().to_sec()) % 1) == 0):
+            rospy.loginfo(
+                "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!
