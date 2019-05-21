@@ -113,12 +113,11 @@ class uav_Rotor_Controller():
         """
         @description set duty cycles for all rotors to minimum (5%)
         """
-            self.set_channel_duty_cycle(self.pwm_device, 0, 5.0)
-            self.set_channel_duty_cycle(self.pwm_device, 1, 5.0)
-            self.set_channel_duty_cycle(self.pwm_device, 2, 5.0)
-            self.set_channel_duty_cycle(self.pwm_device, 3, 5.0)
-        else:
-            pass
+        self.set_channel_duty_cycle(self.pwm_device, 0, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 1, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 2, 5.0)
+        self.set_channel_duty_cycle(self.pwm_device, 3, 5.0)
+
 
 if __name__ == '__main__':
     try:
