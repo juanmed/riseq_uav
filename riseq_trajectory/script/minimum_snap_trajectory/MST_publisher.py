@@ -29,6 +29,9 @@ class TrajectoryGenerator:
         ### MODE
         # select mode (easy, medium, hard, scorer)
         mode = rospy.get_param("/uav/challenge_name", -1)
+        if mode == -1:
+            rospy.logerr("mode is not specified!")
+            rospy.signal_shutdown("[challenge_name] could not be read")
 
         ### Init Parameters
         # Our flat output is 4
@@ -314,11 +317,16 @@ if __name__ == "__main__":
     ### Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
 
-    # traj_gen.optimal_time()
+    # wait time for simulator to get ready...
+    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
+    while (rospy.Time.now().to_sec() < wait_time):
+        if ((int(rospy.Time.now().to_sec()) % 1) == 0):
+            rospy.loginfo(
+                "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
 
+    # traj_gen.optimal_time()
     ### CProfile method
     # cProfile.run('traj_gen.optimal_time()')
-
     ### GraphvizOutput (Recommended) : This code shows profile Graphically
     # graphviz = output.GraphvizOutput(output_file='profile.png')
     # with PyCallGraph(output=graphviz):

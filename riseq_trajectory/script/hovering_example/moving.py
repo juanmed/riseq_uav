@@ -1,7 +1,8 @@
 import numpy as np
 
 
-def go_upward(order, time, distance):
+
+def go_upward(order, time, start_point, distance):
     """
      This function is to make polynomial which just go upward
     In equation, [x, y, z, psi] = [0, 0, f(t), 0]
@@ -18,12 +19,14 @@ def go_upward(order, time, distance):
     """
 
     # Construct A Matrix and b Vector with 6 Constraint
+    # Just Z axis
     A = np.zeros((order+1, order+1))
     for i in range(0, 3):
         for j in range(0, 2):
             A[2*i+j] = poly_cc(order, i, j*time)
     b = np.zeros(order+1)
-    b[1] = distance
+    b[0] = start_point[2]
+    b[1] = start_point[2] + distance
 
     # Solution: z(t) = InvA * b
     sol_z = np.linalg.solve(A, b)
@@ -33,10 +36,13 @@ def go_upward(order, time, distance):
     # Solution form : [ 0, 0, z(t), 0 ]
     other_sol = np.zeros(order+1)
     solution = np.hstack((other_sol, other_sol, sol_z, other_sol))
+    solution[5] = start_point[0]
+    solution[11] = start_point[1]
+    solution[23] = start_point[3]
     return solution
 
 
-def go_along(order, time, final_point):
+def go_along(order, time, start_point, final_point):
     """
      This function is to make polynomial which connect initial point with desired coordinate
 
@@ -56,6 +62,7 @@ def go_along(order, time, final_point):
             for j in range(0, 2):
                 A[2*i+j] = poly_cc(order, i, j*time)
         b = np.zeros(order+1)
+        b[0] = start_point[h]
         b[1] = final_point[h]
         # Solution: z(t) = InvA * b
         solution[h*(order+1): (h+1)*(order+1)] = np.linalg.solve(A, b)

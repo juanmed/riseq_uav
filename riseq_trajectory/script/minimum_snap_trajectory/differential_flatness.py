@@ -285,7 +285,7 @@ def get_uc(w_, ori):
         [1.0, np.sin(phi_) * np.tan(theta_), np.cos(phi_) * np.tan(theta_)],
         [0.0, np.cos(phi_), -1.0 * np.sin(phi_)],
         [0.0, np.sin(phi_) / np.cos(theta_), np.cos(phi_) / np.cos(theta_)]])
-    u_c = peta * w_
+    u_c = np.matmul(peta, w_)
 
     return u_c
 
