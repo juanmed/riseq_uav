@@ -1,5 +1,5 @@
 riseq:
-    init_pose: [-0.1649, 0.0299, 0.1939, 0.0, 0.0, 0.0, -1.0]
+    init_pose: [0.0395, -0.0121, 0.171, 0.0, 0.0, 0.036, 0.999]
     mass: 1.720
     gravity: 9.81
     thrust_coeff: 1.3176
@@ -16,7 +16,7 @@ riseq:
     Izz: 0.05738
     arm_length: 0.275
     arm_vector: [0.199, 0.199, 0.0372]
-    environment: 'embedded_computer'
+    environment: 'computer'
 
 
 

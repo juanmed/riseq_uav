@@ -85,9 +85,11 @@ class uav_Low_Level_Controller():
             self.Kr = self.Kr.item(0,0)
         elif(self.environment == "embedded_computer"):
             self.Kr = 8.0
+        elif(self.environment == "computer"):
+            self.Kr = 8.
         else:
-            print("riseq/environment parameter not found. Setting Kr =1.0")
-            self.Kr = 1.0
+            print("riseq/environment parameter not found. Setting Kr =8.0")
+            self.Kr = 8.0
 
         # --------------------------------- #
         #  Initialize PCA9685 PWM driver    #
@@ -132,10 +134,13 @@ class uav_Low_Level_Controller():
         w_i = map(lambda a: np.sqrt(a) if a>0 else -np.sqrt(-a), w_i.flatten())
 
         # convert to duty cycles for PCA9685 Chip
-        if(self.environment == 'embedded_computer'):
+        if( (self.environment == 'embedded_computer') or (self.environment == 'computer')):
             offset = 5.0
             w_i = map(lambda a: utils.saturate_scalar_minmax(a + offset, self.max_rotor_speed + offset, 5.0), w_i)   # add offset
-            self.set_duty_cycles(self.pwm_device ,w_i)
+            if (self.environment == 'embedded_computer'):
+                self.set_duty_cycles(self.pwm_device ,w_i)
+            else:
+                pass
         elif(self.environment == "simulator"):
             w_i = map(lambda a: utils.saturate_scalar_minmax(a, self.max_rotor_speed, 0.0), w_i) 
         else:
@@ -283,10 +288,22 @@ class uav_Low_Level_Controller():
         """
         @description set duty cycles for all rotors to minimum (5%)
         """
-        self.set_channel_duty_cycle(self.pwm_device, 0, 5.0)
-        self.set_channel_duty_cycle(self.pwm_device, 1, 5.0)
-        self.set_channel_duty_cycle(self.pwm_device, 2, 5.0)
-        self.set_channel_duty_cycle(self.pwm_device, 3, 5.0)
+        if(self.environment == "embedded_computer"):
+            self.set_channel_duty_cycle(self.pwm_device, 0, 5.0)
+            self.set_channel_duty_cycle(self.pwm_device, 1, 5.0)
+            self.set_channel_duty_cycle(self.pwm_device, 2, 5.0)
+            self.set_channel_duty_cycle(self.pwm_device, 3, 5.0)
+        elif(self.environment == "computer"):
+            # Send message to turn of rotors
+            llc_msg = riseq_low_level_control()
+            llc_msg.header.stamp = rospy.Time.now()
+            llc_msg.header.frame_id = 'riseq/uav' 
+            llc_msg.rotor_speeds = [5.0,5.0,5.0,5.0]
+            self.llc_pub.publish(llc_msg)
+            rospy.loginfo(llc_msg)            
+
+        else:
+            pass
 
 if __name__ == '__main__':
     try:
@@ -295,8 +312,13 @@ if __name__ == '__main__':
         low_level_controller = uav_Low_Level_Controller()
         rospy.loginfo(' Low Level Controller Started! ')
         rospy.spin()
-        low_level_controller.set_rotors_off()
-        rospy.loginfo(' Rotors duty cycle set to 5% to finish. ')
+        if( (low_level_controller.environment == "embedded_computer") or
+             (low_level_controller.environment == "computer")):
+
+            low_level_controller.set_rotors_off()
+            rospy.loginfo(' Rotors duty cycle set to 5% to finish. ')
+        else:
+            pass
         rospy.loginfo(' High Level Controller Terminated.')
 
     except rospy.ROSInterruptException:

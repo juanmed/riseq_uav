@@ -142,17 +142,19 @@ class uav_High_Level_Controller():
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-	
-	if (environment == "simulator"):
+    
+        if (environment == "simulator"):
             self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
-	    self.Kr = self.Kr.item(0,0)
-	elif (environment == "embedded_computer"):
-	    self.Kr = 8.
-	else:
-	    print("riseq/environment parameter not found. Setting Kr = 1")
-	    self.Kr = 1
-	    
+            self.Kr = self.Kr.item(0,0)
+        elif(environment == "embedded_computer"):
+            self.Kr = 8.
+        elif(environment == "computer"):
+            self.Kr = 8.
+        else:
+            print("riseq/environment parameter not found. Setting Kr = 8")
+            self.Kr = 8
+        
 
     def euler_angle_controller(self, state, trajectory):
         """

@@ -24,11 +24,12 @@ class optiTrackTrueStatePublisher():
 		self.state_pub = rospy.Publisher("riseq/tests/uav_ot_true_state", riseq_uav_state, queue_size = 10)
 
 		# create message filter
-		self.pose_sub = rospy.Subscriber('/vrpn_client_node/fastquad/pose', PoseStamped, self.state_calculation)
+		self.pose_sub = rospy.Subscriber('/vrpn_client_node/quadrotor/pose', PoseStamped, self.state_calculation)
 
 		# Initialize pose
 		try:
 			init_pose = rospy.get_param("riseq/init_pose")
+			print(">> Drone initial pose: {}".format(init_pose))
 		except:
 			print("/riseq/uav_init_pose parameter is unavailable")
 			print("Initializing pose as:  \n pose = [0,0,0] \norientation = [0,0,0,1]")
@@ -133,7 +134,7 @@ class optiTrackTrueStatePublisher():
 		true_state.twist.angular.z = w_b[2]
 
 		self.state_pub.publish(true_state)
-		rospy.loginfo(true_state)
+		#rospy.loginfo(true_state)
 
 if __name__ == '__main__':
 	try:
