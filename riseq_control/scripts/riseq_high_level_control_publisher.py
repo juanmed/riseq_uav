@@ -122,7 +122,7 @@ class uav_High_Level_Controller():
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
         self.min_thrust = 0.0
 
-        self.position_control_frequency_ratio = 10       # This is the factor by which the high_level_controller is slower
+        self.position_control_frequency_ratio = 5       # This is the factor by which the high_level_controller is slower
                                                          # than low_level controller
         self.position_control_loops = 0                                        
         self.pos_error_integral = np.zeros((3,1))       # Store position error integral
@@ -204,7 +204,7 @@ class uav_High_Level_Controller():
             #        ****   Implement anti-windup integral control  ****
             if(self.Traw >= self.max_thrust):
                 Ki = np.diag([0.0, 0.0, 0.0])
-                a_e2 = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(self.Ki,self.pos_error_integral)  # PID control law
+                a_e2 = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(Ki,self.pos_error_integral)  # PID control law
             else:
                 a_e2 = a_e            
 
