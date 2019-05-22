@@ -231,9 +231,9 @@ def generate_trajectory(t, v, waypoints, coeff_x, coeff_y, coeff_z):
         if(abs(yawdot) > max_yawdot):
             yawdot = (yawdot/abs(yawdot))*max_yawdot # make it 5rad/s with appropriate direction
         """
-        #yaw = np.sin(2*t)#0
-        #yawdot = 2*np.cos(2*t) #0
-        #yawddot = -4*np.sin(2*t)
+        yaw = 0.0 #np.sin(2*t)#0
+        yawdot = 0.0 # 2*np.cos(2*t) #0
+        yawddot = 0.0 #-4*np.sin(2*t)
     return [pos, vel, acc, jerk, snap, yaw, yawdot, yawddot]
 
 def get_poly_cc(n, k, t):

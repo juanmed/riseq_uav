@@ -167,8 +167,8 @@ Kpy2 = 3.0
 Kiy2 = 0.5*0.0
 Kdy2 = 3.0
 
-Kpz2 = 3.0
-Kiz2 = 1.0*0.0
+Kpz2 = 8
+Kiz2 = 0.05*1.0
 Kdz2 = 10.0
 
 # PID Gains for 1st order system with transfer function

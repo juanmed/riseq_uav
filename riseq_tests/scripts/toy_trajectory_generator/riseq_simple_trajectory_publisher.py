@@ -23,11 +23,14 @@ class Trajectory_Generator2():
             self.init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
         elif (environment == "embedded_computer"):
             self.init_pose = rospy.get_param("riseq/init_pose")
+        elif (environment == "computer"):
+            self.init_pose = rospy.get_param("riseq/init_pose")
         else:
             print("riseq/init_pose not available, defaulting to [0,0,0,0,0,0,1]")
             self.init_pose = [0,0,0,0,0,0,1]
 
         self.init_pose = [float(a) for a in self.init_pose]
+        print(">> Trajectory Generator init pose: {}".format(self.init_pose))
         # ---------------------------- #
         # Compute trajectory waypoints #
         # ---------------------------- #
@@ -53,7 +56,7 @@ class Trajectory_Generator2():
 
 
     def compute_reference_traj(self, time):
-        vel = 0.05     #max vel = 3
+        vel = 0.02     #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
