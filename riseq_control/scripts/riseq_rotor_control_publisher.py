@@ -2,41 +2,44 @@
 
 import rospy
 from riseq_control.msg import riseq_low_level_control
-
+import numpy as np
 
 # This check maybe should not be done... the node should not start if 
 # these dependencies are not available
 
-if(rospy.get_param("riseq/environment") == "embedded_computer"):
+#if(rospy.get_param("riseq/environment") == "embedded_computer"):
     # import Jetson GPIO for communication with PCA9685
-    import sys
-    sys.path.append('/opt/nvidia/jetson-gpio/lib/python')
-    sys.path.append('/opt/nvidia/jetson-gpio/lib/python/Jetson/GPIO')
-    sys.path.append('/home/nvidia/repositories/nano_gpio/gpio_env/lib/python2.7/site-packages/periphery/')
-    import Jetson.GPIO as GPIO
-    from pca9685_driver import Device
-else:
-    pass
+import sys
+sys.path.append('/opt/nvidia/jetson-gpio/lib/python')
+sys.path.append('/opt/nvidia/jetson-gpio/lib/python/Jetson/GPIO')
+sys.path.append('/home/nvidia/repositories/nano_gpio/gpio_env/lib/python2.7/site-packages/periphery/')
+import Jetson.GPIO as GPIO
+from pca9685_driver import Device
+#else:
+#    pass
 
 
 class uav_Rotor_Controller():
 
     def __init__(self):
+     
+        self.environment = rospy.get_param("riseq/environment")
 
         # Subscribe to low level controller
-        self.llc_sub = rospy.Subscriber("riseq/control/uav_low_level_control", riseq_low_level_control, publish_duty_cycles)
+        self.llc_sub = rospy.Subscriber("riseq/control/uav_low_level_control", riseq_low_level_control, self.publish_duty_cycles)
 
         # --------------------------------- #
         #  Initialize PCA9685 PWM driver    #
         # --------------------------------- #
-        if (self.environment == "embedded_computer"):
-            self.pwm_device = self.initPCA9685()
-        else:
-            pass
+        #if (self.environment == "embedded_computer"):
+        self.pwm_device = self.initPCA9685()
+        #else:
+        #    pass
 
 
     def publish_duty_cycles(self, llc):
         self.set_duty_cycles(self.pwm_device, llc.rotor_speeds)
+        #print("PWM Duty Cycle received and set!")
 
     def initPCA9685(self):
         """
@@ -126,6 +129,7 @@ if __name__ == '__main__':
         rotor_controller = uav_Rotor_Controller()
         rospy.loginfo(' Rotor Controller Started! ')
         rospy.spin()
+        rospy.loginfo(' Setting lowest duty cycle for all rotors ')
         rotor_controller.set_rotors_off()
         rospy.loginfo(' High Level Controller Terminated.')
 
