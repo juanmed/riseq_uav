@@ -58,7 +58,7 @@ class uav_High_Level_Controller():
 
         # reference trajectory subscriber
         #self.reftraj_sub = message_filters.Subscriber('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory)
-        self.reftraj_sub = message_filters.Subscriber('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory)
+        self.reftraj_sub = message_filters.Subscriber('riseq/uav_trajectory', riseq_uav_trajectory)
 
         # select controller's state input soure: true state, estimated state
         try:

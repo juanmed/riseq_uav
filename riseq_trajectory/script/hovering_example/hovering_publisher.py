@@ -19,7 +19,7 @@ class Hovering:
     def __init__(self):
         # create publisher for publishing ref trajectory
         #self.traj_publisher = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
-        self.traj_publisher = rospy.Publisher('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_publisher = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # 4 output
         # 5th polynomial order
