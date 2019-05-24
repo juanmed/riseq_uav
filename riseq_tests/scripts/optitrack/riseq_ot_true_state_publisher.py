@@ -28,7 +28,7 @@ class optiTrackTrueStatePublisher():
 
 		# Initialize pose
 		try:
-			init_pose = rospy.get_param("/riseq/uav_init_pose")
+			init_pose = rospy.get_param("riseq/init_pose")
 		except:
 			print("/riseq/uav_init_pose parameter is unavailable")
 			print("Initializing pose as:  \n pose = [0,0,0] \norientation = [0,0,0,1]")
