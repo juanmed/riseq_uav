@@ -115,7 +115,6 @@ def pub_traj():
     # create topic for publishing ref trajectory
     traj_publisher = rospy.Publisher('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory, queue_size=10)
 
-
     # wait time for simulator to get ready...
     wait_time = int(rospy.get_param("riseq/trajectory_wait"))
     while( rospy.Time.now().to_sec() < wait_time ):
@@ -138,10 +137,10 @@ def pub_traj():
     rate = rospy.Rate(100.0)
 
     while not rospy.is_shutdown():
-        
+
         try:
             # Compute trajectory at time = now
-            time = rospy.get_time()   
+            time = rospy.get_time()
             ref_traj = traj_gen.compute_reference_traj(time)
 
             # create and fill message
@@ -180,7 +179,7 @@ def pub_traj():
             traj.pose.position.z = z
 
             # Following http://docs.ros.org/jade/api/tf/html/python/transformations.html
-            # the axes parameter is such that 
+            # the axes parameter is such that
             # r = apply rotation on the "new" frame
             # zyx = this means first a rotation of 'psi' radians around the z axis is performed,
             #       then of 'theta' radians about the new y axis ( because 'r' was specified)
@@ -214,7 +213,7 @@ def pub_traj():
 
             traj.rot = Rbw
 
-            traj.acc.x = ax 
+            traj.acc.x = ax
             traj.acc.y = ay
             traj.acc.z = az
 
@@ -232,7 +231,7 @@ def pub_traj():
 
             # publish message
             traj_publisher.publish(traj)
-            #rospy.loginfo(traj)
+            rospy.loginfo(traj)
             rate.sleep()
 
         except Exception:
