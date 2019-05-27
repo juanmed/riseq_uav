@@ -2,7 +2,11 @@ import numpy as np
 import tf
 
 
-def keyframe_generation(current_pose, gate_location, gate_count):
+def gate_keyframe(current_pose, gate_location, gate_count):
+    """
+    Function to get keyframe, only for simulator
+    In real experiment, other approach of getting keyframe is needed.
+    """
     # if pose is written as quaternion form, it needs to be transformed to euler form.
     # if current_pose == [ x y z x y z w ]   3 position 4 quaternion  -> 3 position and 1 yaw
     if len(current_pose) == 7:
@@ -14,12 +18,16 @@ def keyframe_generation(current_pose, gate_location, gate_count):
     keyframe[0] = current_pose
 
     for i in range(0, gate_count):
-        keyframe[i+1] = gate_keyframe(gate_location[i])
+        keyframe[i+1] = gate_point(gate_location[i])
     keyframe = compensate_direction(keyframe, gate_count)
     return keyframe
 
 
-def gate_keyframe(gate):
+def gate_point(gate):
+    """
+    Function to get way point of each gate
+    return position and psi
+    """
     # calculate center point of gate
     gate_x = np.sum(gate[:, 0]) / 4.0
     gate_y = np.sum(gate[:, 1]) / 4.0
@@ -39,6 +47,10 @@ def gate_keyframe(gate):
 
 
 def compensate_direction(keyframe, gate_count):
+    """
+    Function to compensate direction of gate point.
+    Sometimes there are reverse direction.
+    """
     for i in range(gate_count):
         before_keyframe = keyframe[i]
         after_keyframe = keyframe[i+1]

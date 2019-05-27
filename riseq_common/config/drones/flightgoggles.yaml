@@ -7,6 +7,7 @@ riseq:
     max_rotor_speed: 2200.0
     rotor_count : 4
     true_state_publish_rate: 200
+    trajectory_update_rate: 200
     controller_state_input: 'fg_true_state'
     controller_type: 'euler_angle_controller'
     trajectory_wait: 2

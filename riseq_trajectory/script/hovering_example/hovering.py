@@ -1,6 +1,6 @@
 import numpy as np
 
-import differential_flatness as df
+import riseq_common.differential_flatness as df
 
 
 def publish_hovering(hovering_point):
