@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-
+import rospy
 import math
 import numpy as np
 
 
 class GateEvent():
-    # Constructor for class gate
-    # @param: location: 4x3 array of corner locations
-    # @param: inflation: Artificial inflation of gate to test for fly through
-    def __init__(self, location, inflation):
+    def __init__(self, location, inflation, tolerance):
         self.location = np.asarray(location)
         self.planeEquation = self.getPlaneOfGate()
+        self.tolerance = tolerance
 
         minLoc = np.amin(self.location, axis=0)
         maxLoc = np.amax(self.location, axis=0)
@@ -21,9 +19,10 @@ class GateEvent():
         self.zmin = minLoc[2] - inflation
         self.zmax = maxLoc[2] + inflation
 
-    ## @brief Function to get the plane of the gate bounding box
-    # @param self The object pointer
     def getPlaneOfGate(self):
+        """
+        Function to get the plane of the gate bounding box
+        """
         p1 = self.location[0, :]
         p2 = self.location[1, :]
         p3 = self.location[2, :]
@@ -36,26 +35,57 @@ class GateEvent():
         d = np.dot(cp, p3)
         return np.asarray([a, b, c, -d])
 
-    ## @brief Function to get the distance of a point from plane
-    # @param self The object pointer
-    # @param point The query point to calcluate distance from
     def getDistanceFromPlane(self, point):
+        """
+        Function to get the distance of a point from plane
+        plane : ax + by + cz + d = 0
+        point : [ x1, y1, z1 ]
+        distance : |ax1 + by1 + cz1 + d| / (x1^2 + y1^2 + z1^2)^0.5
+        """
         d = math.fabs((self.planeEquation[0] * point[0] + self.planeEquation[1] * point[1] + self.planeEquation[2] *
                        point[2] + self.planeEquation[3]))
         e = math.sqrt(self.planeEquation[0] ** 2 + self.planeEquation[1] ** 2 + self.planeEquation[2] ** 2)
-        return (d / e)
+        distance = d/e
+        return distance
 
-    ## @brief Function to check if the drone is flying through a gate
-    # @param self The object pointer
-    # @param point The translation of the drone
-    # @param tol The point to plane distance that is considered acceptable
-    def isEvent(self, point, tol):
+    def isEvent(self, point):
+        """
+        Function to check if the drone is flying through a gate
+        """
         # Check if we are inside the inflated gate
         if (point[0] < self.xmax) and (point[0] > self.xmin):
             if (point[1] < self.ymax) and (point[1] > self.ymin):
                 if (point[2] < self.zmax) and (point[2] > self.zmin):
                     # Compute the distance from the gate
                     d = self.getDistanceFromPlane(point)
-                    if (d < tol):
+                    if d < self.tolerance:
                         return True
         return False
+
+
+def check_gate(gate_events, current_position, gate_pass):
+    """
+    Function to check whether drone pass gate or not
+    It needs current position of drone.
+    """
+    gate_name = rospy.get_param("/uav/gate_names")
+
+    if gate_events[gate_pass].isEvent(current_position):
+        gate_pass = gate_pass + 1
+    # Check every gate not only next gate
+    # for the case when drone skip gate and fly through another gate
+    for i, gate in enumerate(gate_events[gate_pass:]):
+        if gate.isEvent(current_position):
+            # i == 0 means that drone goes well
+            if i > 0:
+                rospy.loginfo("Skipped %d events", i)
+                # Record gate which drone skip
+                for j in range(i):
+                    rospy.loginfo("%s False", gate_name[gate_pass + j])
+            rospy.loginfo("Reached %s at", gate_name[gate_pass + i])
+            gate_pass += (i + 1)
+        gate_count = len(gate_name)
+        if gate_pass >= gate_count:
+            rospy.loginfo("Completed the challenge")
+            rospy.signal_shutdown("Challenge complete")
+    return gate_pass

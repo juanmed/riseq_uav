@@ -5,7 +5,7 @@ import tf
 
 import moving as mv
 import hovering as hv
-import differential_flatness as df
+import riseq_common.differential_flatness as df
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 
@@ -18,8 +18,7 @@ class Hovering:
     """
     def __init__(self):
         # create publisher for publishing ref trajectory
-        #self.traj_publisher = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
-        self.traj_publisher = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_pub = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # 4 output
         # 5th polynomial order
@@ -41,7 +40,7 @@ class Hovering:
         yaw, pitch, roll = tf.transformations.euler_from_quaternion(init_quat, axes="rzyx")
         # Make two way point for moving simply
         distance = 3
-        moving = [1, 1, 1, 0]
+        moving = [0, 0, 1, 0]
         self.start_point = np.array([self.init_pose[0], self.init_pose[1], self.init_pose[2], yaw])
         self.final_point = np.array([self.init_pose[0] + moving[0], self.init_pose[1] + moving[1], self.init_pose[2] + moving[2], yaw])
 
@@ -75,8 +74,10 @@ class Hovering:
         return ref_trajectory
 
     def pub_traj(self):
+        hz = rospy.get_param('trajectory_update_rate', 200)
+
         # publish at Hz
-        rate = rospy.Rate(200.0)
+        rate = rospy.Rate(hz)
 
         while not rospy.is_shutdown():
             ref_traj = self.compute_reference_traj()
@@ -164,7 +165,7 @@ class Hovering:
             print type(yaw)
 
             # publish message
-            self.traj_publisher.publish(traj)
+            self.traj_pub.publish(traj)
             rospy.loginfo(traj)
             rate.sleep()
 
