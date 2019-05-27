@@ -24,7 +24,7 @@ class optiTrackTrueStatePublisher():
 		self.state_pub = rospy.Publisher("riseq/tests/uav_ot_true_state", riseq_uav_state, queue_size = 10)
 
 		# create message filter
-		self.pose_sub = rospy.Subscriber('/vrpn_client_node/fastquad/pose', PoseStamped, self.state_calculation)
+		self.pose_sub = rospy.Subscriber('/vrpn_client_node/quadrotor/pose', PoseStamped, self.state_calculation)
 
 		# Initialize pose
 		try:
