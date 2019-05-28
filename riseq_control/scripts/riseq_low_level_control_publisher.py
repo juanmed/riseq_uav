@@ -133,8 +133,8 @@ class uav_Low_Level_Controller():
 
         # convert to duty cycles for PCA9685 Chip
         if(self.environment == 'embedded_computer'):
-            offset = 5.0
-            w_i = map(lambda a: utils.saturate_scalar_minmax(a + offset, self.max_rotor_speed + offset, 5.0), w_i)   # add offset
+            offset = 1.0
+            w_i = map(lambda a: utils.saturate_scalar_minmax(a + offset, self.max_rotor_speed + offset, offset), w_i)   # add offset
             self.set_duty_cycles(self.pwm_device ,w_i)
         elif(self.environment == "simulator"):
             w_i = map(lambda a: utils.saturate_scalar_minmax(a, self.max_rotor_speed, 0.0), w_i) 
