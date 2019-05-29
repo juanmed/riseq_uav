@@ -4,13 +4,14 @@
 import rospy
 import message_filters
 import tf
+from std_srvs.srv import Empty
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
 import riseq_tests.utils as utils 
 
 if(rospy.get_param("riseq/environment") == "simulator"):
-    from mav_msgs.msg import RateThrust             # for flightgoggles
+    from mav_msgs.msg import Actuators             # for flightgoggles
 elif(rospy.get_param("riseq/environment") == "embedded_computer"):
     # import Jetson GPIO for communication with PCA9685
     import sys
@@ -36,7 +37,7 @@ class uav_Low_Level_Controller():
 
         # flightgoggles publisher 
         if(self.environment == "simulator"):
-            self.fg_publisher = rospy.Publisher('/uav/input/rateThrust', RateThrust, queue_size = 10)
+            self.fg_publisher = rospy.Publisher('/pelican/command/motor_speed', Actuators, queue_size = 10)
         else:
             pass
 
@@ -62,17 +63,17 @@ class uav_Low_Level_Controller():
         self.max_z_torque = kq*(self.max_rotor_speed**2)
 
         # for drones with rotors aligned to +X, +Y, -X, -Y axis
-        #self.B = np.array([[kt, kt, kt, kt],
-        #                   [0., r*kt, 0, -r*kt],
-        #                   [-r*kt, 0., r*kt, 0.],
-        #                   [-kq, kq, -kq, kq]])
+        self.B = np.array([[kt, kt, kt, kt],
+                           [0., r*kt, 0, -r*kt],
+                           [-r*kt, 0., r*kt, 0.],
+                           [-kq, kq, -kq, kq]])
         
         # for drones with rotors located at 45 degrees from +X, +Y, -X, -Y axis
         q = np.sqrt(2.0)/2.0
-        self.B = np.array([[kt,         kt,      kt,      kt],
-                           [q*r*kt, q*r*kt, -q*r*kt, -q*r*kt],
-                           [-q*r*kt, q*r*kt, q*r*kt, -q*r*kt],
-                           [+kq,        -kq,    +kq,     -kq]])
+        #self.B = np.array([[kt,         kt,      kt,      kt],
+        #                   [q*r*kt, q*r*kt, -q*r*kt, -q*r*kt],
+        #                   [-q*r*kt, q*r*kt, q*r*kt, -q*r*kt],
+        #                   [+kq,        -kq,    +kq,     -kq]])
 
         self.invB = np.linalg.inv(self.B)
 
@@ -86,8 +87,8 @@ class uav_Low_Level_Controller():
         elif(self.environment == "embedded_computer"):
             self.Kr = 8.0
         else:
-            print("riseq/environment parameter not found. Setting Kr =1.0")
-            self.Kr = 1.0
+            print("riseq/environment parameter not found. Setting Kr =8.0")
+            self.Kr = 8.0
 
         # --------------------------------- #
         #  Initialize PCA9685 PWM driver    #
@@ -96,6 +97,16 @@ class uav_Low_Level_Controller():
             self.pwm_device = self.initPCA9685()
         else:
             pass
+
+
+        # --------------------------------#
+        #    Unpause Gazebo               #
+        # --------------------------------#
+        if (self.environment == "simulator"):
+            rospy.wait_for_service('/gazebo/unpause_physics')
+            gazebo_unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+            rospy.loginfo(">> Gazebo unpaused at {}".format(rospy.Time.now()))
+            #gazebo_unpause()
 
     def kai_allibert_control_torque(self, w, w_des, w_dot_ref, gain):
         K_omega = gain
@@ -160,13 +171,14 @@ class uav_Low_Level_Controller():
 
         # publish to flightgoggles
         if (self.environment == 'simulator'):
-            fg_msg = RateThrust()
+            fg_msg = Actuators()
             fg_msg.header.stamp = rospy.Time.now()  
-            fg_msg.header.frame_id = 'uav/imu'
-            fg_msg.thrust.z = hlc.thrust.z
-            fg_msg.angular_rates.x = angular_velocity_des[0][0]
-            fg_msg.angular_rates.y = angular_velocity_des[1][0]
-            fg_msg.angular_rates.z = angular_velocity_des[2][0]
+            fg_msg.header.frame_id = ''
+            #fg_msg.thrust.z = hlc.thrust.z
+            #fg_msg.angular_rates.x = angular_velocity_des[0][0]
+            #fg_msg.angular_rates.y = angular_velocity_des[1][0]
+            #fg_msg.angular_rates.z = angular_velocity_des[2][0]
+            fg_msg.angular_velocities = w_i
             self.fg_publisher.publish(fg_msg)
         else:
             pass
@@ -296,9 +308,10 @@ if __name__ == '__main__':
         low_level_controller = uav_Low_Level_Controller()
         rospy.loginfo(' Low Level Controller Started! ')
         rospy.spin()
-        low_level_controller.set_rotors_off()
-        rospy.loginfo(' Rotors duty cycle set to 5% to finish. ')
-        rospy.loginfo(' High Level Controller Terminated.')
+        if(low_level_controller.environment == "embedded_computer"):
+            low_level_controller.set_rotors_off()
+            rospy.loginfo(' Rotors duty cycle set to 5% to finish. ')
+        rospy.loginfo(' Low Level Controller Terminated.')
 
     except rospy.ROSInterruptException:
         rospy.loginfo('ROS Terminated')
