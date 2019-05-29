@@ -31,8 +31,10 @@ from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
 
+
 if(rospy.get_param("riseq/environment") == "simulator"):
     from mav_msgs.msg import RateThrust             # for flightgoggles
+    from nav_msgs.msg import Odometry 
 else:
     pass
     
@@ -77,7 +79,7 @@ class uav_High_Level_Controller():
 
         elif(self.state_input == 'fg_true_state'):
             # for flight googles simulator
-            self.state_sub = message_filters.Subscriber('riseq/tests/uav_fg_true_state', riseq_uav_state)
+            self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
 
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
@@ -175,11 +177,11 @@ class uav_High_Level_Controller():
                          [trajectory.rot[6],trajectory.rot[7],trajectory.rot[8]]])
 
         # Extract real orientation
-        ori_quat = [state.pose.orientation.x, state.pose.orientation.y, state.pose.orientation.z, state.pose.orientation.w]
+        ori_quat = [state.pose.pose.orientation.x, state.pose.pose.orientation.y, state.pose.pose.orientation.z, state.pose.pose.orientation.w]
         psi, theta, phi = tf.transformations.euler_from_quaternion(ori_quat, axes = 'rzyx')
         Rwb = tf.transformations.quaternion_matrix(ori_quat)         # this is an homogenous world to body transformation
         Rbw = Rwb[0:3,0:3].T    # body to world transformation, only rotation part
-        angular_velocity = np.array([[state.twist.angular.x],[state.twist.angular.y],[state.twist.angular.z]])
+        angular_velocity = np.array([[state.twist.twist.angular.x],[state.twist.twist.angular.y],[state.twist.twist.angular.z]])
 
         # ------------------------------------ #
         #  Thrust and Orientation Computation  #
@@ -191,8 +193,8 @@ class uav_High_Level_Controller():
             v_ref = np.array([[trajectory.twist.linear.x], [trajectory.twist.linear.y], [trajectory.twist.linear.z]])
 
             # extract real values
-            p = np.array([[state.pose.position.x], [state.pose.position.y], [state.pose.position.z]])
-            v = np.array([[state.twist.linear.x], [state.twist.linear.y], [state.twist.linear.z]])
+            p = np.array([[state.pose.pose.position.x], [state.pose.pose.position.y], [state.pose.pose.position.z]])
+            v = np.array([[state.twist.twist.linear.x], [state.twist.twist.linear.y], [state.twist.twist.linear.z]])
 
             # ---------------------------------------------- #
             #                POSITION CONTROL                #
