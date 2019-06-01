@@ -302,13 +302,21 @@ if __name__ == "__main__":
     ### Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
 
+    # Wait some time before running. This is to adapt to some simulators
+    # which require some 'settling time'
+    try:
+        wait_time = int(rospy.get_param('riseq/trajectory_wait'))
+    except:
+        print('riseq/trajectory_wait_time parameter is unavailable')
+        print('Setting a wait time of 0 seconds.')
+        wait_time = 1
+
     # wait time for simulator to get ready...
-    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
     while rospy.Time.now().to_sec() < wait_time:
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
-
+            
     # traj_gen.optimal_time()
     ### CProfile method
     # cProfile.run('traj_gen.optimal_time()')
