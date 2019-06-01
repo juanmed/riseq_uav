@@ -5,7 +5,6 @@ import tf
 
 import quadratic_programming as qp
 import draw_trajectory as dt
-import optimal_time as ot
 import gate_event as ga
 
 import riseq_common.differential_flatness as df
@@ -13,12 +12,6 @@ import riseq_perception.keyframe_generator as kg
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_common.msg import riseq_uav_state
-
-import cProfile
-from pycallgraph import PyCallGraph
-from pycallgraph import output
-from pycallgraph.output import GraphvizOutput
-import graphviz
 
 
 class TrajectoryGenerator:
@@ -256,50 +249,9 @@ class TrajectoryGenerator:
                 rospy.loginfo('People...we have a problem: {}'.format(Exception))
                 continue
 
-    # TODO
-    ### Function which search minimum time
-    # Not Finish
-    def optimal_time(self):
-        sol_x = ot.random_search(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-        #dt.draw_in_plot(sol_x, self.order, self.waypoint, self.keyframe)
-
-    # TODO
-    # It would be long time to study and apply GDM
-    # so for now, postpone this work later
-    ''' 
-    # Constrained Gradient Descent method
-    def CGDmethod(self, total_time, iteration, precision):
-        # h is some small number
-        h = 0.0000001
-        # m is segment
-        m = self.waypoint -1
-
-        # First, time is set as equal at each segment.
-        time = np.ones(m) * total_time / m
-        for i in range(0, iteration):
-            print "hi"
-            prev_time = time
-            sol_x, f_before = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, prev_time)
-            prev_val = f_before
-            for j in range(0, m):
-                g = np.ones(m) * (-1/(m-1))
-                g[j] = 1
-                print h*g
-                print prev_time
-                sol_x, f_after = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, prev_time + h*g)
-                print prev_time
-                gradient = (f_after - f_before)/h
-                print gradient
-                time[j] = time[j] - gradient
-                print prev_time
-            sol_x, val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, time)
-            if abs(val - prev_val) < precision:
-                return time, sol_x
-    '''
-
 
 if __name__ == "__main__":
-    ### Init Node and Class
+    # Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
 
     # Wait some time before running. This is to adapt to some simulators
@@ -316,14 +268,6 @@ if __name__ == "__main__":
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
-            
-    # traj_gen.optimal_time()
-    ### CProfile method
-    # cProfile.run('traj_gen.optimal_time()')
-    ### GraphvizOutput (Recommended) : This code shows profile Graphically
-    # graphviz = output.GraphvizOutput(output_file='profile.png')
-    # with PyCallGraph(output=graphviz):
-    #   traj_gen.optimal_time()
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!
