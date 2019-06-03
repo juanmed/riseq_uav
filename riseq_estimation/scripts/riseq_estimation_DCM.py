@@ -65,9 +65,9 @@ class DirectionCosineMatrix():
                             [0, 0, 0, 0, 0, 1]])
         self.D1 = np.zeros((6, 4))
 
-        self.x1_est = np.array([[0], [0], [1], [0], [0], [0]])
+        self.x1_est = np.array([[0], [0], [1], [0], [0], [0]])  # The third column of the rotation matrix, 3 gyro biases
         self.x1_pre = np.zeros((6, 1))
-        self.z1 = np.zeros((6, 1))
+        self.z1 = np.zeros((6, 1))  # accelerometer, gyro
 
         self.P1_pre = np.eye(6) * 0.01
         self.P1_est = np.eye(6) * 0.01
@@ -91,9 +91,9 @@ class DirectionCosineMatrix():
                             [0, 0, 0, 0, 0, 1]])
         self.D2 = np.zeros((6, 4))
 
-        self.x2_est = np.array([[0], [1], [0], [0], [0], [0]])
+        self.x2_est = np.array([[0], [1], [0], [0], [0], [0]])  # The second column of the rotation matrix, 3 gyro biases
         self.x2_pre = np.zeros((6, 1))
-        self.z2 = np.zeros((6, 1))
+        self.z2 = np.zeros((6, 1))  # magnetometer, gyro
 
         self.P2_pre = np.eye(6) * 0.001
         self.P2_est = np.eye(6) * 0.001
@@ -123,11 +123,14 @@ class DirectionCosineMatrix():
         # Attitude estimation
         self.F1[0:3, 3:6] = hat(self.x1_est[0:3, :])
         (self.F1d, self.B1d, self.H1, self.D1, self.dT) = cont2discrete((self.F1, self.B1, self.H1, self.D1), self.dT)
+        # predict
         self.x1_pre = np.dot(self.F1d, self.x1_est) + np.dot(self.B1d, self.u)
         self.P1_pre = multi_dot([self.F1d, self.P1_est, self.F1d.T]) + self.Q1
 
+        # Kalman gain
         K1 = multi_dot([self.P1_pre, self.H1.T, inv(multi_dot([self.H1, self.P1_pre, self.H1.T]) + self.R1)])
 
+        # update
         y1 = self.z1 - np.dot(self.H1, self.x1_pre)
         self.x1_est = self.x1_pre + np.dot(K1, y1)
         self.x1_est[0:3, :] = self.x1_est[0:3, :] / norm(self.x1_est[0:3, :])   # normalization
@@ -136,11 +139,14 @@ class DirectionCosineMatrix():
         # Orientation estimation
         self.F2[0:3, 3:6] = hat(self.x2_est[0:3, :])
         (self.F2d, self.B2d, self.H2, self.D2, self.dT) = cont2discrete((self.F2, self.B2, self.H2, self.D2), self.dT)
+        # predict
         self.x2_pre = np.dot(self.F2d, self.x2_est) + np.dot(self.B2d, self.u)
         self.P2_pre = multi_dot([self.F2d, self.P2_est, self.F2d.T]) + self.Q2
 
+        # Kalman gain
         K2 = multi_dot([self.P2_pre, self.H2.T, inv(multi_dot([self.H2, self.P2_pre, self.H2.T]) + self.R2)])
 
+        # update
         y2 = self.z2 - np.dot(self.H2, self.x2_pre)
         self.x2_est = self.x2_pre + np.dot(K2, y2)
         self.x2_est[0:3, :] = self.x2_est[0:3, :] / norm(self.x2_est[0:3, :])   # normalization
@@ -148,17 +154,18 @@ class DirectionCosineMatrix():
         
         '''
         self.F[0:3, 6:9] = hat(self.x_est[0:3, :])
-        self.F[0:3, 9:12] = -hat(self.x_es[0:3, :])
+        self.F[0:3, 9:12] = -hat(self.x_est[0:3, :])
         self.F[3:6, 6:9] = hat(self.x_est[3:6, :])
-        self.F[3:6, 9:12] = -hat(self.x_es[3:6, :])
+        self.F[3:6, 9:12] = -hat(self.x_est[3:6, :])
         '''
 
         # Direct Cosine Matrix
         C = np.array([np.cross(self.x1_est[0:3, :].T, self.x2_est[0:3, :].T)[0],
                       self.x2_est[0:3, :].T[0],
                       self.x1_est[0:3, :].T[0]])
-        (phi, theta, psi) = rotation2euler(C)
+        (phi, theta, psi) = rotation2euler(C)   # convert to Euler angles
 
+        # publish state
         self.attitude.x = phi
         self.attitude.y = theta
         self.attitude.z = psi
@@ -166,8 +173,12 @@ class DirectionCosineMatrix():
 
         self.r.sleep()
 
-
+'''
 if __name__ == "__main__":
-    estimator = DirectionCosineMatrix()
-    while not rospy.is_shutdown():
-        estimator.loop()
+    try:
+        estimator = DirectionCosineMatrix()
+        while not rospy.is_shutdown():
+            estimator.loop()
+    except rospy.ROSInterruptException:
+        pass
+'''

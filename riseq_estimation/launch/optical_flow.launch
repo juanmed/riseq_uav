@@ -1,0 +1,5 @@
+<launch>
+	<include file="$(find ocam)/launch/ocam_ros.launch" />
+
+	<node pkg="riseq_estimation" type="riseq_estimation_opticalflow.py" name="optical_flow" output="screen" />
+</launch>

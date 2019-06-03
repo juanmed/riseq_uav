@@ -13,12 +13,19 @@ from eugene_kinematics import pseudoInverseMatrixL
 
 class OpticalFlow():
     def camera_info_cb(self, info):
+        """
+        Save the informations of the camera.
+        e.g. size of the image, camera matrix
+        """
         self.width = info.width
         self.height = info.height
         self.camera_matrix = np.array(info.K).reshape((3, 3))
 
 
     def getStereoJ(self, n):
+        """
+        Calculate the relationship between image plane and real space.
+        """
         x = max(min(np.around(self.p1[self.st==1][n][0]), self.width-1), 0)
         y = max(min(np.around(self.p1[self.st==1][n][1]), self.height-1), 0)
         Z = max(min(1.0 / self.depth_mat[y][x], 10.0), 0.2)
@@ -26,8 +33,11 @@ class OpticalFlow():
         return np.array([[-f/Z, 0, x/Z, x*y/f, -(f+(x**2)/f), y],
                          [0, -f/Z, y/Z, f+(y**2)/f, -x*y/f, -x]])
 
-
     def img_cb_stereo(self, rgb, depth):
+        """
+        Receive image and depth topic, publish calculated twist topic.
+        Using Lucas-Kanade pyramid method.
+        """
         if self.first is True:
             self.old_gray = self.bridge.imgmsg_to_cv2(rgb, desired_encoding='mono8')
             cv_depth = self.bridge.imgmsg_to_cv2(depth, desired_encoding='32FC1')
@@ -82,14 +92,18 @@ class OpticalFlow():
 
 
     def imu_cb(self, imu):
+        """
+        Get body angular velocity from imu(body frame) topic, then convert to camera frame.
+        """
         self.p = -imu.angular.y
         self.q = -imu.angular.z
         self.r = imu.angular.x
 
-
     def rangefinder_cb(self, r):
+        """
+        Distance from the bottom of the drone to afloor.
+        """
         self.distance = r
-
 
     def getMonoJ(self, n):
         x = max(min(np.around(self.p1[self.st==1][n][0]), self.width-1), 0)
@@ -99,8 +113,11 @@ class OpticalFlow():
         return np.array([[-f/Z, 0, x/Z, x*y/f, -(f+(x**2)/f), y],
                          [0, -f/Z, y/Z, f+(y**2)/f, -x*y/f, -x]])
 
-
     def img_cb_mono(self, rgb):
+        """
+        Receive image and depth topic, publish calculated twist topic.
+        Using Lucas-Kanade pyramid method.
+        """
         if self.first is True:
             self.old_gray = self.bridge.imgmsg_to_cv2(rgb, desired_encoding='mono8')
             self.p0 = cv.goodFeaturesToTrack(self.old_gray, mask = None, **self.feature_params)
@@ -108,17 +125,20 @@ class OpticalFlow():
             self.first = False
 
         else:
+            # Change image topic into OpenCV image.
             cv_gray = self.bridge.imgmsg_to_cv2(rgb, desired_encoding='mono8')
 
-            #print len(self.p0)
+            # Search again if the number of features is few.
             if len(self.p0) < 15:
                 self.p0 = cv.goodFeaturesToTrack(self.old_gray, mask = None, **self.feature_params)
 
+            # Calculate optical flow using Lucas-Kanade method.
             self.p1, self.st, err = cv.calcOpticalFlowPyrLK(self.old_gray, cv_gray, self.p0, None, **self.lk_params)
 
             good_old = self.p0[self.st==1]
             good_new = self.p1[self.st==1]
 
+            # Show tracking features on the image.
             for i, (new, old) in enumerate(zip(good_new, good_old)):
                 a, b = new.ravel()
                 c, d = old.ravel()
@@ -126,9 +146,11 @@ class OpticalFlow():
                 cv_gray = cv.circle(cv_gray, (a, b), 5, self.color[i].tolist(), -1)
             cv.imshow('optical flow', cv.add(cv_gray, self.mask))
 
+            # Convert point difference to point velocity.
             self.vx = (self.p1[self.st==1][:, 0] - self.p0[self.st==1][:, 0]) * self.rate
             self.vy = (self.p1[self.st==1][:, 1] - self.p0[self.st==1][:, 1]) * self.rate
-            
+
+            # Calculate velocity in real world.
             J = np.zeros((len(self.p1[self.st==1])*2, 6))
             x = np.zeros((len(self.p1[self.st==1])*2, 1))
             for i in range(0, len(self.p1[self.st==1])):
@@ -137,6 +159,7 @@ class OpticalFlow():
                 x[i*2+1][0] = self.vy[i]
             v = np.dot(pseudoInverseMatrixL(J), x)
 
+            # Publish calculated velocity into ROS topic.
             self.twist.linear.x = v[0]
             self.twist.linear.y = v[1]
             self.twist.linear.z = v[2]
@@ -150,8 +173,11 @@ class OpticalFlow():
 
         cv.waitKey(1)
 
-
+    
     def img_cb_fb(self, rgb, depth):
+        """
+        Optical flow using Farneback method
+        """
         if self.first is True:
             self.old_gray = self.bridge.imgmsg_to_cv2(rgb, desired_encoding='mono8')
             cv_depth = self.bridge.imgmsg_to_cv2(depth, desired_encoding='32FC1')
@@ -181,13 +207,14 @@ class OpticalFlow():
         rospy.init_node('riseq_estimation_opticalflow')
 
         self.bridge = cv_bridge.CvBridge()
-        self.rate = 30
+        self.rate = 50
         self.r = rospy.Rate(self.rate)
 
         self.distance = 0.1
 
         self.first = True
 
+        # Set the camera and optical flow method.
         camera = 'oCam'
         method = 'LucasKanade'
 
@@ -208,12 +235,14 @@ class OpticalFlow():
                 self.lk_params = dict(winSize = (15, 15), maxLevel = 2, criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
                 self.color = np.random.randint(0, 255, (self.max_num, 3))
                 img_sub.registerCallback(self.img_cb_lk)
+
         elif camera == 'oCam':
             self.focal_length = 968
             self.width = 1280
             self.height = 960
 
             if method == 'LucasKanade':
+                # Set Haris detector parameters to track features.
                 self.max_num = 200
                 self.feature_params = dict(maxCorners = self.max_num, qualityLevel = 0.1, minDistance = 7, blockSize = 7)
                 self.lk_params = dict(winSize = (15, 15), maxLevel = 2, criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
@@ -228,7 +257,10 @@ class OpticalFlow():
 
 
 if __name__ == "__main__":
-    print "OpenCV: " + cv.__version__
-    optical_flow = OpticalFlow()
-    while not rospy.is_shutdown():
-        optical_flow.loop()
+    try:
+        print "OpenCV: " + cv.__version__
+        optical_flow = OpticalFlow()
+        while not rospy.is_shutdown():
+            optical_flow.loop()
+    except rospy.ROSInterruptException:
+        pass
