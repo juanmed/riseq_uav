@@ -1,14 +1,27 @@
+"""
+This code is calculating general conversions or calculations for RISE-Q projects.
+Usually define conversions on Lie-group and various angles represent the state of a quadrotor.
+"""
+
+
 from math import sin, cos, tan, asin, acos, atan2
 import numpy as np
 
 
 def hat(v):
+    """
+    Hat operator
+    https://en.wikipedia.org/wiki/Hat_operator
+    """
     return np.array([[0, -v[2], v[1]],
                      [v[2], 0, -v[0]],
                      [-v[1], v[0], 0]])
 
 
 def rotation2quaternion(R):
+    """
+    Put 3x3 rotation matrix, then calculate quatrenion angle
+    """
     qw = sqrt(1 + R[0][0] + R[1][1] + R[2][2]) / 2
     qx = (R[2][1] - R[1][2]) / (4*qw)
     qy = (R[0][2] - R[2][0]) / (4*qw)
@@ -17,6 +30,9 @@ def rotation2quaternion(R):
 
 
 def rotation2euler(R):
+    """
+    Put 3x3 rotation matrix, then calculate Euler angles
+    """
     phi = atan2(R[2][1], R[2][2])
     theta = asin(-R[2][0])
     psi = atan2(R[1][0], R[0][0])
@@ -24,14 +40,21 @@ def rotation2euler(R):
 
 
 def euler2quaternion(pi, theta, psi):
+    """
+    Put Euler angles, then calculate quatrenion angle
+    """
     qw = cos(phi/2)*cos(theta/2)*cos(psi/2) + sin(phi/2)*sin(theta/2)*sin(psi/2)
     qx = sin(phi/2)*cos(theta/2)*cos(psi/2) - cos(phi/2)*sin(theta/2)*sin(psi/2)
     qy = sin(phi/2)*cos(theta/2)*sin(psi/2) + cos(phi/2)*sin(theta/2)*cos(psi/2)
     qz = cos(phi/2)*cos(theta/2)*sin(psi/2) - sin(phi/2)*sin(theta/2)*cos(psi/2)
     return qw, qx, qy, qz
 
+
 def pseudoInverseMatrixL(A):
+    """ Left side pseudo inverse matrix """
     return np.dot(np.linalg.inv(np.dot(A.T, A)), A.T)
 
+
 def pseudoInverseMatrixR(A):
+    """ Right side pseudo inverse matrix """
     return np.dot(A.T, np.linalg.inv(np.dot(A, A.T)))

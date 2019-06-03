@@ -1,11 +1,16 @@
+/// This node is for apart and cluster several obstacles(e.g. poles, trees) at AI R&D Grand Challenge.
+/// Using PCL library, process Euclidean clustering and plane segmentation so that can detect obstacles from stereo depth.
+
 #include <ros/ros.h>
-// PCL specific includes
+// PCL specific includes. PCL <-> PointCloud2(ROS message)
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/ros/conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+/// Including PCL library to work with Point Cloud
+/// http://www.pointclouds.org/documentation/tutorials/cluster_extraction.php
 #include <pcl/ModelCoefficients.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/extract_indices.h>
@@ -42,7 +47,7 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance(0.01); // unit: m
+  ec.setClusterTolerance(0.01); // Setting the tolerance to cluster. unit: m
   ec.setMinClusterSize(100);
   ec.setMaxClusterSize(25000);
   ec.setSearchMethod(tree);
@@ -67,7 +72,7 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
     j++;
   }
 
-  // Convert To ROS data type 
+  // Convert to ROS data type 
   pcl::PCLPointCloud2 cloud_p;
   pcl::toPCLPointCloud2(TotalCloud, cloud_p);
 
@@ -85,6 +90,7 @@ int main(int argc, char** argv)
   // Initialize ROS
   ros::init(argc, argv, "riseq_perception");
   ros::NodeHandle nh;
+  ros::Rate loop_rate(10);
 
   // Create a ROS subscriber for the input point cloud
   ros::Subscriber sub = nh.subscribe("/zed/zed_node/point_cloud/cloud_registered", 10, cloud_cb);
@@ -93,6 +99,13 @@ int main(int argc, char** argv)
   // pub = nh.advertise<pcl_msgs::ModelCoefficients> ("pclplaneoutput", 1);
   pub = nh.advertise<sensor_msgs::PointCloud2>("/riseq/perception/cluster", 10);
 
-  // Spin
-  ros::spin ();
+  while ros::ok()
+  {
+    // Spin
+    ros::spinOnce();
+
+    loop_rate.sleep();
+  }
+
+  return 0;
 }

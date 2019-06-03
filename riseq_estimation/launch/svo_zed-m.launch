@@ -1,5 +1,5 @@
 <launch>
-  <!-- ZED-mini node>
+  <!-- ZED-mini node -->
   <include file="$(find zed_wrapper)/launch/zedm.launch"/>
 
   <!-- SVO -->

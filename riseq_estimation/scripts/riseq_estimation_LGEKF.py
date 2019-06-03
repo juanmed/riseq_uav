@@ -4,15 +4,17 @@ import rospy
 import numpy as np
 
 
-class LG-EKF():
+class LieGroupExtendedKalmanFilter():
     def __init__(self):
-        rospy.init_node('riseq_estimation_LG-EKF')
+        rospy.init_node('riseq_estimation_LGEKF')
 
         self.frequency = 250
         self.r = rospy.Rate(self.frequency)
         self.dt = 1.0/self.frequency
         self.g = 9.81
 
+        # state variables: T, w, v
+        # SE(3) x R3 x R3
         self.x_pre = np.array
         self.x_est
         self.P_pre
@@ -29,9 +31,3 @@ class LG-EKF():
         self.update()
 
         self.r.sleep()
-
-
-if __name__ == "__main__":
-    lg-ekf = LG-EKF()
-    while not rospy.is_shutdown():
-        lg-ekf.loop()
