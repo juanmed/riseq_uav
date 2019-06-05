@@ -138,13 +138,13 @@ class OpticalFlow():
             good_old = self.p0[self.st==1]
             good_new = self.p1[self.st==1]
 
-            # Show tracking features on the image.
-            for i, (new, old) in enumerate(zip(good_new, good_old)):
-                a, b = new.ravel()
-                c, d = old.ravel()
-                #self.mask = cv.line(self.mask, (a, b), (c, d), self.color[i].tolist(), 2)
-                cv_gray = cv.circle(cv_gray, (a, b), 5, self.color[i].tolist(), -1)
-            cv.imshow('optical flow', cv.add(cv_gray, self.mask))
+            # # Show tracking features on the image.
+            # for i, (new, old) in enumerate(zip(good_new, good_old)):
+            #     a, b = new.ravel()
+            #     c, d = old.ravel()
+            #     #self.mask = cv.line(self.mask, (a, b), (c, d), self.color[i].tolist(), 2)
+            #     cv_gray = cv.circle(cv_gray, (a, b), 5, self.color[i].tolist(), -1)
+            # cv.imshow('optical flow', cv.add(cv_gray, self.mask))
 
             # Convert point difference to point velocity.
             self.vx = (self.p1[self.st==1][:, 0] - self.p0[self.st==1][:, 0]) * self.rate

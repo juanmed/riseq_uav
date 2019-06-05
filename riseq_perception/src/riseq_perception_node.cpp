@@ -99,7 +99,7 @@ int main(int argc, char** argv)
   // pub = nh.advertise<pcl_msgs::ModelCoefficients> ("pclplaneoutput", 1);
   pub = nh.advertise<sensor_msgs::PointCloud2>("/riseq/perception/cluster", 10);
 
-  while ros::ok()
+  while (ros::ok())
   {
     // Spin
     ros::spinOnce();
