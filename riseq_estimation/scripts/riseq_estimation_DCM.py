@@ -53,6 +53,33 @@ class DirectionCosineMatrix():
         self.attitude = Vector3()
         rospy.Subscriber('/uav/sensors/imu', Imu, self.imu_cb)
 
+        ################################################################################
+        # Extended Kalman Filter
+        # 
+        # x: state of the drone
+        # z: measurement of the drone
+        # P: covariance matrix of the state
+        # Q: state noise covarianve matrix
+        # R: measurement covariance matrix
+        # K: Kalman gain
+        # 
+        # x_k+1 = f(x_k, u_k)
+        #       = F_k * x_k + B_k * u_k        (linearization)
+        # z_k   = h(x_k, u_k)
+        #       = H_k * x_k + D_k * u_k        (linearization)
+        # 
+        # 1. predict state
+        # x_k+1_predict = f(x_k_estimate, u_k)
+        # P_k+1_predict = F_k * P_k_estimate * F_k.T + Q
+        # 
+        # 2. get Kalman gain
+        # K_k+1 = P_k_estimate * H_k.T/(H_k * P_k_estimate * H_k.T + R)
+        # 
+        # 
+        # 3. update state
+        # x_k+1_estimate = x_k+1_predict + K_k+1 * (z_k+1 - H_k+1 * x_k+1_predict)
+        # P_k+1_estimate = (I - K_k+1 * H_k+1) * P_k+1_predict
+        ################################################################################
         self.F1 = np.zeros((6, 6))
         self.F1d = np.zeros((6, 6))
         self.B1 = np.zeros((6, 4))
