@@ -1,0 +1,25 @@
+<launch>
+  <!-- ZED-mini node -->
+  <!--include file="$(find zed_wrapper)/launch/zedm.launch" /-->
+
+  <!-- OctoMap -->
+  <arg name="path" default="" />
+  <arg name="changeIdFrame" default="" />
+  <node pkg="octomap_server" type="octomap_tracking_server_node" name="riseq_estimation_octomap_talker" output="screen" args="$(arg path)">
+    <param name="resolution" value="0.1" />
+    <param name="frame_id" type="string" value="world" />
+    <param name="sensor_model/max_range" value="10.0" />
+    <param name="save_directory" value="$(optenv OCTOMAP_SAVE_DIR ./)" />
+    <param name="track_changes" value="true"/>
+    <param name="listen_changes" value="false"/>
+    <param name="topic_changes" value="/octomap_tracking_server/changeset" />
+    <param name="change_id_frame" value="$(arg changeIdFrame)" />
+    <param name="min_change_pub" value="0" />
+
+    <!-- Remap ZED point cloud and OctoMap point cloud -->
+    <remap from="cloud_in" to="/zed/zed_node/point_cloud/cloud_registered" />
+  </node>
+
+  <!-- TF publisher -->
+  <node pkg="riseq_estimation" type="riseq_estimation_tf_publisher.py" name="riseq_estimation_tf_publisher" />
+</launch>
