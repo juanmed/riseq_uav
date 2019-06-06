@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """
 author:  Eugene Auh
-version: 0.0.0
-brief: This code is using Lie-group Extended Kalman Filter to estimate drones' states.
+version: 0.1.0
+brief: This node publishes /tf topic to connect world frame of SVO and map frame of ZED camera
+       not to ZED odometry data on octomap.
 
 MIT License
 
@@ -23,33 +24,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import rospy
-import numpy as np
+import tf
+from tf2_msgs.msg import TFMessage
 
 
-class LieGroupExtendedKalmanFilter():
-    def __init__(self):
-        rospy.init_node('riseq_estimation_LGEKF')
+if __name__ == "__main__":
+    try:
+        rospy.init_node('riseq_estimation_tf_publisher')
+        br = tf.TransformBroadcaster()
+        r = rospy.Rate(1000)
 
-        self.frequency = 250
-        self.r = rospy.Rate(self.frequency)
-        self.dt = 1.0/self.frequency
-        self.g = 9.81
+        while not rospy.is_shutdown():
+            br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "zed_left_camera_optical_frame")
+            r.sleep()
 
-        # state variables: T, w, v
-        # SE(3) x R3 x R3
-        self.x_pre = np.array
-        self.x_est
-        self.P_pre
-        self.P_est
-        self.z
-
-        self.F
-        self.Phi
-        self.H
-
-
-    def loop(self):
-        self.predict()
-        self.update()
-
-        self.r.sleep()
+    except rospy.ROSInterruptException:
+        pass
