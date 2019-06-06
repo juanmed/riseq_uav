@@ -8,10 +8,10 @@
     <param name="cam0_topic" value="/zed/zed_node/left_raw/image_raw_color" type="str" />
     <param name="cam1_topic" value="/zed/zed_node/right_raw/image_raw_color" type="str" />
     <param name="imu_topic" value="/zed/zed_node/imu/data" type="str" />
-    <param name="calib_file" value="$(find riseq_estimation)/calib/zed-m_calib.yaml" type="str" />
+    <param name="calib_file" value="$(find riseq_estimation)/calib/zedm_calib.yaml" type="str" />
 
-    <rosparam file="$(find riseq_estimation)/param/zed-m.yaml" />
-    <rosparam file="$(find riseq_estimation)/param/zed-m_imu.yaml" />
+    <rosparam file="$(find riseq_estimation)/param/zedm.yaml" />
+    <rosparam file="$(find riseq_estimation)/param/zedm_imu.yaml" />
 
   </node>
 
