@@ -1,6 +1,6 @@
 <launch>
   <!-- ZED-mini node -->
-  <include file="$(find zed_wrapper)/launch/zedm.launch"/>
+  <!--include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/-->
 
   <!-- SVO -->
   <node pkg="svo_ros" type="svo_node" name="svo" clear_params="true" output="screen">
@@ -10,8 +10,8 @@
     <param name="imu_topic" value="/zed/zed_node/imu/data" type="str" />
     <param name="calib_file" value="$(find riseq_estimation)/calib/zedm_calib.yaml" type="str" />
 
-    <rosparam file="$(find riseq_estimation)/param/zedm.yaml" />
-    <rosparam file="$(find riseq_estimation)/param/zedm_imu.yaml" />
+    <rosparam file="$(find riseq_estimation)/param/svo_zedm.yaml" />
+    <rosparam file="$(find riseq_estimation)/param/svo_zedm_imu.yaml" />
 
   </node>
 

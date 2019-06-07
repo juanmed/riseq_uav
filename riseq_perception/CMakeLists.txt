@@ -109,7 +109,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES riseq_perception
   CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs pcl_conversions pcl_ros
-  DEPENDS system_lib
+  DEPENDS
 )
 
 ###########
