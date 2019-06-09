@@ -1,7 +1,6 @@
 import numpy as np
 
 
-
 def go_upward(order, time, start_point, distance):
     """
      This function is to make polynomial which just go upward
@@ -60,7 +59,8 @@ def go_along(order, time, start_point, final_point):
         A = np.zeros((order+1, order+1))
         for i in range(0, 3):
             for j in range(0, 2):
-                A[2*i+j] = poly_cc(order, i, j*time)
+                # time scaling factor
+                A[2*i+j] = poly_cc(order, i, j) / (time[0] ** i)
         b = np.zeros(order+1)
         b[0] = start_point[h]
         b[1] = final_point[h]
