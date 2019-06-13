@@ -1,0 +1,21 @@
+<launch>
+  <!-- oCam-1CGN-U node -->
+  <include file="$(find ocam)/launch/ocam_ros.launch"/>
+
+  <!-- SVO node -->
+  <node pkg="svo_ros" type="svo_node" name="svo" clear_params="true" output="screen">
+
+    <!-- Camera topic to subscribe to -->
+    <param name="cam0_topic" value="/camera/image_rect" type="str" />
+
+    <!-- Camera calibration file -->
+    <param name="calib_file" value="$(find riseq_estimation)/calib/ocam_calib.yaml" />
+
+    <!--Parameters-->
+    <rosparam file="$(find riseq_estimation)/param/ocam_param.yaml" />
+  </node>
+
+  <!-- RVIZ + SVO GUI -->
+  <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config.rviz" />
+  <node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" />
+</launch>
