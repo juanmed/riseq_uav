@@ -1,7 +1,4 @@
 <launch>
-  <!-- ZED-mini node -->
-  <!--include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/-->
-
   <!-- SVO -->
   <node pkg="svo_ros" type="svo_node" name="svo" clear_params="true" output="screen">
     <!-- Camera and IMU topics to subscribe to -->
@@ -16,6 +13,6 @@
   </node>
 
   <!-- RVIZ + SVO GUI -->
-  <node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config.rviz" />
-  <node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" />
+  <!--node name="vis" pkg="rviz" type="rviz" args=" -d $(find svo_ros)/rviz_config.rviz" /-->
+  <!--node name="svo_gui" pkg="rqt_gui" type="rqt_gui" args="-s rqt_svo.svo.Svo --args --topic svo" /-->
 </launch>
