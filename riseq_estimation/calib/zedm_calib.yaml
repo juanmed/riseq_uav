@@ -5,19 +5,19 @@ cameras:
     label: cam0
     id: 54812562fa109c40fe90b29a59dd7798
     line-delay-nanoseconds: 0
-    image_height: 720
-    image_width: 1280
+    image_height: 376
+    image_width: 672
     type: pinhole
     intrinsics:
       cols: 1
       rows: 4
-      data: [700.029, 700.029, 636.693, 356.975]
+      data: [349.956, 349.956, 336.194, 185.019]
     distortion:
       type: radial-tangential
       parameters:
         cols: 1
         rows: 4
-        data: [-0.17521, 0.027824, 0.0, 0.0]
+        data: [-0.17579, 0.028916, 0.0, 0.0]
   T_B_C:
     cols: 4
     rows: 4
@@ -29,20 +29,20 @@ cameras:
     label: cam1
     id: 54812562fa109c40fe90b29a59dd7723
     line-delay-nanoseconds: 0
-    image_height: 720
-    image_width: 1280
+    image_height: 376
+    image_width: 672
     type: pinhole
 
     intrinsics:
       cols: 1
       rows: 4
-      data: [699.815, 699.815, 619.164, 351.748]
+      data: [349.910, 349.910, 323.481, 182.552]
     distortion:
       type: radial-tangential
       parameters:
         cols: 1
         rows: 4
-        data: [-0.17340, 0.027520, 0.0, 0.0]
+        data: [-0.17190, 0.027732, 0.0, 0.0]
   T_B_C:
     cols: 4
     rows: 4
