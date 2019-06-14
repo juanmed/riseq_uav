@@ -21,6 +21,8 @@ def qp_solution(order, waypoint, keyframe, current_state, time):
     min { 1/2 c.T * P * c + q * c } ---------- c is array of polynomial of flat output [ x y z psi ].
     s.t. { A*c = b  }
          { G*c <= h }
+    c : polynomial coefficients
+    P : Hessian matrix
     G, b : Inequality Constraint ( Corridor Constraint, Minimum Maximum speed)
     A, b : Equality Constraint ( Way point Constraint, Derivative Constraint)
     """
