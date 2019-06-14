@@ -34,8 +34,14 @@ if __name__ == "__main__":
         br = tf.TransformBroadcaster()
         r = rospy.Rate(1000)
 
+        # Visual odometry method to use. SVO, ORB_SLAM2
+        method = "ORB_SLAM2"
+
         while not rospy.is_shutdown():
-            br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "zed_left_camera_optical_frame")
+            if method == "SVO":
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "zed_left_camera_optical_frame")
+            elif method == "ORB_SLAM2":
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "camera_link", "zed_left_camera_optical_frame")
             r.sleep()
 
     except rospy.ROSInterruptException:
