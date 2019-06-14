@@ -32,8 +32,8 @@ class Trajectory_Generator2():
         # Compute trajectory waypoints #
         # ---------------------------- #
 
-        #self.waypoints = self.get_vertical_waypoints(2)
-        self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
+        self.waypoints = self.get_goal_waypoint( 3.5, 0 ,1.67)
+        #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -93,7 +93,7 @@ class Trajectory_Generator2():
 
         return waypoints
 
-    def get_vertical_waypoints(self, height):
+    def get_goal_waypoint(self, x, y ,z):
 
         # First waypoint is initial position
         waypoints = np.zeros((2,3))
@@ -102,9 +102,9 @@ class Trajectory_Generator2():
         waypoints[0][2] = self.init_pose[2]   
         
         # now add a waypoint exactly 1m above the drone 
-        waypoints[1][0] = waypoints[0][0] + height
-        waypoints[1][1] = waypoints[0][1] + height
-        waypoints[1][2] = waypoints[0][2] + height
+        waypoints[1][0] = waypoints[0][0] + x
+        waypoints[1][1] = waypoints[0][1] + y
+        waypoints[1][2] = waypoints[0][2] + z
 
         return waypoints  
 
