@@ -58,7 +58,7 @@ class uav_High_Level_Controller():
 
         # reference trajectory subscriber
         #self.reftraj_sub = message_filters.Subscriber('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory)
-        self.reftraj_sub = message_filters.Subscriber('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory)
+        self.reftraj_sub = message_filters.Subscriber('riseq/uav_trajectory', riseq_uav_trajectory)
 
         # select controller's state input soure: true state, estimated state
         try:
@@ -132,7 +132,7 @@ class uav_High_Level_Controller():
         self.e1 = np.array([[1],[0],[0]])       # Vectors e1, e2, e3 generate R3
         self.e2 = np.array([[0],[1],[0]])
         self.e3 = np.array([[0],[0],[1]])
-
+        
 
         # PID gains for position error controller 
         self.Kp = np.diag([gains.Kpx2, gains.Kpy2, gains.Kpz2])
@@ -142,17 +142,22 @@ class uav_High_Level_Controller():
         # Gains for euler angle for desired angular velocity
         #       POLE PLACEMENT DESIRED POLES
         # Desired pole locations for pole placement method, for more aggresive tracking
-	
-	if (environment == "simulator"):
+    
+        if (environment == "simulator"):
             self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
-	    self.Kr = self.Kr.item(0,0)
-	elif (environment == "embedded_computer"):
-	    self.Kr = 8.
-	else:
-	    print("riseq/environment parameter not found. Setting Kr = 1")
-	    self.Kr = 1
-	    
+            self.Kr = self.Kr.item(0,0)
+        elif (environment == "embedded_computer"):
+            self.Kr = 8.
+        else:
+            print("riseq/environment parameter not found. Setting Kr = 1")
+            self.Kr = 1
+        
+        # debugging variables
+#        self.a_e = np.zeros((3,1))
+#        self.a_e2 = np.zeros((3,1))
+#        self.Traw2 = 0
+
 
     def euler_angle_controller(self, state, trajectory):
         """
@@ -197,23 +202,26 @@ class uav_High_Level_Controller():
 
             # Calculate  PID control law for acceleration error: 
             self.pos_error_integral = self.pos_error_integral + (p - p_ref)
-            a_e = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(self.Ki,self.pos_error_integral)  # PID control law
+            self.a_e = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(self.Ki,self.pos_error_integral)  # PID control law
 
             #        ****   Implement anti-windup integral control  ****
-            if(self.Traw >= self.max_thrust):
+            if((self.Traw >= self.max_thrust) or (self.Traw <= self.min_thrust)):
                 Ki = np.diag([0.0, 0.0, 0.0])
-                a_e2 = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(self.Ki,self.pos_error_integral)  # PID control law
+                self.a_e2 = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(Ki,self.pos_error_integral)  # PID control law
             else:
-                a_e2 = a_e            
+                self.a_e2 = self.a_e            
 
             # Reference acceleration from differential flatness
             a_ref = np.array([trajectory.acc.x, trajectory.acc.y, trajectory.acc.z]).reshape(3,1)
 
             # Desired acceleration
-            a_des = a_e2 + a_ref + self.g*self.e3
+            a_des = self.a_e2 + a_ref + self.g*self.e3
+            a_des2 = self.a_e + a_ref + self.g*self.e3
 
             wzb = np.dot(Rbw, self.e3)          # body z-axis expressed in world frame
             self.Traw = self.mass*np.dot(wzb.T,a_des)[0][0]            # Necessary thrust
+            #self.Traw2 = self.mass*np.dot(wzb.T,a_des2)[0][0]          # debugging only
+
             #         ****        Input saturation  *      ****
             self.T = self.saturate_scalar_minmax(self.Traw, self.max_thrust, self.min_thrust)    # Maximum possible thrust
 
@@ -283,6 +291,8 @@ class uav_High_Level_Controller():
         hlc_msg.header.stamp = rospy.Time.now()
         hlc_msg.header.frame_id = 'riseq/uav'
 
+        #hlc_msg.thrust.x = self.Traw2 #np.linalg.norm(self.a_e)     #for debugging purposes
+        #hlc_msg.thrust.y = self.Traw #np.linalg.norm(self.a_e2)    #for debugging purposes
         hlc_msg.thrust.z = self.T
         hlc_msg.rot = self.Rbw_des.flatten().tolist()
         hlc_msg.angular_velocity.x = angular_velocity[0][0]

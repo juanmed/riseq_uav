@@ -3,15 +3,16 @@ import rospy
 import numpy as np
 import tf
 
-import keyframe_generator as kg
 import quadratic_programming as qp
 import draw_trajectory as dt
 import optimal_time as ot
-import differential_flatness as df
 import gate_event as ga
 
-from riseq_trajectory.msg import riseq_uav_trajectory
+import riseq_common.differential_flatness as df
+import riseq_perception.keyframe_generator as kg
 
+from riseq_trajectory.msg import riseq_uav_trajectory
+from riseq_common.msg import riseq_uav_state
 
 import cProfile
 from pycallgraph import PyCallGraph
@@ -22,92 +23,99 @@ import graphviz
 
 class TrajectoryGenerator:
     def __init__(self):
-        ### ROS Publisher
         # create publisher for publishing ref trajectory
-        self.traj_publisher = rospy.Publisher('riseq_uav_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_pub = rospy.Publisher('riseq/uav_trajectory', riseq_uav_trajectory, queue_size=10)
 
-        ### MODE
-        # select mode (easy, medium, hard, scorer)
-        mode = rospy.get_param("/uav/challenge_name", -1)
-
-        ### Init Parameters
         # Our flat output is 4
         # For smooth curve of trajectory, change and adjust order of polynomial.
         # It is recommended to adjust 6 order polynomial at least.
         self.order = 7
         self.n = 4
 
-        ### Keyframe Generation
-        # For keyframe generation, It needs drone initial position and way point.
-        # Initial orientation can be quaternion, so should be transformed to euler angle.
-        # Checking way point count: n. Polynomial segment: m
-        # m = waypoint - 1
-        init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
-        self.gate_name = rospy.get_param("/uav/gate_names")
-        self.gate_count = len(self.gate_name)
-        self.gate_location = np.zeros((self.gate_count, 4, 3))
-        for i, g in enumerate(self.gate_name):
-            self.gate_location[i] = np.asarray(rospy.get_param("/uav/%s/location" %g))
-        self.keyframe = kg.keyframe_generation(init_pose, self.gate_location, self.gate_count)
-        self.waypoint = self.gate_count + 1
+        # determine environment
+        self.environment = rospy.get_param("riseq/environment")
 
-        ### Gate Event
-        # Should count gate number because need to know next gate
-        # Inflation means the scale of virtual cube including way point
-        # For example, it will make cube space which is larger as much as gate times inflation.
-        self.inflation = 2
-        # Tolerance is like threshold to decide whether drone pass or not
-        # If drone is close to gate within tolerance, it is determined as drone pass gate.
-        self.tolerance = 1
-        # Make array of Class for counting gate which is traversed
-        self.gate_events = []
-        for i in range(self.gate_count):
-            self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation))
-        # count pass
-        self.gate_pass = 0
+        if self.environment == "simulator":
+            # select mode (easy, medium, hard, scorer)
+            mode = rospy.get_param("/uav/challenge_name", -1)
+            if mode == -1:
+                rospy.logerr("mode is not specified!")
+                rospy.signal_shutdown("[challenge_name] could not be read")
 
-        ### Time Segment and Scaling
-        # In this case, the polynomial of trajectory has variable t whose range is [0, 1]
-        # For using, time scaling method is applied
-        if mode == "Challenge easy":
-            self.time_scaling = [5]
-            self.time_scaling = np.array(self.time_scaling)
-            #rospy.loginfo("Level Easy!")
-        elif mode == "Challenge Medium":
-            self.time_scaling = [5, 5]
-            self.time_scaling = np.array(self.time_scaling)
-            #rospy.loginfo("Level Medium!")
-        elif mode == "Challenge Hard":
-            self.time_scaling = [5, 2, 2, 5]
-            self.time_scaling = np.array(self.time_scaling)
-            #rospy.loginfo("Level Hard!")
+            # For keyframe generation, It needs drone initial position and way point.
+            # Initial orientation can be quaternion, so should be transformed to euler angle.
+            # Checking way point count: n. Polynomial segment: m = gate_count
+            init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+            self.gate_name = rospy.get_param("/uav/gate_names")
+            self.gate_count = len(self.gate_name)
+            self.gate_location = np.zeros((self.gate_count, 4, 3))
+            for i, g in enumerate(self.gate_name):
+                self.gate_location[i] = np.asarray(rospy.get_param("/uav/%s/location" % g))
+            self.keyframe = kg.gate_keyframe(init_pose, self.gate_location, self.gate_count)
+            self.waypoint = self.gate_count + 1
+
+            # TODO : change to ROS topic to get current state just when request for updating trajectory.
+            # create publisher for publishing ref trajectory
+            # self.state_sub = rospy.subscriber('riseq/estimator/uav_estimated_state', riseq_uav_state, state_update)
+            # Current state would be used in many area
+            # like checking gate, updating trajectory,
+            # Maybe we can get velocity and acceleration from estimation
+            current_pos = self.keyframe[0]  # x y z psi
+            current_vel = np.array([0, 0, 0, 0])
+            current_acc = np.array([0, 0, 0, 0])
+            current_jerk = np.array([0, 0, 0, 0])
+            current_snap = np.array([0, 0, 0, 0])
+            self.current_state = np.vstack(
+                (current_pos, current_vel, current_acc, current_jerk, current_snap))
+
+            # Should count gate number because need to know next gate
+            # Inflation means the scale of virtual cube including way point
+            # For example, it will make cube space which is larger as much as gate times inflation.
+            self.inflation = 2
+            # Tolerance is like threshold to decide whether drone pass or not
+            # If drone is close to gate within tolerance, it is determined as drone pass gate.
+            self.tolerance = 1
+            # Make array Class for counting gate which is traversed
+            self.gate_events = []
+            for i in range(self.gate_count):
+                self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
+            # count pass
+            self.gate_pass = 0
+
+            # Time Segment and Scaling
+            # In this case, the polynomial of trajectory has variable t whose range is [0, 1]
+            # For using, time scaling method is applied
+            if mode == "Challenge easy":
+                self.time_scaling = [5]
+                self.time_scaling = np.array(self.time_scaling)
+            elif mode == "Challenge Medium":
+                self.time_scaling = [5, 5]
+                self.time_scaling = np.array(self.time_scaling)
+            elif mode == "Challenge Hard":
+                self.time_scaling = [5, 2, 2, 5]
+                self.time_scaling = np.array(self.time_scaling)
+            else:
+                self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+                self.time_scaling = np.array(self.time_scaling)
+        elif self.environment == "embedded_computer":
+            pass
         else:
-            self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-            self.time_scaling = np.array(self.time_scaling)
-            #rospy.loginfo("Challenge Final!")
+            pass
 
-        ### Current State(pos, vel, acc, jerk, snap)
-        # Current state would be used in many area
-        # like checking gate, updating trajectory,
-        # Maybe we can get velocity and acceleration from estimation
-        current_pos = self.keyframe[0]  # x y z psi
-        current_vel = np.array([0, 0, 0, 0])
-        current_acc = np.array([0, 0, 0, 0])
-        current_jerk = np.array([0, 0, 0, 0])
-        current_snap = np.array([0, 0, 0, 0])
-        self.current_state = np.vstack(
-            (current_pos, current_vel, current_acc, current_jerk, current_snap))
+        if self.environment == "simulator":
+            # Solution for piecewise polynomial and draw trajectory in plot
+            # drawing plot is needed only at simulator
+            self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+            dt.draw_in_plot(self.sol_x, self.order, self.waypoint, self.keyframe)
+        elif self.environment == "embedded_computer":
+            self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+        else:
+            pass
 
-        ### Solution for piecewise polynomial and draw trajectory in plot
-        self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-        dt.draw_in_plot(self.sol_x, self.order, self.waypoint, self.keyframe)
-
-        ### ROS Time
         # initialize time
         self.start_time = rospy.get_time()
         self.last_time = self.start_time
 
-        ### Index
         # start in trajectory from initial position to final gate
         # start with Index = 0
         # It is index for where drone is now.
@@ -149,31 +157,11 @@ class TrajectoryGenerator:
                 self.last_time = time
         return ref_trajectory
 
-    # checking whether drone pass gate or not
-    # It needs current position of drone.
-    def check_gate(self):
-        if self.gate_events[self.gate_pass].isEvent(self.current_state[0], self.tolerance):
-            self.gate_pass = self.gate_pass + 1
-        # Check every gate not only next gate
-        # for the case when drone skip gate and fly through another gate
-        for i, gate in enumerate(self.gate_events[self.gate_pass:]):
-            if gate.isEvent(self.current_state[0], self.tolerance):
-                # i == 0 means that drone goes well
-                if i > 0:
-                    rospy.loginfo("Skipped %d events", i)
-                    # Record gate which drone skip
-                    for j in range(i):
-                        rospy.loginfo("%s False", self.gate_name[self.gate_pass + j])
-                rospy.loginfo("Reached %s at", self.gate_name[self.gate_pass + i])
-                self.gate_pass += (i + 1)
-
-            if self.gate_pass >= self.gate_count:
-                rospy.loginfo("Completed the challenge")
-                rospy.signal_shutdown("Challenge complete")
-
     def pub_traj(self):
+        hz = rospy.get_param('trajectory_update_rate', 200)
+
         # publish at Hz
-        rate = rospy.Rate(200.0)
+        rate = rospy.Rate(hz)
 
         while not rospy.is_shutdown():
             try:
@@ -260,7 +248,7 @@ class TrajectoryGenerator:
                 traj.yawddot = yawddot
 
                 # publish message
-                self.traj_publisher.publish(traj)
+                self.traj_pub.publish(traj)
                 rospy.loginfo(traj)
                 rate.sleep()
 
@@ -313,12 +301,17 @@ class TrajectoryGenerator:
 if __name__ == "__main__":
     ### Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
-    traj_gen = TrajectoryGenerator()
-    # traj_gen.optimal_time()
 
+    # wait time for simulator to get ready...
+    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
+    while rospy.Time.now().to_sec() < wait_time:
+        if (int(rospy.Time.now().to_sec()) % 1) == 0:
+            rospy.loginfo(
+                "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
+
+    # traj_gen.optimal_time()
     ### CProfile method
     # cProfile.run('traj_gen.optimal_time()')
-
     ### GraphvizOutput (Recommended) : This code shows profile Graphically
     # graphviz = output.GraphvizOutput(output_file='profile.png')
     # with PyCallGraph(output=graphviz):
@@ -330,6 +323,7 @@ if __name__ == "__main__":
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
+    traj_gen = TrajectoryGenerator()
     try:
         rospy.loginfo("UAV Trajectory Publisher Created")
         traj_gen.pub_traj()
