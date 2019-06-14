@@ -1,0 +1,49 @@
+<launch>
+    <!-- ZED-mini node -->
+    <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch" />
+
+    <!--SVO node -->
+    <include file="$(find riseq_estimation)/launch/riseq_svo_zedm.launch" />
+
+    <!-- TF publisher to set SVO position as origin of the camera on world frame. -->
+    <node pkg="riseq_estimation" type="riseq_estimation_tf_publisher.py" name="riseq_estimation_tf_publisher" />
+
+    <!-- SkiMap node -->
+    <arg name="camera" default="zed/zed_node" />
+    <node name="skimap_live" output="screen" pkg="skimap_ros" type="skimap_live">
+
+        <!-- Generic Parameters -->
+        <param name="hz" value="30" />
+
+        <!-- Topics Parameters -->
+        <param name="camera_rgb_topic" value="/$(arg camera)/rgb/image_rect_color" />
+        <param name="camera_depth_topic" value="/$(arg camera)/depth/depth_registered" />
+
+        <!-- Cloud parameters  -->
+        <param name="point_cloud_downscale" value="1" />
+
+        <!-- RGB-D Parameters -->
+        <param name="fx" value="673.98" />
+        <param name="fy" value="673.98" />
+        <param name="cx" value="617.67" />
+        <param name="cy" value="353.73" />
+        <param name="rows" value="720" />
+        <param name="cols" value="1280" />
+        <param name="camera_distance_max" value="5" />
+        <param name="camera_distance_min" value="0.15" />
+
+        <!-- Mapping parameters -->
+        <param name="base_frame_name" value="world" />
+        <param name="camera_frame_name" value="zed_left_camera_optical_frame" />
+        <param name="map_resolution" value="0.10" />
+        <param name="min_voxel_weight" value="100" />
+        <param name="ground_level" value="0.05" />
+        <param name="agent_height" value="1.5" />
+        <param name="enable_chisel" value="false" />
+        <param name="chisel_step" value="30" />
+        <param name="height_color" value="true" />
+    </node>
+
+    <!-- SkiMap GUI -->
+    <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find skimap_ros)/rviz/skimap_live.rviz" />
+</launch>
