@@ -12,12 +12,22 @@ import riseq_perception.keyframe_generator as kg
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_common.msg import riseq_uav_state
-
+from nav_msgs.msg import Path
 
 class TrajectoryGenerator:
     def __init__(self):
+        self.keyframe = []
+        self.waypoint = 0
+        self.gate_count = 0
+        # create subscriber for subscribing way point
+        self.point_sub = rospy.Subscriber('riseq/uav_waypoint', Path, self.waypoint_callback)
+
+        # waiting for callback function complete
+        rospy.sleep(1)
+
         # create publisher for publishing ref trajectory
         self.traj_pub = rospy.Publisher('riseq/uav_trajectory', riseq_uav_trajectory, queue_size=10)
+
 
         # Our flat output is 4
         # For smooth curve of trajectory, change and adjust order of polynomial.
@@ -26,27 +36,27 @@ class TrajectoryGenerator:
         self.n = 4
 
         # determine environment
-        self.environment = rospy.get_param("riseq/environment")
+        #self.environment = rospy.get_param("riseq/environment")
 
-        if self.environment == "simulator":
-            # select mode (easy, medium, hard, scorer)
-            mode = rospy.get_param("/uav/challenge_name", -1)
-            if mode == -1:
-                rospy.logerr("mode is not specified!")
-                rospy.signal_shutdown("[challenge_name] could not be read")
+        #if self.environment == "simulator":
+        #    # select mode (easy, medium, hard, scorer)
+        #    mode = rospy.get_param("/uav/challenge_name", -1)
+        #    if mode == -1:
+        #        rospy.logerr("mode is not specified!")
+        #        rospy.signal_shutdown("[challenge_name] could not be read")
 
             # For keyframe generation, It needs drone initial position and way point.
             # Initial orientation can be quaternion, so should be transformed to euler angle.
             # Checking way point count: n. Polynomial segment: m = gate_count
-            init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
-            self.gate_name = rospy.get_param("/uav/gate_names")
-            self.gate_count = len(self.gate_name)
-            self.gate_location = np.zeros((self.gate_count, 4, 3))
-            for i, g in enumerate(self.gate_name):
-                self.gate_location[i] = np.asarray(rospy.get_param("/uav/%s/location" % g))
-            self.keyframe = kg.gate_keyframe(init_pose, self.gate_location, self.gate_count)
-            self.waypoint = self.gate_count + 1
-
+            #init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+            #self.gate_name = rospy.get_param("/uav/gate_names")
+            #self.gate_count = len(self.gate_name)
+            #self.gate_location = np.zeros((self.gate_count, 4, 3))
+            #for i, g in enumerate(self.gate_name):
+            #    self.gate_location[i] = np.asarray(rospy.get_param("/uav/%s/location" % g))
+            #self.keyframe = kg.gate_keyframe(init_pose, self.gate_location, self.gate_count)
+            #self.waypoint = self.gate_count + 1
+        '''
             # TODO : change to ROS topic to get current state just when request for updating trajectory.
             # create publisher for publishing ref trajectory
             # self.state_sub = rospy.subscriber('riseq/estimator/uav_estimated_state', riseq_uav_state, state_update)
@@ -70,8 +80,8 @@ class TrajectoryGenerator:
             self.tolerance = 1
             # Make array Class for counting gate which is traversed
             self.gate_events = []
-            for i in range(self.gate_count):
-                self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
+            #for i in range(self.gate_count):
+            #    self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
             # count pass
             self.gate_pass = 0
 
@@ -88,22 +98,32 @@ class TrajectoryGenerator:
                 self.time_scaling = [5, 2, 2, 5]
                 self.time_scaling = np.array(self.time_scaling)
             else:
-                self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-                self.time_scaling = np.array(self.time_scaling)
+                self.time_scaling = np.ones(self.gate_count) * 5
+                # self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+                # self.time_scaling = np.array(self.time_scaling)
+
         elif self.environment == "embedded_computer":
             pass
         else:
             pass
-
-        if self.environment == "simulator":
+        '''
+        #if self.environment == "simulator":
             # Solution for piecewise polynomial and draw trajectory in plot
             # drawing plot is needed only at simulator
-            self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-            dt.draw_in_plot(self.sol_x, self.order, self.waypoint, self.keyframe)
-        elif self.environment == "embedded_computer":
-            self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-        else:
-            pass
+        current_pos = self.keyframe[0]  # x y z psi
+        current_vel = np.array([0, 0, 0, 0])
+        current_acc = np.array([0, 0, 0, 0])
+        current_jerk = np.array([0, 0, 0, 0])
+        current_snap = np.array([0, 0, 0, 0])
+        self.current_state = np.vstack(
+            (current_pos, current_vel, current_acc, current_jerk, current_snap))
+        self.time_scaling = np.ones(self.gate_count) * 5
+        self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+        dt.draw_in_plot(self.sol_x, self.order, self.waypoint, self.keyframe)
+        #elif self.environment == "embedded_computer":
+        #    self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+        #else:
+        #    pass
 
         # initialize time
         self.start_time = rospy.get_time()
@@ -249,6 +269,18 @@ class TrajectoryGenerator:
                 rospy.loginfo('People...we have a problem: {}'.format(Exception))
                 continue
 
+    def waypoint_callback(self, msg):
+        self.waypoint = len(msg.poses)
+        self.gate_count = len(msg.poses) - 1
+        self.keyframe = np.zeros((self.waypoint, 4))
+        for i in range(0, self.waypoint):
+            self.keyframe[i][0] = msg.poses[i].pose.position.x
+            self.keyframe[i][1] = msg.poses[i].pose.position.y
+            self.keyframe[i][2] = msg.poses[i].pose.position.z
+            phi, theta, psi = tf.transformations.euler_from_quaternion(
+                [msg.poses[i].pose.orientation.x, msg.poses[i].pose.orientation.y, msg.poses[i].pose.orientation.z, msg.poses[i].pose.orientation.w], axes='sxyz')
+            self.keyframe[i][3] = psi
+
 
 if __name__ == "__main__":
     # Init Node and Class
@@ -256,6 +288,7 @@ if __name__ == "__main__":
 
     # Wait some time before running. This is to adapt to some simulators
     # which require some 'settling time'
+
     try:
         wait_time = int(rospy.get_param('riseq/trajectory_wait'))
     except:
@@ -268,6 +301,7 @@ if __name__ == "__main__":
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
+    
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!
