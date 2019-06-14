@@ -27,17 +27,17 @@ from geometry_msgs.msg import PoseStamped
 
 class VisionPublisher():
     def pose_cb(self, pose):
-    """
-    Convert the coordinate of the visual odometry pose into mavros message.
-    MAVLINK uses NED frames.
-    """
+        """
+        Convert the coordinate of the visual odometry pose into mavros message.
+        MAVLINK uses NED frames.
+        """
         self.pose_px4.pose.position.x = pose.pose.position.x
         self.pose_px4.pose.position.y = -pose.pose.position.y
         self.pose_px4.pose.position.z = -pose.pose.position.z
-        self.pose_px4.pose.orientation.x = pose.orientation.x
-        self.pose_px4.pose.orientation.y = -pose.orientation.y
-        self.pose_px4.pose.orientation.z = -pose.orientation.z
-        self.pose_px4.pose.orientation.w = pose.orientation.w
+        self.pose_px4.pose.orientation.x = pose.pose.orientation.x
+        self.pose_px4.pose.orientation.y = -pose.pose.orientation.y
+        self.pose_px4.pose.orientation.z = -pose.pose.orientation.z
+        self.pose_px4.pose.orientation.w = pose.pose.orientation.w
         self.pose_px4.header.stamp = rospy.Time.now()
 
         self.pose_publisher.publish(self.pose_px4)
@@ -49,6 +49,7 @@ class VisionPublisher():
         self.r = rospy.Rate(self.rate)
 
         self.pose_px4 = PoseStamped()
+        self.pose_px4.header.frame_id = "map"
         self.pose_publisher = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
         rospy.Subscriber('/orb_slam2/pose', PoseStamped, self.pose_cb)
 
