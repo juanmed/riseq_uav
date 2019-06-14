@@ -31,8 +31,13 @@ class Trajectory_Generator2():
         # ---------------------------- #
         # Compute trajectory waypoints #
         # ---------------------------- #
+        p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+        p2 = np.array([[1],[0],[0.8]])
+        p3 = np.array([[8],[0],[1.67]])
 
-        self.waypoints = self.get_goal_waypoint( 3.5, 0 ,1.67)
+        point_list = [p1,p2,p3]
+        self.waypoints = self.get_waypoint_list(point_list)
+        #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
         #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
         print("Waypoints: ")
         print(self.waypoints)
@@ -54,7 +59,7 @@ class Trajectory_Generator2():
 
 
     def compute_reference_traj(self, time):
-        vel = 0.5     #max vel = 3
+        vel = 0.25    #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
@@ -105,6 +110,18 @@ class Trajectory_Generator2():
         waypoints[1][0] = waypoints[0][0] + x
         waypoints[1][1] = waypoints[0][1] + y
         waypoints[1][2] = waypoints[0][2] + z
+
+        return waypoints  
+
+    def get_waypoint_list(self, point_list):
+
+        # First waypoint is initial position
+        waypoints = np.zeros((len(point_list),3))
+
+        for i, point in enumerate(point_list):
+                waypoints[i][0] = point[0][0]
+                waypoints[i][1] = point[1][0]
+                waypoints[i][2] = point[2][0]
 
         return waypoints  
 
