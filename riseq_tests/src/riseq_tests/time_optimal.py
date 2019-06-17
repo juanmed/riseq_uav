@@ -1,5 +1,10 @@
 import numpy as np
 import quadratic_programming as qp
+import cProfile
+from pycallgraph import PyCallGraph
+from pycallgraph import output
+from pycallgraph.output import GraphvizOutput
+import graphviz
 import os
 from multiprocessing import Process
 
@@ -90,5 +95,55 @@ def genetic_algorithm_test(m, init_time, entity, iteration):
         iteration = iteration - 1
     print gene
 
-if __name__ == "__main__":
-    genetic_algorithm_test(10, 10, 100, 5)
+
+# TODO
+    ### Function which search minimum time
+    # Not Finish
+    def optimal_time(self):
+        sol_x = random_search(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+        #dt.draw_in_plot(sol_x, self.order, self.waypoint, self.keyframe)
+
+    # TODO
+    # It would be long time to study and apply GDM
+    # so for now, postpone this work later
+    ''' 
+    # Constrained Gradient Descent method
+    def CGDmethod(self, total_time, iteration, precision):
+        # h is some small number
+        h = 0.0000001
+        # m is segment
+        m = self.waypoint -1
+
+        # First, time is set as equal at each segment.
+        time = np.ones(m) * total_time / m
+        for i in range(0, iteration):
+            print "hi"
+            prev_time = time
+            sol_x, f_before = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, prev_time)
+            prev_val = f_before
+            for j in range(0, m):
+                g = np.ones(m) * (-1/(m-1))
+                g[j] = 1
+                print h*g
+                print prev_time
+                sol_x, f_after = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, prev_time + h*g)
+                print prev_time
+                gradient = (f_after - f_before)/h
+                print gradient
+                time[j] = time[j] - gradient
+                print prev_time
+            sol_x, val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, time)
+            if abs(val - prev_val) < precision:
+                return time, sol_x
+    '''
+
+    """
+    This is python's profile to check taking time and number of time
+    """
+    # traj_gen.optimal_time()
+    ### CProfile method
+    # cProfile.run('traj_gen.optimal_time()')
+    ### GraphvizOutput (Recommended) : This code shows profile Graphically
+    # graphviz = output.GraphvizOutput(output_file='profile.png')
+    # with PyCallGraph(output=graphviz):
+    #   traj_gen.optimal_time()
