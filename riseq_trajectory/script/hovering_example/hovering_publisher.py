@@ -1,14 +1,9 @@
 #!/usr/bin/env python
 import rospy
-import numpy as np
-import tf
-
-import moving as mv
-import hovering as hv
-import riseq_common.differential_flatness as df
-
-from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_trajectory.trajectory_generator import TrajectoryGenerator
+import numpy as np
+import moving as mv
+
 
 
 class Hovering(TrajectoryGenerator):
@@ -34,18 +29,15 @@ class Hovering(TrajectoryGenerator):
     def calculate_solution(self):
         moving = [0, 0, 1, 0]
 
-        orientation = tf.transformations.euler_from_quaternion(
-            [self.init_pose[3], self.init_pose[4], self.init_pose[5], self.init_pose[6]], axes='sxyz')
-        start_point = np.array([self.init_pose[0], self.init_pose[1], self.init_pose[2], orientation[2]])
+        start_point = np.array([self.waypoint[0][0], self.waypoint[0][1], self.waypoint[0][2], self.waypoint[0][3]])
         final_point = np.array([start_point[0] + moving[0], start_point[1] + moving[1],
                                 start_point[2] + moving[2], start_point[3]])
 
         # Get Polynomial which goes to final point.
         solution = mv.go_along(self.order, self.time, start_point, final_point)
+        waypoint = np.vstack((start_point, final_point))
 
-        # Override parent class property
-        self.keyframe = np.vstack((start_point, final_point))
-        self.solution = solution
+        super(Hovering, self).set_attribute(solution, waypoint)
 
 if __name__ == "__main__":
     # Init Node and Class

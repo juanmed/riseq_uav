@@ -301,7 +301,7 @@ if __name__ == "__main__":
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
-    
+
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!

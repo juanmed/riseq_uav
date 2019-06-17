@@ -89,3 +89,19 @@ def check_gate(gate_events, current_position, gate_pass):
             rospy.loginfo("Completed the challenge")
             rospy.signal_shutdown("Challenge complete")
     return gate_pass
+
+
+'''
+        # Should count gate number because need to know next gate
+        # Inflation means the scale of virtual cube including way point
+        # For example, it will make cube space which is larger as much as gate times inflation.
+        self.inflation = 2
+        # Tolerance is like threshold to decide whether drone pass or not
+        # If drone is close to gate within tolerance, it is determined as drone pass gate.
+        self.tolerance = 1
+        # Make array Class for counting gate which is traversed
+        self.gate_events = []
+        for i in range(self.gate_count):
+            self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
+        # count pass
+'''
