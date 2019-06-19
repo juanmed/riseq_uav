@@ -194,6 +194,9 @@ class GateDetector():
         cv2.line(img_copy,(p3[0],p3[1]),(p7[0],p7[1]), (0,255,0),line_point)
         cv2.line(img_copy,(p4[0],p4[1]),(p8[0],p8[1]), (0,255,0),line_point)
 
+        # write confidence in top left corner
+        cv2.putText(img_copy,"{:.2f}".format(best_conf_est.item()),(0,30), cv2.FONT_HERSHEY_SIMPLEX, 1,(255,0,0),2,cv2.LINE_AA)
+
         """
 
         ############################################################

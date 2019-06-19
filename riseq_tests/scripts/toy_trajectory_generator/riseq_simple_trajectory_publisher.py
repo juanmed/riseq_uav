@@ -31,9 +31,21 @@ class Trajectory_Generator2():
         # ---------------------------- #
         # Compute trajectory waypoints #
         # ---------------------------- #
-        p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
-        p2 = np.array([[1],[0],[0.8]])
-        p3 = np.array([[8],[0],[1.67]])
+        gate=True
+        if(gate==True):
+            gate_x = rospy.get_param("riseq/gate_x")
+            gate_y = rospy.get_param("riseq/gate_y")
+            gate_z = rospy.get_param("riseq/gate_z")
+            gate_yaw = rospy.get_param("riseq/gate_yaw")
+
+            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+            p2 = np.array([[0.0],[0.0],[gate_z]])
+            p3 = np.array([[gate_x],[gate_y],[gate_z]])    
+                    
+        else:
+            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+            p2 = np.array([[0],[0],[1.67]])
+            p3 = np.array([[6],[3],[1.67]])
 
         point_list = [p1,p2,p3]
         self.waypoints = self.get_waypoint_list(point_list)

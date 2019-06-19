@@ -7,6 +7,13 @@
   <arg name="debug" default="false"/>
   <arg name="gui" default="true"/>
   <arg name="paused" default="true"/>
+  <arg name="gate_x" default="10"/>
+  <arg name="gate_y" default="0"/>
+  <arg name="gate_z" default="1.67"/>
+  <arg name="gate_roll" default = "0.0"/>
+  <arg name="gate_pitch" default = "0.0"/>
+  <arg name="gate_yaw" default = "-1.5707"/>
+
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
       (even when Gazebo is started through roslaunch) -->
   <arg name="verbose" default="false"/>
@@ -34,14 +41,34 @@
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
 
-    <include file="$(find riseq_gazebo)/launch/spawn_gate.launch"/>
+    <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+      <arg name="robot_name" default="drl_gate"/>
+      <arg name="x" value="$(arg gate_x)"/>
+      <arg name="y" value="$(arg gate_y)"/>
+      <arg name="z" value="$(arg gate_z)"/>
+      <arg name="roll" value="$(arg gate_roll)"/>
+      <arg name="pitch" value="$(arg gate_pitch)"/>
+      <arg name="yaw" value="$(arg gate_yaw)"/>
+      <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/drl_gate/drl_gate.sdf"/>
+    </include>
 
   </group>
+
+  <!-- THIS PARAMETERS CAN BE ELIMINATED, USED ONLY FOR PROJECT SUBMISSION -->
+  <param name="/riseq/gate_x" value="$(arg gate_x)" type="double"/>
+  <param name="/riseq/gate_y" value="$(arg gate_y)" type="double"/>
+  <param name="/riseq/gate_z" value="$(arg gate_z)" type="double"/>
+  <param name="/riseq/gate_yaw" value="$(arg gate_yaw)" type="double"/>
 
   <rosparam command="load" file="$(find riseq_common)/config/drones/pelican.yaml"/>
   <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py">
     <remap from="riseq/tests/uav_simple_trajectory" to="riseq/uav_trajectory" />
   </node>
+
+  <!--node pkg="riseq_trajectory" name="riseq_hovering_publisher" type="hovering_publisher.py"-->
+    <!--remap from="riseq/trajectory/uav_reference_trajectory" to="riseq/uav_trajectory" /-->
+  <!--/node-->
+
   <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/>
   <node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/>
   <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/>
