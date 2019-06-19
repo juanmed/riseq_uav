@@ -2,6 +2,7 @@ import numpy as np
 
 import riseq_common.differential_flatness as df
 
+
 def publish_hovering(hovering_point):
     """
     This function is to generate hovering state at final point.

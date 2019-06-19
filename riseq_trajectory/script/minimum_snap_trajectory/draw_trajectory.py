@@ -33,6 +33,7 @@ def draw_in_plot(solution, order, waypoint, keyframe):
     ax.set_xlim(-20, 20)
     ax.set_ylim(-20, 20)
     ax.set_zlim(-20, 20)
+
     ax.set_xlabel('x axis')
     ax.set_ylabel('y axis')
     ax.set_zlabel('z axis')

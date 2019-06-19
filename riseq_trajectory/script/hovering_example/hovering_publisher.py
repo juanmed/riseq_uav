@@ -12,6 +12,7 @@ from riseq_trajectory.trajectory_generator import TrajectoryGenerator
 
 
 class Hovering(TrajectoryGenerator):
+
     """
     Publish trajectory for hovering after simple move.
     At first, drone moves simply like along z-axis or 2 coordinates.
@@ -63,6 +64,7 @@ if __name__ == "__main__":
     # wait time for simulator to get ready...
     while rospy.Time.now().to_sec() < wait_time:
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
+
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
 

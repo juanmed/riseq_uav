@@ -144,6 +144,7 @@ class QpMatrix:
         In each segment, start and end of polynomial must satisfy derivative constraint
         This is very important for continuity of trajectory
         """
+
         # constraint_data_r[m, k_r]
         # 0   -> zero ... In this case, Initial, Final velocity and acceleration is zero.
         # 1   -> continuity             In Checkpoint, it must be continuous.
@@ -256,6 +257,7 @@ class QpMatrix:
         This is very important for continuity of trajectory
         """
 
+
         constraint_data_psi = np.zeros((self.m, self.k_psi))
         if self.k_psi >= 1:
             constraint_data_psi[0, 0] = 0
@@ -353,6 +355,7 @@ class QpMatrix:
          Maximum and minimum constraint
         It determines maximum and minimum speed of drone when traversing way point.
         """
+
         # constraint for maximum minimum velocity
         # constraint for start, end point
         G1 = np.zeros((4 * self.m * (self.n-1), self.n * (self.order + 1) * self.m))
@@ -418,6 +421,7 @@ class QpMatrix:
          This function is to make corridor between certain segment.
         This can be used for straighting line.
         """
+
         # x y z corridor constraint. -corridor width < x y z < corridor width
         # size: 3 * 2 * intermediate
         G2 = np.zeros((6 * n_intermediate, self.n * (self.order+1) * self.m))
@@ -471,6 +475,7 @@ class QpMatrix:
         When matrix is redundant, in other words when matrix is not full rank,
         it is impossible to use quadratic programming.
         """
+
         i = 0
         while 1:
             if B[i] == 0.001:

@@ -5,6 +5,7 @@ import tf
 
 import quadratic_programming as qp
 import draw_trajectory as dt
+
 import gate_event as ga
 
 import riseq_common.differential_flatness as df
@@ -28,7 +29,6 @@ class TrajectoryGenerator:
         # create publisher for publishing ref trajectory
         self.traj_pub = rospy.Publisher('riseq/uav_trajectory', riseq_uav_trajectory, queue_size=10)
 
-
         # Our flat output is 4
         # For smooth curve of trajectory, change and adjust order of polynomial.
         # It is recommended to adjust 6 order polynomial at least.
@@ -45,6 +45,7 @@ class TrajectoryGenerator:
         #        rospy.logerr("mode is not specified!")
         #        rospy.signal_shutdown("[challenge_name] could not be read")
 
+
             # For keyframe generation, It needs drone initial position and way point.
             # Initial orientation can be quaternion, so should be transformed to euler angle.
             # Checking way point count: n. Polynomial segment: m = gate_count
@@ -57,6 +58,7 @@ class TrajectoryGenerator:
             #self.keyframe = kg.gate_keyframe(init_pose, self.gate_location, self.gate_count)
             #self.waypoint = self.gate_count + 1
         '''
+
             # TODO : change to ROS topic to get current state just when request for updating trajectory.
             # create publisher for publishing ref trajectory
             # self.state_sub = rospy.subscriber('riseq/estimator/uav_estimated_state', riseq_uav_state, state_update)
@@ -82,6 +84,7 @@ class TrajectoryGenerator:
             self.gate_events = []
             #for i in range(self.gate_count):
             #    self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
+
             # count pass
             self.gate_pass = 0
 
@@ -101,6 +104,7 @@ class TrajectoryGenerator:
                 self.time_scaling = np.ones(self.gate_count) * 5
                 # self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
                 # self.time_scaling = np.array(self.time_scaling)
+
 
         elif self.environment == "embedded_computer":
             pass
@@ -124,6 +128,7 @@ class TrajectoryGenerator:
         #    self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
         #else:
         #    pass
+
 
         # initialize time
         self.start_time = rospy.get_time()
@@ -302,6 +307,7 @@ if __name__ == "__main__":
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
     
+
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!
