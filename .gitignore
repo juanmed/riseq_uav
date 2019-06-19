@@ -1,6 +1,6 @@
 *.pyc
 **/.idea
-.ss6d_env/
+.ss6d_env/*
 *.ply
 *.weights
 # Created by https://www.gitignore.io/api/pycharm
