@@ -60,4 +60,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <param name="general/gpu_id"             value="$(arg gpu_id)" />
     </node>
   </group>
+
+  <!-- Voxel filter node -->
+  <include file="$(find riseq_estimation)/launch/riseq_voxel_filter.launch" />
 </launch>

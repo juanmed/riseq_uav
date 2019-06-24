@@ -39,9 +39,9 @@ if __name__ == "__main__":
 
         while not rospy.is_shutdown():
             if method == "SVO":
-                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "zed_left_camera_optical_frame")
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "base_link")
             elif method == "ORB_SLAM2":
-                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "camera_link", "zed_left_camera_optical_frame")
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "base_link", "camera_link")
             r.sleep()
 
     except rospy.ROSInterruptException:
