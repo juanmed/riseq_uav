@@ -14,7 +14,7 @@ import numpy as np
 import compute_matrix
 
 
-def qp_solution(order, waypoint, keyframe, current_state, time):
+def qp_solution(order, waypoint, state, time):
     """
     Function for calculating quadratic programming
     qp(P, q, G, h, A, b)
@@ -29,8 +29,8 @@ def qp_solution(order, waypoint, keyframe, current_state, time):
     # change format of keyframe
     # m : segment number
     # time scaling : time which is taken for each segment
-    keyframe = np.transpose(keyframe)
-    m = waypoint - 1
+    m = len(waypoint) - 1
+    waypoint = np.transpose(waypoint)
     time = np.array(time)
 
     # fourth derivative for position, second derivative for yaw
@@ -38,7 +38,7 @@ def qp_solution(order, waypoint, keyframe, current_state, time):
     # guarantee continuity until jerk and snap.
     k_r = 4
     k_psi = 2
-    qp_matrix = compute_matrix.QpMatrix(order, m, keyframe, k_r, k_psi, time)
+    qp_matrix = compute_matrix.QpMatrix(order, m, waypoint, k_r, k_psi, time)
 
     # compute P, q
     mu_r = 1
@@ -47,31 +47,33 @@ def qp_solution(order, waypoint, keyframe, current_state, time):
     q = matrix(0.0, (m * (order + 1) * 4, 1))
     P = 2 * P
 
+
     '''
      Equality constraints are used to constrain position, velocity, orientation or angular velocity through way points
     as well as enforcing continuity of trajectory and its derivatives[2]
      Inequality constraints are added to enforce safety constraints, such as collision avoidance, maximum velocity
     or maximum acceleration[2]
     '''
+
     # compute equality constraint: A,b
     A1, b1 = qp_matrix.waypoint_constraint()
-    A2, b2 = qp_matrix.derivative_constraint(current_state)
-    A3, b3 = qp_matrix.yaw_derivative_constraint(current_state)
+    A2, b2 = qp_matrix.derivative_constraint(state)
+    A3, b3 = qp_matrix.yaw_derivative_constraint(state)
     A = matrix([A1, A2, A3])
     b = matrix([b1, b2, b3])
 
     # compute inequality constraint : G,h
     max_vel = 30
     min_vel = 0
-    corridor_position = np.array([2, 3])
+    corridor_position = np.array([1, 2])
     corridor_width = 0.1
     n_intermediate = 3
-    G1, h1 = qp_matrix.maxmin_constraint(max_vel, min_vel)
+    #G1, h1 = qp_matrix.maxmin_constraint(max_vel, min_vel)
     #G2, h2 = qp_matrix.corridor_constraint(corridor_position, corridor_width, n_intermediate)
     #G = matrix([G1, G2])
     #h = matrix([h1, h2])
 
-    sol = solvers.qp(P, q, G1, h1, A, b)
+    sol = solvers.qp(P, q, None, None, A, b)
     sol_x = sol['x']
     val = sol['primal objective']
 

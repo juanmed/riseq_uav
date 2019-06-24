@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from riseq_trajectory.trajectory_generator import TrajectoryGenerator
+import riseq_trajectory.draw_trajectory as dt
 import numpy as np
 import moving as mv
 
@@ -29,7 +30,8 @@ class Hovering(TrajectoryGenerator):
     def calculate_solution(self):
         moving = [0, 0, 1, 0]
 
-        start_point = np.array([self.waypoint[0][0], self.waypoint[0][1], self.waypoint[0][2], self.waypoint[0][3]])
+        start_point = [3.0, 52.0, 2.5, -1.57]
+        #start_point = np.array([self.waypoint[0][0], self.waypoint[0][1], self.waypoint[0][2], self.waypoint[0][3]])
         final_point = np.array([start_point[0] + moving[0], start_point[1] + moving[1],
                                 start_point[2] + moving[2], start_point[3]])
 
@@ -37,7 +39,11 @@ class Hovering(TrajectoryGenerator):
         solution = mv.go_along(self.order, self.time, start_point, final_point)
         waypoint = np.vstack((start_point, final_point))
 
-        super(Hovering, self).set_attribute(solution, waypoint)
+        self.m = 1
+        self.solution = solution
+        self.waypoint = waypoint
+        dt.plot_traj(solution, self.order, self.m, self.waypoint)
+
 
 if __name__ == "__main__":
     # Init Node and Class

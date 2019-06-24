@@ -175,8 +175,6 @@ class QpMatrix:
                 if i == 0:
                     # Initial vel, acc, jerk, snap: First polynomial which has time as 0.
                     values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    values = values * np.power(1.0/self.time_scaling[0], h+1)
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -193,12 +191,10 @@ class QpMatrix:
                         else:
                             a[i*(self.order+1)*self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = values
                             A2[k + h*(self.n-1), :] = a
-                            b2[k + h*(self.n-1)] = current_state[h+1][k]        # constraint_data_r[i, h]
+                            b2[k + h*(self.n-1)] = current_state[h+1][k] * np.power(self.time_scaling[0], h + 1)        # constraint_data_r[i, h]
 
                     # Final vel, acc, jerk, snap: Last polynomial which has time as 1.
                     values = self.poly_coef[h+1, 1]
-                    # Time scaling
-                    values = values * np.power(1.0 / self.time_scaling[self.m - 1], h + 1)
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -216,9 +212,6 @@ class QpMatrix:
                     # Elsewhere: polynomial of each segment which has time as 0, 1 except initial, final point.
                     end_values = self.poly_coef[h+1, 1]
                     start_values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    end_values = end_values * np.power(1.0 / self.time_scaling[i-1], h + 1)
-                    start_values = start_values * np.power(1.0 / self.time_scaling[i], h + 1)
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -272,8 +265,6 @@ class QpMatrix:
                 if i == 0:
                     # Initial yaw_dot, yaw_ddot: First polynomial which has time as 0.
                     values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    values = values * np.power(1.0 / self.time_scaling[0], h + 1)
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -290,12 +281,10 @@ class QpMatrix:
                         else:
                             a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1): i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = values
                             A3[k + h * 1, :] = a
-                            b3[k + h * 1] = current_state[h+1][k+3]                  #constraint_data_psi[i, h]
+                            b3[k + h * 1] = current_state[h+1][k+3] * np.power(self.time_scaling[0], h + 1)
 
                     # Final yaw_dot, yaw_ddot: Last polynomial which has time as 1.
                     values = self.poly_coef[h+1, 1]
-                    # Time scaling
-                    values = values * np.power(1.0 / self.time_scaling[self.m - 1], h + 1)
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -314,9 +303,6 @@ class QpMatrix:
                     # Elsewhere: polynomial of each segment which has time as 0, 1 except initial, final point
                     end_values = self.poly_coef[h+1, 1]
                     start_values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    end_values = end_values * np.power(1.0 / self.time_scaling[i - 1], h + 1)
-                    start_values = start_values * np.power(1.0 / self.time_scaling[i], h + 1)
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:

@@ -44,13 +44,6 @@ class TrajectoryGenerator(object):
         # It is index for where drone is now.
         self.index = 0
 
-    def set_attribute(self, solution, waypoint):
-        """
-        Function to override attribute from child class
-        """
-        self.solution = solution
-        self.waypoint = waypoint
-
     def compute_reference_traj(self):
         # Compute trajectory at time = now
         time = rospy.get_time()

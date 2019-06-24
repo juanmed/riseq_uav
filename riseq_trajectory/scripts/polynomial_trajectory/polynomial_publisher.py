@@ -184,8 +184,6 @@ class TrajectoryGenerator:
             traj.yawdot = yawdot
             traj.yawddot = yawddot
 
-            print type(yaw)
-
             # publish message
             self.traj_pub.publish(traj)
             rospy.loginfo(traj)
