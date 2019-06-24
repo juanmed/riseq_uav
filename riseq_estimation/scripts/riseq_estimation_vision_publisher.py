@@ -32,12 +32,12 @@ class VisionPublisher():
         MAVLINK uses NED frames.
         """
         self.pose_px4.pose.position.x = pose.pose.position.x
-        self.pose_px4.pose.position.y = -pose.pose.position.y
-        self.pose_px4.pose.position.z = -pose.pose.position.z
-        self.pose_px4.pose.orientation.x = pose.pose.orientation.x
+        self.pose_px4.pose.position.y = pose.pose.position.y
+        self.pose_px4.pose.position.z = pose.pose.position.z
+        self.pose_px4.pose.orientation.x = -pose.pose.orientation.x
         self.pose_px4.pose.orientation.y = -pose.pose.orientation.y
         self.pose_px4.pose.orientation.z = -pose.pose.orientation.z
-        self.pose_px4.pose.orientation.w = pose.pose.orientation.w
+        self.pose_px4.pose.orientation.w = -pose.pose.orientation.w
         self.pose_px4.header.stamp = rospy.Time.now()
 
         self.pose_publisher.publish(self.pose_px4)
