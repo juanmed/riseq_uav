@@ -24,11 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-<<<<<<< HEAD
-# catkin_python_setup()
-=======
 catkin_python_setup()
->>>>>>> dev/trajectory
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -75,21 +71,14 @@ catkin_python_setup()
 # )
 
 ## Generate added messages and services with any dependencies listed here
-<<<<<<< HEAD
- generate_messages(
-=======
 generate_messages(
->>>>>>> dev/trajectory
    DEPENDENCIES
    nav_msgs
    sensor_msgs   
    std_msgs
    geometry_msgs
-<<<<<<< HEAD
- )
-=======
 )
->>>>>>> dev/trajectory
+
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
