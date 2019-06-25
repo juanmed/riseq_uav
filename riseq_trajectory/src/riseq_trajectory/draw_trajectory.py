@@ -3,14 +3,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def plot_traj(solution, order, waypoint, keyframe):
+def plot_traj(solution, order, m, keyframe):
     x_trajec = []
     y_trajec = []
     z_trajec = []
     psi_trajec = []
     n = 4
 
-    for i in range(0, waypoint-1):
+    for i in range(0, m):
         # we can use np.arrange instead of np.linspace
         x_trajec = np.append(x_trajec, np.polyval(
             solution[i * n * (order + 1) + 0 * (order + 1): i * n * (order + 1) + (order + 1) + 0 * (order + 1)],

@@ -9,7 +9,6 @@ def hovering_traj(hovering_point):
     As you see, except position and psi, all state must be zero to hover drone.
     It returns trajectory which is computed by differential flatness theory.
     """
-
     x = hovering_point[0]
     y = hovering_point[1]
     z = hovering_point[2]
