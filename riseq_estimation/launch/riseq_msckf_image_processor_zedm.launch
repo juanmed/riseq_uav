@@ -2,7 +2,7 @@
 
   <arg name="robot" default="zed"/>
   <arg name="calibration_file"
-    default="$(find riseq_estimation)/config/camchain-imucam-zedm.yaml"/>
+    default="$(find riseq_estimation)/cfg/camchain-imucam-zedm.yaml"/>
 
   <!-- Image Processor Nodelet  -->
   <group ns="$(arg robot)">

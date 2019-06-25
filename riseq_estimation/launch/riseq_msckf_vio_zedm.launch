@@ -3,7 +3,7 @@
   <arg name="robot" default="zed"/>
   <arg name="fixed_frame_id" default="map"/>
   <arg name="calibration_file"
-    default="$(find riseq_estimation)/config/camchain-imucam-zedm.yaml"/>
+    default="$(find riseq_estimation)/cfg/camchain-imucam-zedm.yaml"/>
 
   <!-- Image Processor Nodelet  -->
   <include file="$(find riseq_estimation)/launch/riseq_msckf_image_processor_zedm.launch">

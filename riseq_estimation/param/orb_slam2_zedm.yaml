@@ -19,7 +19,7 @@ Camera.width: 672
 Camera.height: 376
 
 # Camera frames per second 
-Camera.fps: 30
+Camera.fps: 20
 
 # stereo baseline times fx
 Camera.bf: 22.05
@@ -50,18 +50,4 @@ ORBextractor.nLevels: 8
 # You can lower these values if your images have low contrast			
 ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
-
-#--------------------------------------------------------------------------------------------
-# Viewer Parameters
-#--------------------------------------------------------------------------------------------
-Viewer.KeyFrameSize: 0.05
-Viewer.KeyFrameLineWidth: 1
-Viewer.GraphLineWidth: 0.9
-Viewer.PointSize: 2
-Viewer.CameraSize: 0.08
-Viewer.CameraLineWidth: 3
-Viewer.ViewpointX: 0
-Viewer.ViewpointY: -0.7
-Viewer.ViewpointZ: -1.8
-Viewer.ViewpointF: 500
 

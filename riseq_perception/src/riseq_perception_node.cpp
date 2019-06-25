@@ -31,7 +31,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-/// Including PCL library to work with Point Cloud
+/// Including PCL library to work with PointCloud
 /// http://www.pointclouds.org/documentation/tutorials/cluster_extraction.php
 #include <pcl/ModelCoefficients.h>
 #include <pcl/io/pcd_io.h>
