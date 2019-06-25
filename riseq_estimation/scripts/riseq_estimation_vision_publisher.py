@@ -26,21 +26,21 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 
 class VisionPublisher():
-    def pose_cb(self, pose):
+    def pose_cb(self, vo_pose):
         """
         Convert the coordinate of the visual odometry pose into mavros message.
         MAVLINK uses NED frames.
         """
-        self.pose_px4.pose.position.x = pose.pose.position.x
-        self.pose_px4.pose.position.y = pose.pose.position.y
-        self.pose_px4.pose.position.z = pose.pose.position.z
-        self.pose_px4.pose.orientation.x = -pose.pose.orientation.x
-        self.pose_px4.pose.orientation.y = -pose.pose.orientation.y
-        self.pose_px4.pose.orientation.z = -pose.pose.orientation.z
-        self.pose_px4.pose.orientation.w = -pose.pose.orientation.w
-        self.pose_px4.header.stamp = rospy.Time.now()
+        self.px4_pose.pose.position.x = vo_pose.pose.position.x
+        self.px4_pose.pose.position.y = vo_pose.pose.position.y
+        self.px4_pose.pose.position.z = vo_pose.pose.position.z
+        self.px4_pose.pose.orientation.x = -vo_pose.pose.orientation.x
+        self.px4_pose.pose.orientation.y = -vo_pose.pose.orientation.y
+        self.px4_pose.pose.orientation.z = -vo_pose.pose.orientation.z
+        self.px4_pose.pose.orientation.w = -vo_pose.pose.orientation.w
+        self.px4_pose.header.stamp = rospy.Time.now()
 
-        self.pose_publisher.publish(self.pose_px4)
+        self.pose_publisher.publish(self.px4_pose)
 
 
     def __init__(self):
@@ -48,10 +48,10 @@ class VisionPublisher():
         self.rate = 100
         self.r = rospy.Rate(self.rate)
 
-        self.pose_px4 = PoseStamped()
-        self.pose_px4.header.frame_id = "map"
+        self.px4_pose = PoseStamped()
+        self.px4_pose.header.frame_id = "map"
         self.pose_publisher = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
-        rospy.Subscriber('/orb_slam2/pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/riseq/estimation/vo_pose', PoseStamped, self.pose_cb)
 
 
     def loop(self):

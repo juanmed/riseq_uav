@@ -7,10 +7,10 @@
     <remap from="~output" to="/riseq/estimation/point_cloud" />
     <rosparam>
       filter_field_name: z
-      filter_limit_min: 0.10
-      filter_limit_max: 12.0
+      filter_limit_min: 0.15
+      filter_limit_max: 7.5
       filter_limit_negative: False
-      leaf_size: 0.05
+      leaf_size: 0.1
     </rosparam>
   </node>
 </launch>
