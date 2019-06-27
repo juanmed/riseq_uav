@@ -29,7 +29,7 @@ class TrajectoryGenerator(object):
         rospy.sleep(0.1)
 
         # create publisher for publishing ref trajectory
-        self.traj_pub = rospy.Publisher('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_pub = rospy.Publisher('riseq/trajectory/uav_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # Our flat output is 4
         self.n = 4

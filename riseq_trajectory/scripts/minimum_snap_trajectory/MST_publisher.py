@@ -52,7 +52,6 @@ class MinimumSnapTrajectory(TrajectoryGenerator):
         self.state = np.zeros((5, 4))
         solution, val = qp.qp_solution(self.order, self.waypoint, self.state, self.time)
         self.solution = solution
-        dt.plot_traj(solution, self.order, self.m, self.waypoint)
 
 
 if __name__ == "__main__":
