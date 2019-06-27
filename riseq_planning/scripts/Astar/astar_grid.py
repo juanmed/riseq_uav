@@ -5,9 +5,9 @@ from heapq import *
 from riseq_planning.waypoint_publisher import WayPointPublisher
 
 
-class AStar(WayPointPublisher):
+class AStarGrid(WayPointPublisher):
     """
-    Class to solve A* algorithm and publish way point
+    Class to solve A* algorithm based on grid map and publish way point
     """
     def __init__(self, nmap, start, goal):
         self.nmap = nmap
@@ -23,7 +23,7 @@ class AStar(WayPointPublisher):
 
         new_waypoint = self.reconstruct_waypoint()
 
-        super(AStar, self).__init__(new_waypoint)
+        super(AStarGrid, self).__init__(new_waypoint)
 
     def heuristic(self, a, b):
         """
@@ -73,13 +73,11 @@ class AStar(WayPointPublisher):
 
                 tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
 
-                if neighbor not in [i[1] for i in open_set]:
+                if neighbor not in [i[1] for i in open_set] or tentative_g_score < gscore[neighbor]:
                     came_from[neighbor] = current
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, self.goal)
                     heappush(open_set, (fscore[neighbor], neighbor))
-                elif tentative_g_score > gscore[neighbor]:
-                    continue
 
         return False
 
@@ -239,7 +237,7 @@ if __name__ == '__main__':
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    way_point = AStar(nmap, (0, 3), (6, 13))
+    way_point = AStarGrid(nmap, (0, 3), (6, 13))
     try:
         rospy.loginfo("UAV Waypoint Publisher Created")
         way_point.pub_point()
