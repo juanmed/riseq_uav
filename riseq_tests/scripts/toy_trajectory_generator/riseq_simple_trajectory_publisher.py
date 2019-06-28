@@ -47,10 +47,10 @@ class Trajectory_Generator2():
             p2 = np.array([[0],[0],[1.67]])
             p3 = np.array([[6],[3],[1.67]])
 
-        point_list = [p1,p2,p3]
-        self.waypoints = self.get_waypoint_list(point_list)
+        point_list = [p1,p3]
+        #self.waypoints = self.get_waypoint_list(point_list)
         #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
-        #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
+        self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -71,7 +71,7 @@ class Trajectory_Generator2():
 
 
     def compute_reference_traj(self, time):
-        vel = 0.25    #max vel = 3
+        vel = 0.5    #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
@@ -166,6 +166,7 @@ def pub_traj():
     # publish at 10Hz
 
     rate = rospy.Rate(rospy.get_param('riseq/trajectory_update_rate', 200))
+    print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(rospy.get_param('riseq/trajectory_update_rate', 200)))
 
     while not rospy.is_shutdown():
 
@@ -262,7 +263,7 @@ def pub_traj():
 
             # publish message
             traj_publisher.publish(traj)
-            rospy.loginfo(traj)
+            #rospy.loginfo(traj)
             rate.sleep()
 
         except Exception:

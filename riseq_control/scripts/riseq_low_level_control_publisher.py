@@ -108,11 +108,6 @@ class uav_Low_Level_Controller():
             rospy.loginfo(">> Gazebo unpaused at {}".format(rospy.Time.now()))
             #gazebo_unpause()
 
-    def kai_allibert_control_torque(self, w, w_des, w_dot_ref, gain):
-        K_omega = gain
-        M = -K_omega*(w - w_des) + np.cross(w,np.dot(params.I,w_des), axis = 0) + np.dot(params.I, w_dot_ref)
-        return np.array(M)
-
     def feedback_linearization_controller(self,hlc):
         """
         @description Calculate control torque M and rotor speeds required to achieve control
@@ -206,6 +201,11 @@ class uav_Low_Level_Controller():
         M = np.dot(self.Inertia, ub) + np.cross(angular_velocity, np.dot(self.Inertia, angular_velocity), axis = 0)
 
         return M
+        
+    def kai_allibert_control_torque(self, w, w_des, w_dot_ref, gain):
+        K_omega = gain
+        M = -K_omega*(w - w_des) + np.cross(w,np.dot(self.Inertia,w_des), axis = 0) + np.dot(self.Inertia, w_dot_ref)
+        return np.array(M)
 
     def get_duty_cycles(self, w_i):
         """

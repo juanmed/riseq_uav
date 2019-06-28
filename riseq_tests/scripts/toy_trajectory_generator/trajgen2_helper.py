@@ -69,7 +69,7 @@ def get_helix_waypoints(t, n):
 
     a = 2
     b = 2
-    c = 1
+    c = 0.5
 
     wx = 1.0
     wy = 1.0

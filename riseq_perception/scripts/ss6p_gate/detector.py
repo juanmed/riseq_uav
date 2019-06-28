@@ -51,11 +51,11 @@ def find_intersection(l1, l2):
 
 
 class GateDetector():
-    def __init__(self):
+    def __init__(self, cfg, ply, weights, data):
 
 
         # Parse configuration files
-        self.options    = read_data_cfg('cfg/gate3.data')
+        self.options    = read_data_cfg(data)
         self.meshname   = self.options['mesh']
         self.name       = self.options['name']
 
@@ -113,9 +113,9 @@ class GateDetector():
         self.internal_calibration = get_camera_intrinsic()
 
         # Create the network based on cfg file
-        self.model = Darknet('cfg/yolo-pose.cfg')
+        self.model = Darknet(cfg)
         #self.model.print_network()
-        self.model.load_weights('weights/model.weights')
+        self.model.load_weights(weights)
         self.model.cuda()
         self.model.eval()
 

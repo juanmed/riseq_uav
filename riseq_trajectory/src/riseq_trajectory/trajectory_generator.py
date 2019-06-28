@@ -67,7 +67,8 @@ class TrajectoryGenerator(object):
         return ref_trajectory
 
     def pub_traj(self):
-        hz = rospy.get_param('trajectory_update_rate', 200)
+        hz = rospy.get_param('riseq/trajectory_update_rate', 200)
+        print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(hz))
 
         # publish at Hz
         rate = rospy.Rate(hz)
@@ -158,7 +159,7 @@ class TrajectoryGenerator(object):
 
             # publish message
             self.traj_pub.publish(traj)
-            rospy.loginfo(traj)
+            #rospy.loginfo(traj)
             rate.sleep()
 
     def waypoint_update(self, msg):

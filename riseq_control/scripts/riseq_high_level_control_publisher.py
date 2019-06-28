@@ -124,7 +124,7 @@ class uav_High_Level_Controller():
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
         self.min_thrust = 0.0
 
-        self.position_control_frequency_ratio = 10       # This is the factor by which the high_level_controller is slower
+        self.position_control_frequency_ratio = 5       # This is the factor by which the high_level_controller is slower
                                                          # than low_level controller
         self.position_control_loops = 0                                        
         self.pos_error_integral = np.zeros((3,1))       # Store position error integral
@@ -156,9 +156,9 @@ class uav_High_Level_Controller():
             self.Kr = 1
         
         # debugging variables
-#        self.a_e = np.zeros((3,1))
-#        self.a_e2 = np.zeros((3,1))
-#        self.Traw2 = 0
+        #self.a_e = np.zeros((3,1))
+        #self.a_e2 = np.zeros((3,1))
+        #self.Traw2 = 0
 
 
     def euler_angle_controller(self, state, trajectory):
@@ -195,6 +195,7 @@ class uav_High_Level_Controller():
             # extract real values
             p = np.array([[state.pose.pose.position.x], [state.pose.pose.position.y], [state.pose.pose.position.z]])
             v = np.array([[state.twist.twist.linear.x], [state.twist.twist.linear.y], [state.twist.twist.linear.z]])
+            #v = np.dot(Rbw, v)
 
             # ---------------------------------------------- #
             #                POSITION CONTROL                #

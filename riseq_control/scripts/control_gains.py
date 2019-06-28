@@ -161,14 +161,14 @@ D_ = np.matrix([0.0])
 #    H(s) = 1 / s**2
 Kpx2 = 3.0
 Kix2 = 0.5*0.0
-Kdx2 = 3.0
+Kdx2 = 10.0
 
 Kpy2 = 3.0
 Kiy2 = 0.5*0.0
-Kdy2 = 3.0
+Kdy2 = 10.0
 
 Kpz2 = 3.0
-Kiz2 = 0.01*1.0
+Kiz2 = 0.01*0.0
 Kdz2 = 10.0
 
 # PID Gains for 1st order system with transfer function
