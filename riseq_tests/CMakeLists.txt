@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   trajectory_msgs
+  mavros_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -109,7 +110,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES riseq_tests
-#  CATKIN_DEPENDS message_generation nav_msgs roscpp rospy sensor_msgs std_msgs
+#  CATKIN_DEPENDS message_generation nav_msgs roscpp rospy sensor_msgs std_msgs mavros_msgs
 #  DEPENDS system_lib
 )
 

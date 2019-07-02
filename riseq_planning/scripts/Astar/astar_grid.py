@@ -21,6 +21,7 @@ def heuristic(a, b):
     """
     return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
+
 def reconstruct_path(current, came_from):
     """
     function to construct path based on A* algorithm in grid map
