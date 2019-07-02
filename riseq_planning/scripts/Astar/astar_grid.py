@@ -3,13 +3,15 @@ import rospy
 import numpy as np
 from heapq import *
 from visualization_msgs.msg import MarkerArray
-from riseq_planning.waypoint_publisher import WayPointPublisher
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
+from tf.transformations import quaternion_from_euler
 
 
-#TODO : consider drone scale and configurration
+#TODO : Optimal Path
 
 start = (0.05, 0.05)
-goal = (7.05, -2.05)
+goal = (1.55, 0.05)
 
 
 def heuristic(a, b):
@@ -18,7 +20,6 @@ def heuristic(a, b):
     It can be used as heuristic cost estimate
     """
     return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
-
 
 def reconstruct_path(current, came_from):
     """
@@ -37,7 +38,7 @@ def construct_neighbor(current, occupied):
     Ignore wall and occupied space.
     Even also it ignores diagonal space where drone can not fly through.
     """
-    neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    neighbors = [(1, 1), (1, -1), (-1, 1), (-1, -1), (0, 1), (0, -1), (1, 0), (-1, 0)]
     is_neighbor = np.ones((3, 3), dtype=bool)
     is_neighbor[1, 1] = False
 
@@ -69,26 +70,38 @@ def construct_neighbor(current, occupied):
     return new_neighbors
 
 
-class AStarMap(WayPointPublisher):
+class AStarMap:
     def __init__(self, start, goal):
-        self.waypoint = []
-        self.path = []
         self.start = start
         self.goal = goal
+
+        # inflate occupied space as drone's scale
+        self.scale = 0.2
+
+        # check a* algorithm can solve problem
+        self.is_path = False
+        self.path = []
+
         rospy.Subscriber("occupied_cells_vis_array", MarkerArray, self.astar)
-        rospy.sleep(1)
 
-        while not self.path:
-            # wait until path is constructed completely.
-            pass
+        while not self.is_path:
+            rospy.sleep(0.1)
 
-        super(AStarMap, self).__init__()
+        self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
 
     def astar(self, msg):
+        start_time = rospy.get_time()
         occupied = set()
         for point in msg.markers[16].points:
-            if 1.45 <= point.z <= 1.55:
-                occupied.add((round(point.x, 2), round(point.y, 2)))
+            if 0.25 <= point.z <= 0.35:
+                for i in range(0, int(self.scale * 10) + 1):
+                    for j in range(0, int(self.scale * 10) + 1):
+                        x = point.x + float(i)/10
+                        y = point.y + float(j)/10
+                        occupied.add((round(x, 2), round(y, 2)))
+                        x = point.x - float(i)/10
+                        y = point.y - float(j)/10
+                        occupied.add((round(x, 2), round(y, 2)))
 
         close_set = set()
         open_set = []
@@ -102,6 +115,9 @@ class AStarMap(WayPointPublisher):
 
         # while open_set is not empty
         while open_set:
+            if rospy.get_time() - start_time > 2:
+                break
+
             # the node in openSet having the lowest fscore value
             # remove current in open_set
             current = heappop(open_set)[1]
@@ -109,11 +125,15 @@ class AStarMap(WayPointPublisher):
                 path = reconstruct_path(current, came_from)
                 self.path = path
                 self.path.reverse()
-                self.waypoint = self.path
                 self.waypoint = self.reconstruct_waypoint()
+                self.is_path = True
+                break
 
             close_set.add(current)
             neighbors = construct_neighbor(current, occupied)
+            if (-0.1, -0.1) in neighbors:
+                if (-0.1, 0.0) not in neighbors:
+                    print "!!!"
             for i, j in neighbors:
                 neighbor = round(current[0] + i, 2), round(current[1] + j, 2)
                 if neighbor in close_set:
@@ -127,7 +147,6 @@ class AStarMap(WayPointPublisher):
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + heuristic(neighbor, self.goal)
                     heappush(open_set, (fscore[neighbor], neighbor))
-        print "Fail"
 
     def reconstruct_waypoint(self):
         """
@@ -135,16 +154,42 @@ class AStarMap(WayPointPublisher):
         For now, A* algorithm solves path in 2D grid map and ignore heading of drone.
         Because point's form is (x, y), it have to be changed to (x, y, z, psi) form.
         """
-        m = len(self.waypoint)
+        m = len(self.path)
         new_waypoint = np.zeros((m, 4))
 
-        for i in range(0, m):
-            new_waypoint[i][0] = self.waypoint[i][0]  # x
-            new_waypoint[i][1] = self.waypoint[i][1]  # y
-            new_waypoint[i][2] = 1.5  # z
-            new_waypoint[i][3] = 0  # psi
+        if self.path:
+            for i in range(0, m):
+                new_waypoint[i][0] = self.path[i][0]  # x
+                new_waypoint[i][1] = self.path[i][1]  # y
+                new_waypoint[i][2] = 0.3  # z
+                new_waypoint[i][3] = 0  # psi
 
         return new_waypoint
+
+    def pub_point(self):
+        hz = 10
+        rate = rospy.Rate(hz)
+
+        while not rospy.is_shutdown():
+            point = Path()
+            point.header.stamp = rospy.Time.now()
+            point.header.frame_id = "map"
+            for i in range(0, len(self.waypoint)):
+                pose = PoseStamped()
+                pose.header.frame_id = str(i)
+                pose.pose.position.x = self.waypoint[i][0]
+                pose.pose.position.y = self.waypoint[i][1]
+                pose.pose.position.z = self.waypoint[i][2]
+                q = quaternion_from_euler(0, 0, self.waypoint[i][3])
+                pose.pose.orientation.x = q[0]
+                pose.pose.orientation.y = q[1]
+                pose.pose.orientation.z = q[2]
+                pose.pose.orientation.w = q[3]
+                point.poses.append(pose)
+
+            self.point_pub.publish(point)
+            rate.sleep()
+
 
 if __name__ == '__main__':
     rospy.init_node('riseq_waypoint_publisher', anonymous=True)

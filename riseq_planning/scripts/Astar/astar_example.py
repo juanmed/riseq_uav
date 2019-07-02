@@ -22,7 +22,7 @@ class AStarGrid(WayPointPublisher):
         self.waypoint.append(self.goal)
 
         self.waypoint = self.reconstruct_waypoint()
-        #super(AStarGrid, self).__init__()
+        super(AStarGrid, self).__init__()
 
     def heuristic(self, a, b):
         """
@@ -103,6 +103,7 @@ class AStarGrid(WayPointPublisher):
                 is_neighbor[i + 1][j + 1] = False
                 # array bound x walls
 
+
         # ignore diagonal space
         if bool(is_neighbor[0, 1]) is False:
             is_neighbor[0, 0] = False
@@ -116,6 +117,7 @@ class AStarGrid(WayPointPublisher):
         if bool(is_neighbor[2, 1]) is False:
             is_neighbor[2, 0] = False
             is_neighbor[2, 2] = False
+
 
         new_neighbors = []
         for i in range(0, 3):
