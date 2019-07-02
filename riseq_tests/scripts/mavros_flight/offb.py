@@ -52,8 +52,7 @@ if __name__ == "__main__":
     arm_cmd.value = True
 
     last_request = rospy.Time.now()
-
-    start_time = rospy.get_time()
+    start_time = rospy.Time.now()
 
     while not rospy.is_shutdown():
         # print(current_state)
@@ -71,7 +70,8 @@ if __name__ == "__main__":
         local_pos_pub.publish(pose)
         # print current_state
         rate.sleep()
-        if rospy.get_time() - start_time > 20:
+
+        if rospy.Time.now() - start_time > rospy.Duration(15.0):
             break
 
     print("Return")
@@ -85,3 +85,10 @@ if __name__ == "__main__":
     print("landing")
     land_cmd = CommandTOL()
     landing_client(0.0, 0.0, 0.0, 0.0, 0.0)
+
+    rospy.sleep(5)
+
+    print("disarming")
+    arm_cmd.value = False
+    arm_client_1 = arming_client(arm_cmd.value)
+
