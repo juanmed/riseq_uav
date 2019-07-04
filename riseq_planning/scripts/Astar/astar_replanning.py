@@ -8,12 +8,21 @@ from geometry_msgs.msg import PoseStamped
 from tf.transformations import quaternion_from_euler
 
 
-def heuristic(a, b):
+def get_gscore(a, b):
     """
-    helper function to get distance between A to B
-    It can be used as heuristic cost estimate
+    helper function to get gscore between A to B
     """
-    return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
+    return 1.4 * min(b[0] - a[0], b[1] - a[1]) + abs((b[0] - a[0]) - (b[1] - a[1]))
+
+
+def get_heuristic(a, b):
+    """
+    helper function to get heuristic between A to B
+    """
+    # Euclidean distance
+    # return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
+
+    return 1.41 * min(abs(b[0] - a[0]), abs(b[1] - a[1])) + abs((b[0] - a[0]) - (b[1] - a[1]))
 
 
 def reconstruct_path(current, came_from):
@@ -38,7 +47,7 @@ def construct_neighbor(current, occupied):
     is_neighbor[1, 1] = False
 
     for i, j in neighbors:
-        neighbor = (current[0] + float(i)/10, current[1] + float(j)/10)
+        neighbor = (round(current[0] + float(i)/10, 2), round(current[1] + float(j)/10, 2))
         if neighbor in occupied:
             is_neighbor[i + 1][j + 1] = False
 
@@ -78,7 +87,7 @@ def reconstruct_waypoint(path):
         for i in range(0, m):
             waypoint[i][0] = path[i][0]  # x
             waypoint[i][1] = path[i][1]  # y
-            waypoint[i][2] = 0.5  # z
+            waypoint[i][2] = 1  # z
             waypoint[i][3] = 0  # psi
 
     return waypoint
@@ -102,17 +111,20 @@ class AStarMap:
         # set for occupied space
         self.occupied = set()
 
+        self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
         rospy.Subscriber("mavros/local_position/pose", PoseStamped, self.pose_cb)
         rospy.Subscriber("occupied_cells_vis_array", MarkerArray, self.octomap_cb)
-        while not self.current_position or not self.occupied:
-            rospy.sleep(0.1)
+        print "Publisher and Subscriber completed"
 
-        self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
+        self.rate = rospy.Rate(2)
+        while not self.current_position or not self.occupied:
+            print "no subscribe message"
+            self.rate.sleep()
 
     def octomap_cb(self, msg):
         self.occupied = set()
         for point in msg.markers[16].points:
-            if 0.45 <= point.z <= 0.55:
+            if 0.95 <= point.z <= 1.05:
                 for i in range(0, int(self.scale * 10) + 1):
                     for j in range(0, int(self.scale * 10) + 1):
                         x = point.x + float(i)/10
@@ -130,13 +142,13 @@ class AStarMap:
             self.is_update = False
         '''
         goal_array = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
-        #goal_array = [(0.00, -1.00)]
+        #goal_array = [(20.00, -1.00)]
         for goal in goal_array:
-            print goal
             new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
             if self.astar(new_goal) is True:
                 rospy.loginfo("Find path %0.2f %0.2f" % (goal[0], goal[1]))
                 return True
+            print "can't find path"
 
     def astar(self, goal):
         current_position = self.current_position
@@ -148,13 +160,13 @@ class AStarMap:
         # dictionary
         came_from = {}
         gscore = {current_position: 0}
-        fscore = {current_position: heuristic(current_position, goal)}
+        fscore = {current_position: get_heuristic(current_position, goal)}
 
         heappush(open_set, (fscore[current_position], current_position))
 
         # while open_set is not empty
         while open_set:
-            if rospy.get_time() - start_time > 2:
+            if rospy.get_time() - start_time > 1:
                 return False
 
             # the node in openSet having the lowest fscore value
@@ -177,18 +189,15 @@ class AStarMap:
                     # ignore the neighbor which is already evaluated
                     continue
 
-                tentative_g_score = gscore[current] + heuristic(current, neighbor)
+                tentative_g_score = gscore[current] + get_gscore(current, neighbor)
 
                 if neighbor not in [i[1] for i in open_set] or tentative_g_score < gscore[neighbor]:
                     came_from[neighbor] = current
                     gscore[neighbor] = tentative_g_score
-                    fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal)
+                    fscore[neighbor] = tentative_g_score + get_heuristic(neighbor, goal)
                     heappush(open_set, (fscore[neighbor], neighbor))
 
     def pub_point(self):
-        hz = 2
-        rate = rospy.Rate(hz)
-
         while not rospy.is_shutdown():
             if self.path_planning() is True:
                 # if path is constructed
@@ -209,7 +218,7 @@ class AStarMap:
                     point.poses.append(pose)
 
                 self.point_pub.publish(point)
-                rate.sleep()
+                self.rate.sleep()
 
     def pose_cb(self, msg):
         # This is trick for octree map because octree map has 10cm interval and 5cm at origin
@@ -228,18 +237,13 @@ if __name__ == '__main__':
         print('riseq/planning_wait_time parameter is unavailable')
         print('Setting a wait time of 2 seconds.')
         wait_time = 2
-
+    '''
     # wait time for simulator to get ready...
     while rospy.Time.now().to_sec() < wait_time:
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Waypoint Publisher in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
-
-    rospy.sleep(0.1)
-    # IMPORTANT WAIT TIME!
-    # If this is not here, the "start_time" in the trajectory generator is
-    # initialized to zero (because the node has not started fully) and the
-    # time for the trajectory will be degenerated
+    '''
 
     way_point = AStarMap()
     try:
