@@ -8,12 +8,6 @@ from geometry_msgs.msg import PoseStamped
 from tf.transformations import quaternion_from_euler
 
 
-#TODO : Optimal Path
-
-start = (0.05, 0.05)
-goal = (1.55, -3.05)
-
-
 def heuristic(a, b):
     """
     helper function to get distance between A to B
@@ -71,18 +65,45 @@ def construct_neighbor(current, occupied):
     return new_neighbors
 
 
+def reconstruct_waypoint(path):
+    """
+    function to reconstruct way point
+    For now, A* algorithm solves path in 2D grid map and ignore heading of drone.
+    Because point's form is (x, y), it have to be changed to (x, y, z, psi) form.
+    """
+    m = len(path)
+    waypoint = np.zeros((m, 4))
+
+    if path:
+        for i in range(0, m):
+            waypoint[i][0] = path[i][0]  # x
+            waypoint[i][1] = path[i][1]  # y
+            waypoint[i][2] = 0.3  # z
+            waypoint[i][3] = 0  # psi
+
+    return waypoint
+
+
 class AStarMap:
-    def __init__(self, start, goal):
-        self.start = start
-        self.goal = goal
+    def __init__(self):
+        # only for x, y
+        self.current_position = ()
+        self.last_position = (0.05, 0.05)
+
+        self.goal = (1.05, -3.05)
 
         # inflate occupied space as drone's scale
-        self.scale = 0.2
+        self.scale = 0.5
 
         # check a* algorithm can solve problem
         self.is_path = False
         self.path = []
 
+        self.is_update = True
+
+        rospy.Subscriber("mavros/local_position/pose", PoseStamped, self.pose_cb)
+        while not self.current_position:
+            rospy.sleep(0.1)
         rospy.Subscriber("occupied_cells_vis_array", MarkerArray, self.astar)
 
         while not self.is_path:
@@ -94,7 +115,7 @@ class AStarMap:
         start_time = rospy.get_time()
         occupied = set()
         for point in msg.markers[16].points:
-            if 1.95 <= point.z <= 2.05:
+            if 0.25 <= point.z <= 0.35:
                 for i in range(0, int(self.scale * 10) + 1):
                     for j in range(0, int(self.scale * 10) + 1):
                         x = point.x + float(i)/10
@@ -109,32 +130,30 @@ class AStarMap:
 
         # dictionary
         came_from = {}
-        gscore = {start: 0}
-        fscore = {start: heuristic(self.start, self.goal)}
+        gscore = {self.current_position: 0}
+        fscore = {self.current_position: heuristic(self.current_position, self.goal)}
 
-        heappush(open_set, (fscore[start], self.start))
+        heappush(open_set, (fscore[self.current_position], self.current_position))
 
         # while open_set is not empty
         while open_set:
             if rospy.get_time() - start_time > 2:
+                self.is_path = False
                 break
 
             # the node in openSet having the lowest fscore value
             # remove current in open_set
             current = heappop(open_set)[1]
-            if current == goal:
+            if current == self.goal:
                 path = reconstruct_path(current, came_from)
                 self.path = path
                 self.path.reverse()
-                self.waypoint = self.reconstruct_waypoint()
+                self.waypoint = reconstruct_waypoint(self.path)
                 self.is_path = True
                 break
 
             close_set.add(current)
             neighbors = construct_neighbor(current, occupied)
-            if (-0.1, -0.1) in neighbors:
-                if (-0.1, 0.0) not in neighbors:
-                    print "!!!"
             for i, j in neighbors:
                 neighbor = round(current[0] + i, 2), round(current[1] + j, 2)
                 if neighbor in close_set:
@@ -148,24 +167,6 @@ class AStarMap:
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + heuristic(neighbor, self.goal)
                     heappush(open_set, (fscore[neighbor], neighbor))
-
-    def reconstruct_waypoint(self):
-        """
-        function to reconstruct way point
-        For now, A* algorithm solves path in 2D grid map and ignore heading of drone.
-        Because point's form is (x, y), it have to be changed to (x, y, z, psi) form.
-        """
-        m = len(self.path)
-        new_waypoint = np.zeros((m, 4))
-
-        if self.path:
-            for i in range(0, m):
-                new_waypoint[i][0] = self.path[i][0]  # x
-                new_waypoint[i][1] = self.path[i][1]  # y
-                new_waypoint[i][2] = 0.3  # z
-                new_waypoint[i][3] = 0  # psi
-
-        return new_waypoint
 
     def pub_point(self):
         hz = 10
@@ -190,6 +191,10 @@ class AStarMap:
 
             self.point_pub.publish(point)
             rate.sleep()
+
+    def pose_cb(self, msg):
+        # This is trick for octree map because octree map has 10cm interval and 5cm at origin
+        self.current_position = (round(round(msg.pose.position.x, 1) + 0.05, 2), round(round(msg.pose.position.y, 1) + 0.05, 2))
 
 
 if __name__ == '__main__':
@@ -217,7 +222,7 @@ if __name__ == '__main__':
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    way_point = AStarMap(start, goal)
+    way_point = AStarMap()
     try:
         rospy.loginfo("UAV Waypoint Publisher Created")
         way_point.pub_point()

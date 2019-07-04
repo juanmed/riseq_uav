@@ -238,7 +238,7 @@ if __name__ == '__main__':
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    way_point = AStarGrid(nmap, (0, 3), (6, 13))
+    way_point = AStarGrid(nmap, (0, 0), (6, 10))
     try:
         rospy.loginfo("UAV Waypoint Publisher Created")
         way_point.pub_point()
