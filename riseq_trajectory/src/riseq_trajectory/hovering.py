@@ -3,18 +3,16 @@ import numpy as np
 import riseq_common.differential_flatness as df
 
 
-def publish_hovering(hovering_point):
+def hovering_traj(hovering_point):
     """
     This function is to generate hovering state at final point.
     As you see, except position and psi, all state must be zero to hover drone.
     It returns trajectory which is computed by differential flatness theory.
     """
-
-    pos = hovering_point
-    x = pos[0]
-    y = pos[1]
-    z = pos[2]
-    psi = pos[3]
+    x = hovering_point[0]
+    y = hovering_point[1]
+    z = hovering_point[2]
+    psi = hovering_point[3]
 
     pos = np.array([x, y, z])
     vel = np.array([0, 0, 0])

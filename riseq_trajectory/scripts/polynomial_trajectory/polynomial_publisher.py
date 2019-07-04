@@ -3,14 +3,13 @@ import rospy
 import numpy as np
 import tf
 
-import moving as mv
-import hovering as hv
+import get_solution as gs
 import riseq_common.differential_flatness as df
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 
 
-class Hovering:
+class TrajectoryGenerator:
     """
     Publish trajectory for hovering after simple move.
     At first, drone moves simply like along z-axis or 2 coordinates.
@@ -18,12 +17,12 @@ class Hovering:
     """
     def __init__(self):
         # create publisher for publishing ref trajectory
-        self.traj_pub = rospy.Publisher('riseq/uav_hovering_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_pub = rospy.Publisher('riseq/uav_polynomial_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # 4 output
         # 5th polynomial order
         self.n = 4
-        self.order = 5
+        self.order = 7
 
         # Init_pose
         environment = rospy.get_param("riseq/environment")
@@ -38,39 +37,62 @@ class Hovering:
         # Initialize heading
         init_quat = [self.init_pose[3], self.init_pose[4], self.init_pose[5], self.init_pose[6]]
         yaw, pitch, roll = tf.transformations.euler_from_quaternion(init_quat, axes="rzyx")
-        # Make two way point for moving simply
-        distance = 3
-        moving = [0, 0, 1, 0]
+
         self.start_point = np.array([self.init_pose[0], self.init_pose[1], self.init_pose[2], yaw])
-        self.final_point = np.array([self.init_pose[0] + moving[0], self.init_pose[1] + moving[1], self.init_pose[2] + moving[2], yaw])
+
+        self.position = np.array([[0,0,0,0],[1,1,1,1],[2,2,2,2]])
+        self.velocity = 0
+        self.acceleration = 0
 
         # Time to take to move.
-        self.total_time = 3
-
-        # Get Polynomial which goes upward
-        # self.solution = mv.go_upward(self.order, self.total_time, self.start_point, distance)
+        self.time = [1, 1]
+        self.waypoint = len(self.time)
 
         # Get Polynomial which goes to final point.
-        self.solution = mv.go_along(self.order, self.total_time, self.start_point, self.final_point)
+        self.solution = gs.get_solution(self.time, self.position, self.velocity, self.acceleration)
 
         self.start_time = rospy.get_time()
         #self.start_time = rospy.get_rostime().secs
 
+        # start in trajectory from initial position to final gate
+        # start with Index = 0
+        # It is index for where drone is now.
+        self.index = 0
+
     def compute_reference_traj(self):
         # Compute trajectory at time = now
         time = rospy.get_time()
-        ref_time = time - self.start_time
 
-        # stay hover at the final point
-        if ref_time >= self.total_time:
-            # From hovering.py return ref_trajectory
-            ref_trajectory = hv.publish_hovering(self.final_point)
+        # stay hover at the last waypoint position
+        if self.index == self.waypoint - 1:
+            pos = self.position[-1]
+            x = pos[0]
+            y = pos[1]
+            z = pos[2]
+            psi = pos[3]
+
+            pos = np.array([x, y, z])
+            vel = np.array([0, 0, 0])
+            acc = np.array([0, 0, 0])
+            jerk = np.array([0, 0, 0])
+            snap = np.array([0, 0, 0])
+            yaw = psi
+            yaw_dot = 0
+            yaw_ddot = 0
+            flat_output = [pos, vel, acc, jerk, snap, yaw, yaw_dot, yaw_ddot]
+            ref_trajectory = df.compute_ref(flat_output)
 
         # In this polynomial, time variable has range [0, 1] at every segment
         # In other word, reference time should be time which is subtracted by last time
         else:
-            # In this code, time scaling factor can be ignored  --> 1
-            ref_trajectory = df.get_trajectory(self.solution, self.order, 1, ref_time)
+            ref_time = time - self.last_time
+            solution = self.solution[self.n * (self.order + 1) * self.index: self.n * (self.order + 1) * (self.index + 1)]
+            ref_trajectory = df.get_trajectory(solution, self.order, self.time[self.index], ref_time)
+
+            # Index increases.
+            if (time - self.last_time) > self.time[self.index]:
+                self.index = self.index + 1  # trajectory to next gate
+                self.last_time = time
         return ref_trajectory
 
     def pub_traj(self):
@@ -162,8 +184,6 @@ class Hovering:
             traj.yawdot = yawdot
             traj.yawddot = yawddot
 
-            print type(yaw)
-
             # publish message
             self.traj_pub.publish(traj)
             rospy.loginfo(traj)
@@ -173,12 +193,41 @@ if __name__ == "__main__":
     # Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
 
+    # Wait some time before running. This is to adapt to some simulators
+    # which require some 'settling time'
+    try:
+        wait_time = int(rospy.get_param('riseq/trajectory_wait'))
+    except:
+        print('riseq/trajectory_wait_time parameter is unavailable')
+        print('Setting a wait time of 0 seconds.')
+        wait_time = 1
+
     # wait time for simulator to get ready...
-    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
-    while (rospy.Time.now().to_sec() < wait_time):
-        if ((int(rospy.Time.now().to_sec()) % 1) == 0):
+    while rospy.Time.now().to_sec() < wait_time:
+        if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
+
+    environment = rospy.get_param("riseq/environment", -1)
+    if environment == -1:
+        rospy.logerr("environment is not specified!")
+        rospy.signal_shutdown("[challenge_name] could not be read")
+
+    if environment == "simulator":
+        # select mode (easy, medium, hard, scorer)
+        mode = rospy.get_param("/uav/challenge_name", -1)
+        if mode == -1:
+            rospy.logerr("mode is not specified!")
+            rospy.signal_shutdown("[challenge_name] could not be read")
+
+        if mode == "Challenge easy":
+            time = [5]
+        elif mode == "Challenge Medium":
+            time = [5, 5]
+        elif mode == "Challenge Hard":
+            time = [5, 5, 5, 5]
+        else:
+            time = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!
@@ -186,10 +235,10 @@ if __name__ == "__main__":
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    hovering = Hovering()
+    traj_gen = TrajectoryGenerator()
     try:
         rospy.loginfo("UAV Trajectory Publisher Created")
-        hovering.pub_traj()
+        traj_gen.pub_traj()
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass

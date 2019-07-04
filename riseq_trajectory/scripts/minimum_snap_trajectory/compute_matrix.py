@@ -139,6 +139,11 @@ class QpMatrix:
         return A1, b1
 
     def derivative_constraint(self, current_state):
+        """
+         derivative constraint
+        In each segment, start and end of polynomial must satisfy derivative constraint
+        This is very important for continuity of trajectory
+        """
         # constraint_data_r[m, k_r]
         # 0   -> zero ... In this case, Initial, Final velocity and acceleration is zero.
         # 1   -> continuity             In Checkpoint, it must be continuous.
@@ -170,8 +175,6 @@ class QpMatrix:
                 if i == 0:
                     # Initial vel, acc, jerk, snap: First polynomial which has time as 0.
                     values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    values = values * np.power(1.0/self.time_scaling[0], h+1)
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -188,12 +191,10 @@ class QpMatrix:
                         else:
                             a[i*(self.order+1)*self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = values
                             A2[k + h*(self.n-1), :] = a
-                            b2[k + h*(self.n-1)] = current_state[h+1][k]        # constraint_data_r[i, h]
+                            b2[k + h*(self.n-1)] = current_state[h+1][k] * np.power(self.time_scaling[0], h + 1)        # constraint_data_r[i, h]
 
                     # Final vel, acc, jerk, snap: Last polynomial which has time as 1.
                     values = self.poly_coef[h+1, 1]
-                    # Time scaling
-                    values = values * np.power(1.0 / self.time_scaling[self.m - 1], h + 1)
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -211,9 +212,6 @@ class QpMatrix:
                     # Elsewhere: polynomial of each segment which has time as 0, 1 except initial, final point.
                     end_values = self.poly_coef[h+1, 1]
                     start_values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    end_values = end_values * np.power(1.0 / self.time_scaling[i-1], h + 1)
-                    start_values = start_values * np.power(1.0 / self.time_scaling[i], h + 1)
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -245,7 +243,11 @@ class QpMatrix:
         return A2, b2
 
     def yaw_derivative_constraint(self, current_state):
-        # Yaw
+        """
+         derivative constraint of yaw trajectory
+        In each segment, start and end of polynomial must satisfy derivative constraint
+        This is very important for continuity of trajectory
+        """
 
         constraint_data_psi = np.zeros((self.m, self.k_psi))
         if self.k_psi >= 1:
@@ -263,8 +265,6 @@ class QpMatrix:
                 if i == 0:
                     # Initial yaw_dot, yaw_ddot: First polynomial which has time as 0.
                     values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    values = values * np.power(1.0 / self.time_scaling[0], h + 1)
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -281,12 +281,10 @@ class QpMatrix:
                         else:
                             a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1): i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = values
                             A3[k + h * 1, :] = a
-                            b3[k + h * 1] = current_state[h+1][k+3]                  #constraint_data_psi[i, h]
+                            b3[k + h * 1] = current_state[h+1][k+3] * np.power(self.time_scaling[0], h + 1)
 
                     # Final yaw_dot, yaw_ddot: Last polynomial which has time as 1.
                     values = self.poly_coef[h+1, 1]
-                    # Time scaling
-                    values = values * np.power(1.0 / self.time_scaling[self.m - 1], h + 1)
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -305,9 +303,6 @@ class QpMatrix:
                     # Elsewhere: polynomial of each segment which has time as 0, 1 except initial, final point
                     end_values = self.poly_coef[h+1, 1]
                     start_values = self.poly_coef[h+1, 0]
-                    # Time scaling
-                    end_values = end_values * np.power(1.0 / self.time_scaling[i - 1], h + 1)
-                    start_values = start_values * np.power(1.0 / self.time_scaling[i], h + 1)
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -340,6 +335,10 @@ class QpMatrix:
         return A3, b3
 
     def maxmin_constraint(self, max_vel, min_vel):
+        """
+         Maximum and minimum constraint
+        It determines maximum and minimum speed of drone when traversing way point.
+        """
         # constraint for maximum minimum velocity
         # constraint for start, end point
         G1 = np.zeros((4 * self.m * (self.n-1), self.n * (self.order + 1) * self.m))
@@ -401,6 +400,10 @@ class QpMatrix:
         return G1, h1
 
     def corridor_constraint(self, corridor_position, corridor_width, n_intermediate):
+        """
+         This function is to make corridor between certain segment.
+        This can be used for straighting line.
+        """
         # x y z corridor constraint. -corridor width < x y z < corridor width
         # size: 3 * 2 * intermediate
         G2 = np.zeros((6 * n_intermediate, self.n * (self.order+1) * self.m))
@@ -449,6 +452,11 @@ class QpMatrix:
         return G2, h2
 
     def delete_redundant(self, A, B):
+        """
+         This function is helper function for delete redundant row in matrix.
+        When matrix is redundant, in other words when matrix is not full rank,
+        it is impossible to use quadratic programming.
+        """
         i = 0
         while 1:
             if B[i] == 0.001:

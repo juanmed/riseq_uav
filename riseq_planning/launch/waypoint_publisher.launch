@@ -1,0 +1,7 @@
+<launch>
+    <rosparam command="load" file="$(find riseq_common)/config/drones/flightgoggles.yaml"/>
+
+    <!-- Start nodes -->
+        <node pkg="riseq_planning" name="riseq_waypoint_publisher" type="a-star.py" output="screen"/>
+
+</launch>
