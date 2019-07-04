@@ -31,8 +31,8 @@ class FG_WayPoint(WayPointPublisher):
 
         for i in range(0, gate_count):
             waypoint[i+1] = self.gate_point(gate_location[i])
-        waypoint = self.compensate_direction(waypoint, gate_count)
-        super(FG_WayPoint, self).__init__(waypoint)
+        self.waypoint = self.compensate_direction(waypoint, gate_count)
+        super(FG_WayPoint, self).__init__()
 
     def gate_point(self, gate):
         """

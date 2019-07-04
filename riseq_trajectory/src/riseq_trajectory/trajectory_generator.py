@@ -21,6 +21,10 @@ class TrajectoryGenerator(object):
 
         # create subscriber for subscribing way point
         self.point_sub = rospy.Subscriber('riseq/planning/uav_waypoint', Path, self.waypoint_update)
+        while self.waypoint is None:
+            rospy.sleep(0.1)
+
+        self.count = self.m
 
         # create subscriber for subscribing state
         self.state_sub = rospy.Subscriber('riseq/tests/uav_fg_true_state', riseq_uav_state, self.state_update)
@@ -49,7 +53,7 @@ class TrajectoryGenerator(object):
         time = rospy.get_time()
 
         # stay hover at the last waypoint position
-        if self.index == self.m:
+        if self.index == self.count:
             hovering_point = self.waypoint[-1]
             ref_trajectory = hv.hovering_traj(hovering_point)
 
