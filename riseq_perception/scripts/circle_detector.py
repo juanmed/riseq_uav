@@ -125,7 +125,7 @@ def main(args):
 
     mem = Memory()
     mem.img = image
-    mem.update(10)
+    mem.update(1)
     plt.show()
 
 if __name__ == '__main__':
