@@ -12,7 +12,9 @@ import numpy as np
 
 
 current_state = State()
-waypoint = False
+receive_path = False
+waypoint = []
+
 
 def state_cb(msg):
     global current_state
@@ -21,7 +23,10 @@ def state_cb(msg):
 
 
 def path_cb(msg):
+    global receive_path
     global waypoint
+
+    receive_path = True
     # m is segment
     m = len(msg.poses) - 1
     waypoint = np.zeros((m + 1, 4))
@@ -56,7 +61,7 @@ if __name__ == "__main__":
         print "connected is False"
         rate.sleep()
 
-    while waypoint is False:
+    while receive_path is False:
         print "waiting waypoint"
         rate.sleep()
 
@@ -98,6 +103,7 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
 
+        # following path which is constructed at Once.
         if current_state.mode == "OFFBOARD" and current_state.armed and rospy.Time.now() - last_request > rospy.Duration(5.0):
             index = index + 1
             if index == m + 1:
@@ -106,6 +112,18 @@ if __name__ == "__main__":
             pose.pose.position.y = waypoint[index][1]
             pose.pose.position.z = 2
             last_request = rospy.Time.now()
+
+        # following replanning path
+        '''
+        if current_state.mode == "OFFBOARD" and current_state.armed and rospy.Time.now() - last_request > rospy.Duration(2):
+            if len(waypoint) < 3:
+                break
+            print "move next"
+            pose.pose.position.x = waypoint[2][0]
+            pose.pose.position.y = waypoint[2][1]
+            pose.pose.position.z = 2
+            last_request = rospy.Time.now()
+        '''
 
     print("Return")
     pose.pose.position.x = 0

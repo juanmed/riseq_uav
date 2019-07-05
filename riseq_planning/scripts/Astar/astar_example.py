@@ -4,6 +4,9 @@ import numpy as np
 from heapq import *
 from riseq_planning.waypoint_publisher import WayPointPublisher
 
+"""
+This is very simple example for A* algorithm in grid map.
+"""
 
 class AStarGrid(WayPointPublisher):
     """

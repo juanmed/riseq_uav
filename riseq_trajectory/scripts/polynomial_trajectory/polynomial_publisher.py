@@ -189,6 +189,7 @@ class TrajectoryGenerator:
             rospy.loginfo(traj)
             rate.sleep()
 
+
 if __name__ == "__main__":
     # Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)

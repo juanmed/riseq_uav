@@ -11,7 +11,7 @@ import tf
 import numpy as np
 
 
-# [ Window, Pole, Pipe, Tree, Net, Wind]
+# mode : [ Window, Pole, Pipe, Tree, Net, Wind]
 mode = "Pole"
 current_state = State()
 waypoint = []
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     # set position here
     pose.pose.position.x = waypoint[0][0]
     pose.pose.position.y = waypoint[0][1]
-    pose.pose.position.z = 1
+    pose.pose.position.z = 0.7
 
     for i in range(100):
         local_pos_pub.publish(pose)
@@ -124,8 +124,7 @@ if __name__ == "__main__":
                 if iteration == 0:
                     print "Window mode"
                     mode_time = rospy.Time.now()
-
-                iteration = iteration + 1
+                    iteration = iteration + 1
 
                 mode = "Pole"
                 iteration = 0
@@ -142,39 +141,56 @@ if __name__ == "__main__":
 
                 # To Construct Octomap, it moves left and right for 30 seconds
                 if rospy.Time.now() - last_request < rospy.Duration(15.0):
+                    print "go right"
                     pose.pose.position.x = start_x
-                    pose.pose.position.y = start_y - 0.3 * (rospy.Time.now() - last_request - rospy.Duration(5.0)) / rospy.Duration(10.0)
-                    pose.pose.position.z = 1
+                    pose.pose.position.y = start_y - 0.2 * (rospy.Time.now() - last_request - rospy.Duration(5.0)) / rospy.Duration(10.0)
+                    pose.pose.position.z = 0.7
                 elif rospy.Time.now() - last_request < rospy.Duration(25.0):
+                    print "go left"
                     if iteration == 1:
                         start_y = position[1]
                         iteration = iteration + 1
                     pose.pose.position.x = start_x
-                    pose.pose.position.y = start_y + 0.6 * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
-                    pose.pose.position.z = 1
+                    pose.pose.position.y = start_y + 0.4 * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
+                    pose.pose.position.z = 0.7
                 elif rospy.Time.now() - last_request < rospy.Duration(35.0):
+                    print "origin"
                     if iteration == 2:
                         start_y = position[1]
                         iteration = iteration + 1
                     pose.pose.position.x = start_x
-                    pose.pose.position.y = start_y - 0.3 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
-                    pose.pose.position.z = 1
+                    pose.pose.position.y = start_y - 0.2 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
+                    pose.pose.position.z = 0.7
                     mode_time = rospy.Time.now()
                 else:
-                    if iteration ==3:
+                    break
+                    '''
+                    "follow path"
+                    if iteration == 3:
                         start_y = position[1]
-                    if np.sqrt((start_x - position[0])**2 + (start_y - position[1])**2) > 1.5:
-                        iteration =0
+                    if np.sqrt((start_x - position[0])**2 + (start_y - position[1])**2) > 0.8:
+                        iteration = 0
                         last_request = rospy.Time.now()
+                        mode = "Pipe"
                         break
                     if len(waypoint) < 3:
                         pose.pose.position.x = waypoint[-1][0]
                         pose.pose.position.y = waypoint[-1][1]
-                        pose.pose.position.z = 1
+                        pose.pose.position.z = 0.7
                     else:
                         pose.pose.position.x = waypoint[2][0]
                         pose.pose.position.y = waypoint[2][1]
-                        pose.pose.position.z = 1
+                        pose.pose.position.z = 0.7
+                    '''    
+            '''
+            elif mode == "Pipe":
+
+                if iteration == 0:
+                    print "Pipe mode"
+                    mode_time = rospy.Time.now()
+                    iteration = iteration + 1
+            
+            '''
 
     print("Return")
     pose.pose.position.z = 0.1
