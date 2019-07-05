@@ -8,8 +8,6 @@ from geometry_msgs.msg import PoseStamped
 from tf.transformations import quaternion_from_euler
 
 
-#TODO : Optimal Path
-
 start = (0.05, 0.05)
 goal = (1.55, -3.05)
 

@@ -7,6 +7,13 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import quaternion_from_euler
 
+"""
+Code Explanation : Construct path forward or side from current position
+                    If drone arrives, construct new path again and again.
+"""
+# TODO: modify Heuristic and G-score to make optimal path.
+# TODO: This code calculate float not integer. I want to change this to integer calculation
+# TODO: in octomap topic, only marker[16] has useful date for my algorithm. Think about it.
 
 def get_gscore(a, b):
     """
@@ -96,17 +103,16 @@ def reconstruct_waypoint(path):
 class AStarMap:
     def __init__(self):
         # only for x, y
-        self.current_position = ()
-        self.last_position = (0.05, 0.05)
+        self.current_position = (0.05, 0.05)
 
-        # inflate occupied space as drone's scale
+        # last goal when path is updated. It is relative distance from current position
+        self.last_goal = (0.0, 0.0)
+
+        # inflate occupied space much as drone's scale
         self.scale = 0.5
 
         # check a* algorithm can solve problem
-        self.is_path = False
         self.path = []
-
-        self.is_update = True
 
         # set for occupied space
         self.occupied = set()
@@ -135,20 +141,22 @@ class AStarMap:
                         self.occupied.add((round(x, 2), round(y, 2)))
 
     def path_planning(self):
-        '''
-        # Once path is constructed, start
-        if self.is_update:
-            self.last_position = (self.current_position[0], self.current_position[1])
-            self.is_update = False
-        '''
         goal_array = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
         #goal_array = [(20.00, -1.00)]
-        for goal in goal_array:
-            new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
-            if self.astar(new_goal) is True:
-                rospy.loginfo("Find path %0.2f %0.2f" % (goal[0], goal[1]))
-                return True
+
+        # if length of path is 2, need to update path
+        if len(self.path) > 2 and self.astar(self.last_goal) is True:
+            return True
+        elif len(self.path) <= 2 or self.astar(self.last_goal) is False:
+            for goal in goal_array:
+                new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
+                if self.astar(new_goal) is True:
+                    self.last_goal = new_goal
+                    rospy.loginfo("Find path %0.2f %0.2f" % (goal[0], goal[1]))
+                    return True
+
             print "can't find path"
+            return False
 
     def astar(self, goal):
         current_position = self.current_position
@@ -175,8 +183,6 @@ class AStarMap:
             if current == goal:
                 path = reconstruct_path(current, came_from)
                 self.path = path
-                if len(self.path) == 2:
-                    self.is_update = True
                 self.path.reverse()
                 self.waypoint = reconstruct_waypoint(self.path)
                 return True

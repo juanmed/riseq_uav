@@ -11,7 +11,7 @@ import tf
 import numpy as np
 
 
-# [ Window, Pole, Pipe, Tree, Net, Wind]
+# mode : [ Window, Pole, Pipe, Tree, Net, Wind]
 mode = "Pole"
 current_state = State()
 waypoint = []
@@ -124,8 +124,7 @@ if __name__ == "__main__":
                 if iteration == 0:
                     print "Window mode"
                     mode_time = rospy.Time.now()
-
-                iteration = iteration + 1
+                    iteration = iteration + 1
 
                 mode = "Pole"
                 iteration = 0
@@ -161,11 +160,12 @@ if __name__ == "__main__":
                     pose.pose.position.z = 2
                     mode_time = rospy.Time.now()
                 else:
-                    if iteration ==3:
+                    if iteration == 3:
                         start_y = position[1]
                     if np.sqrt((start_x - position[0])**2 + (start_y - position[1])**2) > 1.5:
-                        iteration =0
+                        iteration = 0
                         last_request = rospy.Time.now()
+                        mode = "Pipe"
                         break
                     if len(waypoint) < 3:
                         pose.pose.position.x = waypoint[-1][0]
@@ -175,6 +175,15 @@ if __name__ == "__main__":
                         pose.pose.position.x = waypoint[2][0]
                         pose.pose.position.y = waypoint[2][1]
                         pose.pose.position.z = 2
+            '''
+            elif mode == "Pipe":
+
+                if iteration == 0:
+                    print "Pipe mode"
+                    mode_time = rospy.Time.now()
+                    iteration = iteration + 1
+            
+            '''
 
     print("Return")
     pose.pose.position.z = 0.1
