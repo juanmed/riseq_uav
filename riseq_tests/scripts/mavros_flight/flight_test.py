@@ -143,27 +143,27 @@ if __name__ == "__main__":
                 # To Construct Octomap, it moves left and right for 30 seconds
                 if rospy.Time.now() - last_request < rospy.Duration(15.0):
                     pose.pose.position.x = start_x
-                    pose.pose.position.y = start_y - 1.0 * (rospy.Time.now() - last_request - rospy.Duration(5.0)) / rospy.Duration(10.0)
+                    pose.pose.position.y = start_y - 0.3 * (rospy.Time.now() - last_request - rospy.Duration(5.0)) / rospy.Duration(10.0)
                     pose.pose.position.z = 1
                 elif rospy.Time.now() - last_request < rospy.Duration(25.0):
                     if iteration == 1:
                         start_y = position[1]
                         iteration = iteration + 1
                     pose.pose.position.x = start_x
-                    pose.pose.position.y = start_y + 2.0 * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
+                    pose.pose.position.y = start_y + 0.6 * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
                     pose.pose.position.z = 1
                 elif rospy.Time.now() - last_request < rospy.Duration(35.0):
                     if iteration == 2:
                         start_y = position[1]
                         iteration = iteration + 1
                     pose.pose.position.x = start_x
-                    pose.pose.position.y = start_y - 1.0 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
+                    pose.pose.position.y = start_y - 0.3 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
                     pose.pose.position.z = 1
                     mode_time = rospy.Time.now()
                 else:
                     if iteration ==3:
                         start_y = position[1]
-                    if np.sqrt((start_x - position[0])**2 + (start_y - position[1])**2) > 2:
+                    if np.sqrt((start_x - position[0])**2 + (start_y - position[1])**2) > 1.5:
                         iteration =0
                         last_request = rospy.Time.now()
                         break
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     land_cmd = CommandTOL()
     landing_client(0.0, 0.0, 0.0, 0.0, 0.0)
 
-    rospy.sleep(5)
+    rospy.sleep(5.0)
 
     print("disarming")
     arm_cmd.value = False
