@@ -16,13 +16,6 @@ def build_arg_parser():
     ap = ap.parse_args()
     return ap   
 
-def detect_edges(img, lt, ht, k):
-    """
-    Use canny edge detector and return detected edges
-    """
-    edges = cv2.Canny(img, lt, ht, k)
-    return edges
-
 class Ellipse():
     def __init__(self,a=1,b=1,cx=0,cy=0,theta=0):
         """
@@ -70,22 +63,22 @@ class Memory():
         axcannyht =self.fig.add_axes([0.1, 0.07, 0.8, 0.01], facecolor= axcolor)
         axiter = self.fig.add_axes([0.1, 0.09, 0.8, 0.01], facecolor= axcolor)
         axcannyk = self.fig.add_axes([0.1, 0.11, 0.8, 0.01], facecolor= axcolor)
-        axminRadius = self.fig.add_axes([0.1, 0.13, 0.8, 0.01], facecolor= axcolor)
-        axmaxRadius = self.fig.add_axes([0.1, 0.15, 0.8, 0.01], facecolor= axcolor)
+        #axminRadius = self.fig.add_axes([0.1, 0.13, 0.8, 0.01], facecolor= axcolor)
+        #axmaxRadius = self.fig.add_axes([0.1, 0.15, 0.8, 0.01], facecolor= axcolor)
 
         self.canny_lt_slider = Slider(axcannylt, 'canny_lt', 50, 500.0, valinit=100)
         self.canny_ht_slider = Slider(axcannyht, 'canny_ht', 50, 500.0, valinit=200)
         self.iter_slider = Slider(axiter, 'iter', 0.0, 10, valinit=0, valstep=1)
         self.canny_k_slider = Slider(axcannyk, 'canny K', 0.0, 30, valinit = 3, valstep=2)
-        self.minRadius_slider = Slider(axminRadius, '*', 0.0,100,valinit=50)
-        self.maxRadius_slider = Slider(axmaxRadius, '*',0.0,100,valinit=70)
+        #self.minRadius_slider = Slider(axminRadius, '*', 0.0,100,valinit=50)
+        #self.maxRadius_slider = Slider(axmaxRadius, '*',0.0,100,valinit=70)
 
         self.canny_lt_slider.on_changed(self.update)
         self.canny_ht_slider.on_changed(self.update)
         self.iter_slider.on_changed(self.update)
         self.canny_k_slider.on_changed(self.update)
-        self.minRadius_slider.on_changed(self.update)
-        self.maxRadius_slider.on_changed(self.update)
+        #self.minRadius_slider.on_changed(self.update)
+        #self.maxRadius_slider.on_changed(self.update)
 
         self.centroid_threshold = 100
 
@@ -112,8 +105,8 @@ class Memory():
 
     def update(self, val):
         """
-        Blur, convert to grayscale, dilate, erode, find contours and 
-        approximate ellipses
+        Read slider values and update algorithms' parameters for ellipse 3D pose
+        estimation. The argument is ignored.
         """
         lt = int(self.canny_lt_slider.val)
         ht = int(self.canny_ht_slider.val)
@@ -238,12 +231,18 @@ class Memory():
     def preprocess(self, img):
         """
         Resize, blur and convert input image to grayscale
+        Args:
+            img (np.array): input image to preprocess with 3 channels
+        Returns:
+            gray (np.array): grayscale image, 1 channel
+            img (np.array): resized and possibly blured img, 3 channels
         """
         scale = self.max_size / float(max(img.shape))
-        img = cv2.resize(img, None, fx=scale, fy = scale) 
-        proc = cv2.GaussianBlur(img.copy(), (5,5),0) 
+        img = cv2.resize(img, None, fx=scale, fy = scale)
+        #proc = cv2.bilateralFilter(img,9,75,75) 
+        #proc = cv2.GaussianBlur(img.copy(), (5,5),0) 
         #proc = cv2.medianBlur(img.copy(), 5)   
-        #proc = img
+        proc = img
 
         if(proc.shape[2] == 3):
             gray = cv2.cvtColor(proc, cv2.COLOR_BGR2GRAY)
@@ -255,16 +254,29 @@ class Memory():
     def getPose(self, points_3D, points_2D):
         """
         Estimate ellipse 3D pose based on 2D points and 3D points correspondence
+        Args:
+            points_3D (np.array): 3D points of the object 
+            points_2D (np.array): 2D points in the image plane
+        Returns:
+            R (np.array): 3x3 rotation matrix following the opencv camera convention
+            t (np.array): 3x1 translation vector
         """
         assert points_2D.shape[0] == points_2D.shape[0], 'points 3D and points 2D must have same number of vertices'
 
         points_2D = np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2))
-        _, R_exp, t = cv2.solvePnP(self.corners3D, points_2D, self.K, self.distCoeffs)
+        _, R_exp, t = cv2.solvePnP(points_3D, points_2D, self.K, self.distCoeffs)
         R, _ = cv2.Rodrigues(R_exp)
         return R, t, R_exp
 
     def draw(self, img, corner, imgpts):
         """
+        Draw over the image a coordinate frame with origin in corner 
+        and axis extending to the points in imgpts.
+        Args:
+            img (np.array): image over which to draw the coordinate frame
+            corner (tuple): tuple of coordinates of the center, (x,y)
+            imgpts (np.array): coordinates of the other end of each of the three
+                               axis
 
         Taken from: https://docs.opencv.org/master/d7/d53/tutorial_py_pose.html
         """
@@ -273,6 +285,122 @@ class Memory():
         img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 2)
         img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (0,0,255), 2)
         return img
+
+
+# Canny parameters
+lt = 50
+ht = 250
+k = 3
+iterations = 0
+
+#Define corners of 3D Model's bounding cube
+corners3D = np.zeros((3,5))
+tube_length = 1 # m
+tube_radius = 0.2 # m
+corners3D[0] = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+corners3D[1] = np.array([0.0, tube_radius, 0.0, -tube_radius, 0.0])
+corners3D[2] = np.array([0.0, 0.0, tube_radius, 0.0, -tube_radius])
+#self.corners3D[3] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+corners3D = np.transpose(corners3D)
+
+mem = Memory()
+
+
+def detect_ellipse(img, max_size):
+
+
+        gray = cv2.cvtColor(img.copy(), cv2.COLOR_BGR2GRAY)
+        img  = cv2.GaussianBlur(img, (5,5),0) 
+        edges = cv2.Canny(img, lt, ht, k)
+        dilate = cv2.dilate(edges, None, iterations = iterations)
+        erode = cv2.erode(dilate, None, iterations = iterations)
+        cnts = cv2.findContours(erode, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
+        
+        detected_ellipses = []
+        for i, c in enumerate(cnts[1]):
+            if c.shape[0] > 5:
+
+                e = cv2.fitEllipse(c)
+                # threshold by size 
+                ex = int(e[0][0])
+                ey = int(e[0][1])
+                width = e[1][0]
+                height = e[1][1]
+
+                # filter ellipse by size
+                if((width > 20 ) and (height > 20)):           
+
+                    edge_arcLength = cv2.arcLength(c,False)
+                    edge = c.reshape(-1,2)
+
+
+                    empty = np.zeros_like(gray)
+                    empty = cv2.ellipse(empty, e, (255,0,0), 2)
+                    ellipse_edges = cv2.Canny(empty, lt, ht, k)
+                    ellipse_cnts = cv2.findContours(ellipse_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    if (len(ellipse_cnts[1]) == 1):
+                        ellipse_edge = ellipse_cnts[1][0]
+                        ellipse_edge_arclength = cv2.arcLength(ellipse_edge, True)
+                        ellipse_edge = ellipse_edge.reshape(-1,2)
+                        #print("    ** Ellipse edges shape: {}, arcLength: {}".format(ellipse_edge.shape, ellipse_edge_arclength))
+                    else:
+                        # only 1 countours should be found, if not, continue
+                        continue 
+
+                    # filter by arclength
+                    try:
+                        coverage = edge_arcLength / ellipse_edge_arclength
+                    except ZeroDivisionError:
+                        continue
+
+                    if ( (coverage > 0.8) and (coverage < 1.1)):
+                        pass
+                    else:
+                        continue         
+
+                    # compute centroids
+                    edge_moments = cv2.moments(c)
+                    try:
+                        edgex = int(edge_moments["m10"] / edge_moments["m00"])
+                        edgey = int(edge_moments["m01"] / edge_moments["m00"])
+                    except ZeroDivisionError:
+                        continue
+
+                    edge_centroid = np.array([edgex, edgey])
+                    ellipse_centroid = np.array([ex, ey])
+                    centroids_distance =  np.linalg.norm(edge_centroid-ellipse_centroid)
+
+                    # filter by centroid distance
+                    centroid_threshold = 10
+                    if(centroids_distance < centroid_threshold):
+                        pass                  
+                    else:
+                        continue                        
+
+
+                    # get 2d points correspondences
+                    el = Ellipse(a=width/2, b=height/2, cx=ex, cy=ey, theta = e[2]*np.pi/180.0)
+                    corners2D = np.zeros((5,2), dtype='float32')
+                    corners2D[0][0] = ex
+                    corners2D[0][1] = ey
+                    for i ,angle in enumerate([0.0, np.pi/2, np.pi, 3*np.pi/2]):
+                        x,y = el.get_ellipse_point(angle)
+                        corners2D[i+1][0] = x
+                        corners2D[i+1][1] = y
+                        cv2.circle(img, (int(x), int(y)), 4, (0, 0, 255), -1) 
+
+                    
+                    # get Rotation and translation
+                    R,t,rvecs = mem.getPose(corners3D, corners2D)
+                    #print("Rotation: {}\ntranslation: {}".format(R,t))          
+
+                    #imgpts, jac = cv2.projectPoints(self.axis, rvecs, t, self.K, self.distCoeffs)
+                    #img = self.draw(img,(ex,ey),imgpts)
+
+                    detected_ellipses.append((R,t,e))
+
+        return detected_ellipses
+
 
 def main(args):
     """
