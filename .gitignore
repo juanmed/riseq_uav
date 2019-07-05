@@ -2,6 +2,10 @@
 **/.idea
 *.jpg
 *.jpeg
+*.avi
+*.mp4
+*.png
+.ss6d_env/
 # Created by https://www.gitignore.io/api/pycharm
 # Edit at https://www.gitignore.io/?templates=pycharm
 
