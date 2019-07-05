@@ -146,6 +146,7 @@ class AStarMap:
 
         # if length of path is 2, need to update path
         if len(self.path) > 2 and self.astar(self.last_goal) is True:
+            print "keep going"
             return True
         elif len(self.path) <= 2 or self.astar(self.last_goal) is False:
             for goal in goal_array:
