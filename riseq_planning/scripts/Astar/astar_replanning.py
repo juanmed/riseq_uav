@@ -15,6 +15,7 @@ Code Explanation : Construct path forward or side from current position
 # TODO: This code calculate float not integer. I want to change this to integer calculation
 # TODO: in octomap topic, only marker[16] has useful date for my algorithm. Think about it.
 
+
 def get_gscore(a, b):
     """
     helper function to get gscore between A to B
