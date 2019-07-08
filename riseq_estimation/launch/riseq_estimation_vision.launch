@@ -1,5 +1,5 @@
 <launch>
   <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch" />
-  <include file="$(find riseq_estimation)/launch/riseq_orb_slam2_zedm.launch" />
   <include file="$(find riseq_estimation)/launch/riseq_octomap.launch" />
+  <include file="$(find riseq_estimation)/launch/riseq_orb_slam2_zedm.launch" />
 </launch>
