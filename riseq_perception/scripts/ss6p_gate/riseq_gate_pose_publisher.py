@@ -46,7 +46,7 @@ class DRLGatePoseDetector():
         
         self.gate_bbox_img_pub = rospy.Publisher("riseq/perception/gate_bbox", Image, queue_size = 10)
 
-        self.frontCamera_Mono = rospy.Subscriber("/pelican/camera_nadir/image_raw", Image, self.predict_gate_pose)
+        self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.predict_gate_pose)
 
         cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
         ply_file = rospy.get_param("riseq/gate_pose_nn_ply")

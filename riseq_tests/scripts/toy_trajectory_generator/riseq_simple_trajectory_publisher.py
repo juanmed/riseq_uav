@@ -6,6 +6,7 @@ import numpy as np
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 import riseq_tests.df_flat as df_flat 
+from mavros_msgs.msg import State
 
 import trajgen2_helper as trajGen3D
 
@@ -47,7 +48,7 @@ class Trajectory_Generator2():
             p2 = np.array([[0],[0],[1.67]])
             p3 = np.array([[6],[3],[1.67]])
 
-        point_list = [p1,p3]
+        point_list = [p1,p2,p3]
         #self.waypoints = self.get_waypoint_list(point_list)
         #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
         self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
@@ -70,8 +71,16 @@ class Trajectory_Generator2():
 
 
 
+        #PX4
+        self.mavros_state = State()
+        self.mavros_state.connected = False
+        self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)
+
+    def mavros_state_cb(self, state_msg):
+        self.mavros_state = state_msg
+
     def compute_reference_traj(self, time):
-        vel = 0.5    #max vel = 3
+        vel = 0.25    #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
@@ -148,9 +157,10 @@ def pub_traj():
     # wait time for simulator to get ready...
     wait_time = int(rospy.get_param("riseq/trajectory_wait"))
     while( rospy.Time.now().to_sec() < wait_time ):
-        if( ( int(rospy.Time.now().to_sec()) % 1) == 0 ):
+        if( ( rospy.Time.now().to_sec() % 1.0) == 0.0 ):
             rospy.loginfo("Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
     
+
 
     # create a trajectory generator
     #traj_gen = Trajectory_Generator()
@@ -164,6 +174,9 @@ def pub_traj():
     # time for the trajectory will be degenerated
 
     # publish at 10Hz
+
+    while ((traj_gen.mavros_state.armed != True) and (traj_gen.mavros_state.mode != 'OFFBOARD')):
+        print(" >> Trajectory generator waiting for Drone ARMing")
 
     rate = rospy.Rate(rospy.get_param('riseq/trajectory_update_rate', 200))
     print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(rospy.get_param('riseq/trajectory_update_rate', 200)))
