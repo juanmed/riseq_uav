@@ -4,10 +4,13 @@ import numpy as np
 from heapq import *
 from riseq_planning.waypoint_publisher import WayPointPublisher
 
+"""
+This is very simple example for A* algorithm in grid map.
+"""
 
-class AStar(WayPointPublisher):
+class AStarGrid(WayPointPublisher):
     """
-    Class to solve A* algorithm and publish way point
+    Class to solve A* algorithm based on grid map and publish way point
     """
     def __init__(self, nmap, start, goal):
         self.nmap = nmap
@@ -21,9 +24,8 @@ class AStar(WayPointPublisher):
         self.waypoint.insert(0, self.start)
         self.waypoint.append(self.goal)
 
-        new_waypoint = self.reconstruct_waypoint()
-
-        super(AStar, self).__init__(new_waypoint)
+        self.waypoint = self.reconstruct_waypoint()
+        super(AStarGrid, self).__init__()
 
     def heuristic(self, a, b):
         """
@@ -73,13 +75,11 @@ class AStar(WayPointPublisher):
 
                 tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
 
-                if neighbor not in [i[1] for i in open_set]:
+                if neighbor not in [i[1] for i in open_set] or tentative_g_score < gscore[neighbor]:
                     came_from[neighbor] = current
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, self.goal)
                     heappush(open_set, (fscore[neighbor], neighbor))
-                elif tentative_g_score > gscore[neighbor]:
-                    continue
 
         return False
 
@@ -106,6 +106,7 @@ class AStar(WayPointPublisher):
                 is_neighbor[i + 1][j + 1] = False
                 # array bound x walls
 
+
         # ignore diagonal space
         if bool(is_neighbor[0, 1]) is False:
             is_neighbor[0, 0] = False
@@ -119,6 +120,7 @@ class AStar(WayPointPublisher):
         if bool(is_neighbor[2, 1]) is False:
             is_neighbor[2, 0] = False
             is_neighbor[2, 2] = False
+
 
         new_neighbors = []
         for i in range(0, 3):
@@ -239,7 +241,7 @@ if __name__ == '__main__':
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    way_point = AStar(nmap, (0, 3), (6, 13))
+    way_point = AStarGrid(nmap, (0, 0), (6, 10))
     try:
         rospy.loginfo("UAV Waypoint Publisher Created")
         way_point.pub_point()

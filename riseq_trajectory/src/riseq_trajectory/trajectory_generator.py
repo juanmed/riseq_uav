@@ -21,6 +21,10 @@ class TrajectoryGenerator(object):
 
         # create subscriber for subscribing way point
         self.point_sub = rospy.Subscriber('riseq/planning/uav_waypoint', Path, self.waypoint_update)
+        while self.waypoint is None:
+            rospy.sleep(0.1)
+
+        self.count = self.m
 
         # create subscriber for subscribing state
         self.state_sub = rospy.Subscriber('riseq/tests/uav_fg_true_state', riseq_uav_state, self.state_update)
@@ -29,7 +33,7 @@ class TrajectoryGenerator(object):
         rospy.sleep(0.1)
 
         # create publisher for publishing ref trajectory
-        self.traj_pub = rospy.Publisher('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory, queue_size=10)
+        self.traj_pub = rospy.Publisher('riseq/trajectory/uav_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # Our flat output is 4
         self.n = 4
@@ -49,7 +53,7 @@ class TrajectoryGenerator(object):
         time = rospy.get_time()
 
         # stay hover at the last waypoint position
-        if self.index == self.m:
+        if self.index == self.count:
             hovering_point = self.waypoint[-1]
             ref_trajectory = hv.hovering_traj(hovering_point)
 
@@ -66,7 +70,7 @@ class TrajectoryGenerator(object):
         return ref_trajectory
 
     def pub_traj(self):
-        hz = rospy.get_param('trajectory_update_rate', 200)
+        hz = rospy.get_param('riseq/trajectory_update_rate', 200)
 
         # publish at Hz
         rate = rospy.Rate(hz)

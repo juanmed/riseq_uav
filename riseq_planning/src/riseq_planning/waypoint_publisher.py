@@ -12,20 +12,18 @@ class WayPointPublisher(object):
         It is parent class for other class of specific method
     """
 
-    def __init__(self, waypoint):
+    def __init__(self):
         # create publisher for publishing way point
         self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
-
-        self.waypoint = waypoint
-
 
     def pub_point(self):
         hz = 10
         rate = rospy.Rate(hz)
 
         while not rospy.is_shutdown():
-
             point = Path()
+            point.header.stamp = rospy.Time.now()
+            point.header.frame_id = "map"
             for i in range(0, len(self.waypoint)):
                 pose = PoseStamped()
                 pose.header.frame_id = str(i)
