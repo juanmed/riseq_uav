@@ -20,7 +20,9 @@ def get_gscore(a, b):
     """
     helper function to get gscore between A to B
     """
-    return 1.4 * min(b[0] - a[0], b[1] - a[1]) + abs((b[0] - a[0]) - (b[1] - a[1]))
+    dx = abs(a[0] - b[0])
+    dy = abs(a[1] - b[1])
+    return np.sqrt(2) * min(dx, dy) + abs(dx - dy)
 
 
 def get_heuristic(a, b):
@@ -30,7 +32,13 @@ def get_heuristic(a, b):
     # Euclidean distance
     # return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
-    return 1.41 * min(abs(b[0] - a[0]), abs(b[1] - a[1])) + abs((b[0] - a[0]) - (b[1] - a[1]))
+    dx = abs(a[0] - b[0])
+    dy = abs(a[1] - b[1])
+    return 1.4 * min(dx, dy) + abs(dx - dy) + 0.1 * (abs(dx - dy))
+    #D = 1
+    #D2 = 1
+    # Chebyshev distance
+    #return 1 * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
 
 
 def reconstruct_path(current, came_from):
@@ -142,8 +150,8 @@ class AStarMap:
                         self.occupied.add((round(x, 2), round(y, 2)))
 
     def path_planning(self):
-        goal_array = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
-        #goal_array = [(20.00, -1.00)]
+        #goal_array = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
+        goal_array = [(20.00, -1.00)]
 
         # if length of path is 2, need to update path
         if len(self.path) > 2 and self.astar(self.last_goal) is True:
@@ -176,7 +184,7 @@ class AStarMap:
 
         # while open_set is not empty
         while open_set:
-            if rospy.get_time() - start_time > 1:
+            if rospy.get_time() - start_time > 2:
                 return False
 
             # the node in openSet having the lowest fscore value

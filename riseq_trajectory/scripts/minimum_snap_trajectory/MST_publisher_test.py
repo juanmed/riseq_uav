@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import rospy
-from nav_msgs.msg import Path
 from riseq_trajectory.srv import MakeTrajectory
 from riseq_trajectory.msg import riseq_uav_trajectory
 import riseq_trajectory.draw_trajectory as dt
