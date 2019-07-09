@@ -1,7 +1,4 @@
 <launch>
-  <!-- Pose publisher convert ORB_SLAM2 into PX4 -->
-  <node pkg="riseq_estimation" type="riseq_estimation_vision_publisher.py" name="riseq_estimation_vision_publisher" />
-
   <node name="orb_slam2" pkg="orb_slam2_ros"
       type="orb_slam2_ros_stereo" args="
           $(find orb_slam2_ros)/orb_slam2/Vocabulary/ORBvoc.txt
