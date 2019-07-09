@@ -91,7 +91,7 @@ class WindowDetector():
         self.gauss_k = int(self.gauss_k_slider.val)
 
         R, t, R_exp, cnt = self.detect(self.img.copy(), self.max_size)
-        print("Rotation:\n{}\ntranslation:\n{}".format(R,t))
+        #print("Rotation:\n{}\ntranslation:\n{}".format(R,t))
 
         if(cnt is not None):
             imgpts, jac = cv2.projectPoints(self.axis, R_exp, t, self.K, self.distCoeffs)
@@ -104,13 +104,12 @@ class WindowDetector():
         
         #self.ax.imshow(img)
         self.ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        print(R,t)
 
     def detect(self, img, max_size):
         """
         """
         scale = self.max_size / float(max(img.shape))
-        #img = cv2.resize(img, None, fx=scale, fy = scale) 
+        img = cv2.resize(img, None, fx=scale, fy = scale) 
 
         if(img.shape[2] == 3):
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

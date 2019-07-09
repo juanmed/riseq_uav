@@ -163,6 +163,14 @@ if __name__ == "__main__":
                 '''
                 Juan's code for detecting window, generating trajectory, control drone.
                 '''
+                rospy.set_param('monocular_cv', 'window')
+
+                if (len(waypoint)!= 0):
+                    pose.pose.position.x = waypoint[0][0]
+                    pose.pose.position.y = waypoint[0][1]
+                    pose.pose.position.z = waypoint[0][2]
+
+
                 if rospy.Time.now() - last_request < rospy.Duration(5.0):
                     pass
 
