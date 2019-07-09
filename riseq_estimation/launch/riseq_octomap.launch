@@ -6,16 +6,18 @@
     <arg name="path" default="" />
     <arg name="changeIdFrame" default="" />
     <node pkg="octomap_server" type="octomap_tracking_server_node" name="riseq_estimation_octomap_talker" output="screen" args="$(arg path)">
-      <param name="frame_id" type="string" value="world" />
-      <param name="resolution" value="0.025" />
+      <param name="frame_id" type="string" value="map" />
 
-      <param name="sensor_model/max_range" value="20.0" />
-      <!--param name="sensor_model/[hit|miss]" value="0.7 / 0.4" /-->
-      <!--param name="sensor_model/[min/max]" value="0.12  /0.97" /-->
+      <!-- The resolution of the grid -->
+      <param name="resolution" value="0.1" />
 
-      <!--param name="filter_ground" value="true" /-->
-      <!--param name="ground_filter/distance" value="0.04" /-->
-      <!--param name="ground_filter/plane_distance" value="0.07" /-->
+      <param name="sensor_model/max_range" value="12.0" />
+      <!--param name="sensor_model/[hit|miss]" value="0.7/0.4" /-->
+      <!--param name="sensor_model/[min|max]" value="0.12/0.97" /-->
+
+      <!-- The range of the map in z direction to use -->
+      <param name="pointcloud_min_z" value="-0.5" />
+      <param name="pointcloud_max_z" value="3.0" />
 
       <param name="save_directory" value="$(optenv OCTOMAP_SAVE_DIR ./)" />
       <param name="track_changes" value="true"/>
@@ -25,6 +27,6 @@
       <param name="min_change_pub" value="0" />
 
       <!-- Remap ZED point cloud and OctoMap point cloud -->
-      <remap from="/cloud_in" to="/zed/zed_node/point_cloud/cloud_registered" />
+      <remap from="/cloud_in" to="/riseq/estimation/point_cloud" />
     </node>
 </launch>
