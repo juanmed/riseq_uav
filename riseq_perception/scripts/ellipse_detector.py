@@ -1,4 +1,6 @@
+
 import cv2
+import rospy
 import argparse
 import numpy as np 
 import matplotlib.pyplot as plt 
@@ -89,14 +91,13 @@ class Memory():
         self.corners3D[0] = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
         self.corners3D[1] = np.array([0.0, tube_radius, 0.0, -tube_radius, 0.0])
         self.corners3D[2] = np.array([0.0, 0.0, tube_radius, 0.0, -tube_radius])
-        #self.corners3D[3] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
         self.corners3D = np.transpose(self.corners3D)
         #print(self.corners3D)
 
         # camera intrinsic matrix
         self.K = np.zeros((3,3), dtype='float64')
-        self.K[0, 0], self.K[0, 2] = 320, 320
-        self.K[1, 1], self.K[1, 2] = 320, 240
+        self.K[0, 0], self.K[0, 2] = 241.42682359130833, 376.5
+        self.K[1, 1], self.K[1, 2] = 241.42682359130833, 240.5
         self.K[2, 2] = 1.     
 
         self.distCoeffs = np.zeros((8, 1), dtype='float32')  

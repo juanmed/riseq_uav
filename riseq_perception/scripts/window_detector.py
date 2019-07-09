@@ -48,8 +48,8 @@ class WindowDetector():
 
         # camera intrinsic matrix
         self.K = np.zeros((3,3), dtype='float64')
-        self.K[0, 0], self.K[0, 2] = 320, 320
-        self.K[1, 1], self.K[1, 2] = 320, 240
+        self.K[0, 0], self.K[0, 2] = 241.42682359130833, 376.5
+        self.K[1, 1], self.K[1, 2] = 241.42682359130833, 240.5
         self.K[2, 2] = 1.     
         self.distCoeffs = np.zeros((8, 1), dtype='float32')  
         self.axis = np.float32([[0.1,0,0], [0,0.1,0], [0,0,-0.1]]).reshape(-1,3) 

@@ -31,8 +31,6 @@ from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
 
-
-
 if(rospy.get_param("riseq/environment") == "simulator"):
     from mav_msgs.msg import RateThrust             # for flightgoggles
     from nav_msgs.msg import Odometry 
@@ -116,9 +114,6 @@ class uav_High_Level_Controller():
             print('riseq/controller_type parameter not recognized. Defaulting to geometric_controller')
             print(' The only possible types are: euler_angle_controller, geometric_controller')
             ts.registerCallback(self.euler_angle_controller)
-
-
-
 
         # --------------------------------- #
         # Initialize controller parameters  #
