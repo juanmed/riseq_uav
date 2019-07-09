@@ -80,7 +80,7 @@ class Memory():
         #self.minRadius_slider.on_changed(self.update)
         #self.maxRadius_slider.on_changed(self.update)
 
-        self.centroid_threshold = 100
+        self.centroid_threshold = 10
 
         #Define corners of 3D Model's bounding cube
         self.corners3D = np.zeros((3,5))
@@ -91,7 +91,7 @@ class Memory():
         self.corners3D[2] = np.array([0.0, 0.0, tube_radius, 0.0, -tube_radius])
         #self.corners3D[3] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
         self.corners3D = np.transpose(self.corners3D)
-        print(self.corners3D)
+        #print(self.corners3D)
 
         # camera intrinsic matrix
         self.K = np.zeros((3,3), dtype='float64')
@@ -264,6 +264,7 @@ class Memory():
         assert points_2D.shape[0] == points_2D.shape[0], 'points 3D and points 2D must have same number of vertices'
 
         points_2D = np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2))
+
         _, R_exp, t = cv2.solvePnP(points_3D, points_2D, self.K, self.distCoeffs)
         R, _ = cv2.Rodrigues(R_exp)
         return R, t, R_exp

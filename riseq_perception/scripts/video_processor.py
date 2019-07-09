@@ -4,6 +4,7 @@ import sys, os
 import argparse
 from net_detector import detect_net
 from ellipse_detector import detect_ellipse
+from window_detector import WindowDetector
 import time
 
 
@@ -29,6 +30,9 @@ def main(args):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')    
     out = cv2.VideoWriter('np5.avi',fourcc, 30.0, (460,259))
 
+    wd = WindowDetector(mode="eval")
+
+
     add = 1
     fps_sum = 0
     frame_count = 0
@@ -48,16 +52,22 @@ def main(args):
         frame = cv2.resize(frame, None, fx=scale, fy = scale)
         net_mask = detect_net(frame.copy(), max_size)
         ellipses = detect_ellipse(frame.copy(), max_size)
+        R, t, R_exp, cnt = wd.detect(frame.copy(), max_size)
         t2 = time.time()
 
         # draw net
-        frame[net_mask != 0] = [0,0,255]
+        if(net_mask is not None):
+            frame[net_mask != 0] = [0,0,255]
 
         # draw ellipses
         if ellipses is not None:
             for ellipse in ellipses:
                 R,t,e = ellipse
                 frame = cv2.ellipse(frame, e, (0,255,0), 1)
+
+        if cnt is not None:
+            frame = cv2.drawContours(frame, [cnt[1:]], -1, (255,0,0), 3)
+
 
         # calculate avg fps
         fps = 1.0/(t2-t1)
