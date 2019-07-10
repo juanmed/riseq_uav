@@ -13,5 +13,5 @@
   <node pkg="riseq_estimation" type="riseq_estimation_tf_publisher.py" name="riseq_estimation_tf_publisher" />
 
   <!-- Pose publisher convert vision into PX4 -->
-  <node pkg="riseq_estimation" type="riseq_estimation_vision_publisher.py" name="riseq_estimation_vision_publisher" />
+  <!--node pkg="riseq_estimation" type="riseq_estimation_vision_publisher.py" name="riseq_estimation_vision_publisher" /-->
 </launch>
