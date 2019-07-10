@@ -181,7 +181,6 @@ if __name__ == "__main__":
                     pose.pose.position.x = last_position[0]
                     pose.pose.position.y = last_position[1]
                     pose.pose.position.z = last_position[2]
-                    rospy.loginfo(pose)
                     iteration = iteration + 1
 
                 # To Construct Octomap, it moves left and right for 30 seconds

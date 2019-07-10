@@ -61,6 +61,7 @@ catkin_python_setup()
  add_service_files(
     FILES
     MakeTrajectory.srv
+    SetGoalpoint.srv
  )
 
 ## Generate actions in the 'action' folder

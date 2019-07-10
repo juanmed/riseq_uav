@@ -6,6 +6,7 @@ from visualization_msgs.msg import MarkerArray
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import quaternion_from_euler
+from riseq_planning.srv import SetGoalpoint
 
 """
 Code Explanation : Construct path forward or side from current position
@@ -114,6 +115,8 @@ class AStarMap:
         # only for x, y
         self.current_position = (0.05, 0.05)
 
+        self.goal_point = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
+
         # last goal when path is updated. It is relative distance from current position
         self.last_goal = (0.0, 0.0)
 
@@ -129,7 +132,7 @@ class AStarMap:
         self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
         rospy.Subscriber("mavros/local_position/pose", PoseStamped, self.pose_cb)
         rospy.Subscriber("occupied_cells_vis_array", MarkerArray, self.octomap_cb)
-        print "Publisher and Subscriber completed"
+        rospy.Service('set_goalpoint', SetGoalpoint, self.set_goalpoint)
 
         self.rate = rospy.Rate(2)
         while not self.current_position or not self.occupied:
@@ -150,15 +153,13 @@ class AStarMap:
                         self.occupied.add((round(x, 2), round(y, 2)))
 
     def path_planning(self):
-        #goal_array = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
-        goal_array = [(20.00, -1.00)]
 
         # if length of path is 2, need to update path
         if len(self.path) > 2 and self.astar(self.last_goal) is True:
             print "keep going"
             return True
         elif len(self.path) <= 2 or self.astar(self.last_goal) is False:
-            for goal in goal_array:
+            for goal in self.goal_point:
                 new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
                 if self.astar(new_goal) is True:
                     self.last_goal = new_goal
@@ -239,6 +240,13 @@ class AStarMap:
     def pose_cb(self, msg):
         # This is trick for octree map because octree map has 10cm interval and 5cm at origin
         self.current_position = (round(round(msg.pose.position.x, 1) + 0.05, 2), round(round(msg.pose.position.y, 1) + 0.05, 2))
+
+    def set_goalpoint(self, req):
+        if req.goal is True:
+            self.goal_point = (req.goalpoint.x, req.goalpoint.y)
+        else:
+            self.goal_point = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
+        return True
 
 
 if __name__ == '__main__':
