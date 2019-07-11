@@ -22,7 +22,7 @@ class MinimumSnapTrajectory(TrajectoryGenerator):
         environment = rospy.get_param("riseq/environment")
         if environment == "simulator":
             # select mode (easy, medium, hard, scorer)
-            mode = rospy.get_param("/uav/challenge_name", -1)
+            mode = rospy.get_param("riseq/challenge_name", -1)
             if mode == -1:
                 rospy.logerr("mode is not specified!")
                 rospy.signal_shutdown("[challenge_name] could not be read")
@@ -30,14 +30,14 @@ class MinimumSnapTrajectory(TrajectoryGenerator):
             # Time Segment and Scaling
             # In this case, the polynomial of trajectory has variable t whose range is [0, 1]
             # For using, time scaling method is applied
-            if mode == "Challenge Easy":
-                time_scaling = [5]
-            elif mode == "Challenge Medium":
-                time_scaling = [5, 5]
-            elif mode == "Challenge Hard":
-                time_scaling = [5, 2, 2, 5]
+            if mode == "easy":
+                time_scaling = [40]
+            elif mode == "medium":
+                time_scaling = [20, 20]
+            elif mode == "hard":
+                time_scaling = [20, 20, 2, 5]
             else:
-                time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+                time_scaling = [20, 20, 20, 5, 5, 5, 5, 5, 5, 5, 5]
 
         else:
             time_scaling = None

@@ -11,6 +11,7 @@ import tf
 
 class TrajectoryGenerator(object):
     def __init__(self, order, time):
+
         self.order = order
         self.time = time
 
@@ -60,7 +61,8 @@ class TrajectoryGenerator(object):
         # In other word, reference time should be time which is subtracted by last time
         else:
             ref_time = time - self.last_time
-            solution = self.solution[self.n * (self.order + 1) * self.index: self.n * (self.order + 1) * (self.index + 1)]
+            solution = self.solution[
+                       self.n * (self.order + 1) * self.index: self.n * (self.order + 1) * (self.index + 1)]
             ref_trajectory = df.get_trajectory(solution, self.order, self.time[self.index], ref_time)
             # If the time is gone, segment should be changed
             # Index increases.
@@ -71,6 +73,7 @@ class TrajectoryGenerator(object):
 
     def pub_traj(self):
         hz = rospy.get_param('riseq/trajectory_update_rate', 200)
+        print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(hz))
 
         # publish at Hz
         rate = rospy.Rate(hz)
@@ -161,7 +164,6 @@ class TrajectoryGenerator(object):
 
             # publish message
             self.traj_pub.publish(traj)
-            rospy.loginfo(traj)
             rate.sleep()
 
     def waypoint_update(self, msg):
@@ -196,4 +198,3 @@ class TrajectoryGenerator(object):
         velocity = np.array([vx, vy, vz, psi_dot])
 
         self.state[0] = position
-        self.state[1] = velocity

@@ -6,6 +6,7 @@ from visualization_msgs.msg import MarkerArray
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import quaternion_from_euler
+from riseq_planning.srv import SetGoalpoint
 
 """
 Code Explanation : Construct path forward or side from current position
@@ -15,11 +16,14 @@ Code Explanation : Construct path forward or side from current position
 # TODO: This code calculate float not integer. I want to change this to integer calculation
 # TODO: in octomap topic, only marker[16] has useful date for my algorithm. Think about it.
 
+
 def get_gscore(a, b):
     """
     helper function to get gscore between A to B
     """
-    return 1.4 * min(b[0] - a[0], b[1] - a[1]) + abs((b[0] - a[0]) - (b[1] - a[1]))
+    dx = abs(a[0] - b[0])
+    dy = abs(a[1] - b[1])
+    return np.sqrt(2) * min(dx, dy) + abs(dx - dy)
 
 
 def get_heuristic(a, b):
@@ -29,7 +33,13 @@ def get_heuristic(a, b):
     # Euclidean distance
     # return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
-    return 1.41 * min(abs(b[0] - a[0]), abs(b[1] - a[1])) + abs((b[0] - a[0]) - (b[1] - a[1]))
+    dx = abs(a[0] - b[0])
+    dy = abs(a[1] - b[1])
+    return 1.4 * min(dx, dy) + abs(dx - dy) + 0.1 * (abs(dx - dy))
+    #D = 1
+    #D2 = 1
+    # Chebyshev distance
+    #return 1 * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
 
 
 def reconstruct_path(current, came_from):
@@ -105,6 +115,8 @@ class AStarMap:
         # only for x, y
         self.current_position = (0.05, 0.05)
 
+        self.goal_point = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
+
         # last goal when path is updated. It is relative distance from current position
         self.last_goal = (0.0, 0.0)
 
@@ -120,7 +132,7 @@ class AStarMap:
         self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
         rospy.Subscriber("mavros/local_position/pose", PoseStamped, self.pose_cb)
         rospy.Subscriber("occupied_cells_vis_array", MarkerArray, self.octomap_cb)
-        print "Publisher and Subscriber completed"
+        rospy.Service('set_goalpoint', SetGoalpoint, self.set_goalpoint)
 
         self.rate = rospy.Rate(2)
         while not self.current_position or not self.occupied:
@@ -130,7 +142,7 @@ class AStarMap:
     def octomap_cb(self, msg):
         self.occupied = set()
         for point in msg.markers[16].points:
-            if 0.95 <= point.z <= 1.05:
+            if 1.45 <= point.z <= 1.55:
                 for i in range(0, int(self.scale * 10) + 1):
                     for j in range(0, int(self.scale * 10) + 1):
                         x = point.x + float(i)/10
@@ -141,15 +153,13 @@ class AStarMap:
                         self.occupied.add((round(x, 2), round(y, 2)))
 
     def path_planning(self):
-        goal_array = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
-        #goal_array = [(20.00, -1.00)]
 
         # if length of path is 2, need to update path
         if len(self.path) > 2 and self.astar(self.last_goal) is True:
             print "keep going"
             return True
         elif len(self.path) <= 2 or self.astar(self.last_goal) is False:
-            for goal in goal_array:
+            for goal in self.goal_point:
                 new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
                 if self.astar(new_goal) is True:
                     self.last_goal = new_goal
@@ -175,7 +185,7 @@ class AStarMap:
 
         # while open_set is not empty
         while open_set:
-            if rospy.get_time() - start_time > 1:
+            if rospy.get_time() - start_time > 2:
                 return False
 
             # the node in openSet having the lowest fscore value
@@ -230,6 +240,13 @@ class AStarMap:
     def pose_cb(self, msg):
         # This is trick for octree map because octree map has 10cm interval and 5cm at origin
         self.current_position = (round(round(msg.pose.position.x, 1) + 0.05, 2), round(round(msg.pose.position.y, 1) + 0.05, 2))
+
+    def set_goalpoint(self, req):
+        if req.goal is True:
+            self.goal_point = (req.goalpoint.x, req.goalpoint.y)
+        else:
+            self.goal_point = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
+        return True
 
 
 if __name__ == '__main__':
