@@ -164,33 +164,55 @@ if __name__ == "__main__":
                     print "Start Mode"
                     pub_mode = "Position"
                     iteration = iteration + 1
+                    rospy.set_param("riseq/planning/goalpoint", "none")
 
                 if rospy.Time.now() - last_request < rospy.Duration(15.0):
                     if iteration == 1:
                         print "Start Mode: hovering"
                         iteration = iteration + 1
-                    pose.pose.position.z = 2 * (
+                    pose.pose.position.z = height * (
                                 rospy.Time.now() - last_request - rospy.Duration(5.0)) / rospy.Duration(10.0)
-                elif rospy.Time.now() - last_request < rospy.Duration(25.0):
+                elif rospy.Time.now() - last_request < rospy.Duration(20.0):
                     if iteration == 2:
-                        print "Start Mode: go right to find window"
-                        last_position[0] = position[0]
-                        last_position[1] = position[1]
-                        last_position[2] = position[2]
+                        print "Turn Right"
                         iteration = iteration + 1
-                    pose.pose.position.x = last_position[0]
-                    pose.pose.position.y = last_position[1] - 3.5 * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
-                    pose.pose.position.z = height
-                elif rospy.Time.now() - last_request < rospy.Duration(35.0):
+                    q = tf.transformations.quaternion_from_euler(0, 0, -1.5707 *  (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(5.0))
+                    pose.pose.orientation.x = q[0]
+                    pose.pose.orientation.y = q[1]
+                    pose.pose.orientation.z = q[2]
+                    pose.pose.orientation.w = q[3]
+                elif rospy.Time.now() - last_request < rospy.Duration(25.0):
                     if iteration == 3:
+                        print "Turn Origin"
+                        iteration = iteration + 1
+                    q = tf.transformations.quaternion_from_euler(0, 0, -1.5707 + 1.5707 *  (rospy.Time.now() - last_request - rospy.Duration(20.0)) / rospy.Duration(5.0))
+                    pose.pose.orientation.x = q[0]
+                    pose.pose.orientation.y = q[1]
+                    pose.pose.orientation.z = q[2]
+                    pose.pose.orientation.w = q[3]
+                elif rospy.Time.now() - last_request < rospy.Duration(35.0):
+                    if iteration == 4:
+                        print "Start Mode: go right"
+                        iteration = iteration + 1
+                    pose.pose.position.x = 0
+                    pose.pose.position.y = 0 - 3 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
+                    pose.pose.position.z = height
+                elif rospy.Time.now() - last_request < rospy.Duration(45.0):
+                    if iteration == 5:
                         print "Start Mode: go forward to find window"
                         last_position[0] = position[0]
                         last_position[1] = position[1]
                         last_position[2] = position[2]
                         iteration = iteration + 1
-                    pose.pose.position.x = last_position[0] + 3 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
+                    pose.pose.position.x = last_position[0] + 3 * (rospy.Time.now() - last_request - rospy.Duration(35.0)) / rospy.Duration(10.0)
                     pose.pose.position.y = last_position[1]
                     pose.pose.position.z = height
+                    q = tf.transformations.quaternion_from_euler(0, 0, 1.5707/2 * (
+                                rospy.Time.now() - last_request - rospy.Duration(35.0)) / rospy.Duration(10.0))
+                    pose.pose.orientation.x = q[0]
+                    pose.pose.orientation.y = q[1]
+                    pose.pose.orientation.z = q[2]
+                    pose.pose.orientation.w = q[3]
                 else:
                     print "Start Mode Over"
                     mode = "Window"
@@ -205,9 +227,6 @@ if __name__ == "__main__":
                     calculate_waypoint = True
                     #mode_wait_time = rospy.Duration(1.0)
 
-                '''
-                Juan's code for detecting window, generating trajectory, control drone.
-                '''
                 rospy.set_param('riseq/monocular_cv', 'window')
 
                 if ( send_mono_waypoint ) :
@@ -273,13 +292,19 @@ if __name__ == "__main__":
             elif mode == "Pole":
                 if iteration == 0:
                     print "Pole mode"
+                    rospy.set_param("riseq/planning/goalpoint", "random")
                     pub_mode = "Position"
                     last_position[0] = position[0]
                     last_position[1] = position[1]
                     last_position[2] = position[2]
-                    pose.pose.position.x = last_position[0]
+                    pose.pose.position.x = last_position[0] + 0.5
                     pose.pose.position.y = last_position[1]
                     pose.pose.position.z = last_position[2]
+                    q = tf.transformations.quaternion_from_euler(0, 0, 0)
+                    pose.pose.orientation.x = q[0]
+                    pose.pose.orientation.y = q[1]
+                    pose.pose.orientation.z = q[2]
+                    pose.pose.orientation.w = q[3]
                     iteration = iteration + 1
                     mode_wait_time = rospy.Duration(5.0)
 
@@ -312,6 +337,7 @@ if __name__ == "__main__":
                     pose.pose.position.y = last_position[1] - 1 * width * (
                                 rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
                 else:
+
                     print "follow path"
                     if not receive_path:
                         print "no map"
@@ -321,7 +347,7 @@ if __name__ == "__main__":
                             last_position[0] = position[0]
                             last_position[1] = position[1]
                             last_position[2] = position[2]
-                        if np.sqrt((last_position[0] - position[0])**2 + (last_position[1] - position[1])**2) > 0.8:
+                        if np.sqrt((last_position[0] - position[0])**2 + (last_position[1] - position[1])**2) > 18:
                             iteration = 0
                             last_request = rospy.Time.now()
                             mode = "Pipe mode Over"

@@ -113,7 +113,7 @@ def reconstruct_waypoint(path):
 class AStarMap:
     def __init__(self):
         # only for x, y
-        self.current_position = (0.05, 0.05)
+        self.current_position = ()
 
         self.goal_point = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
 
@@ -135,7 +135,7 @@ class AStarMap:
         rospy.Service('set_goalpoint', SetGoalpoint, self.set_goalpoint)
 
         self.rate = rospy.Rate(2)
-        while not self.current_position or not self.occupied:
+        while not self.current_position:
             print "no subscribe message"
             self.rate.sleep()
 
@@ -153,21 +153,30 @@ class AStarMap:
                         self.occupied.add((round(x, 2), round(y, 2)))
 
     def path_planning(self):
+        goal_direction = rospy.get_param("riseq/planning/goalpoint", "none")
+        print goal_direction
+        if goal_direction != "none":
+            if goal_direction == "right":
+                self.goal_point = [(0.0, -0.5)]
+            elif goal_direction == "random":
+                self.goal_point = [(1.00, 0.00), (0.50, -0.50), (0.50, 0.50), (0.00, -1.00), (0.00, 1.00)]
 
-        # if length of path is 2, need to update path
-        if len(self.path) > 2 and self.astar(self.last_goal) is True:
-            print "keep going"
-            return True
-        elif len(self.path) <= 2 or self.astar(self.last_goal) is False:
-            for goal in self.goal_point:
-                new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
-                if self.astar(new_goal) is True:
-                    self.last_goal = new_goal
-                    rospy.loginfo("Find path %0.2f %0.2f" % (goal[0], goal[1]))
-                    return True
 
-            print "can't find path"
-            return False
+            # if length of path is 2, need to update path
+            if len(self.path) > 2 and self.astar(self.last_goal) is True:
+                print "keep going"
+                return True
+            elif len(self.path) <= 2 or self.astar(self.last_goal) is False:
+                for goal in self.goal_point:
+                    new_goal = (round(goal[0] + self.current_position[0], 2), round(goal[1] + self.current_position[1], 2))
+                    if self.astar(new_goal) is True:
+                        self.last_goal = new_goal
+                        rospy.loginfo("Find path %0.2f %0.2f" % (goal[0], goal[1]))
+                        return True
+
+                print "can't find path"
+                return False
+        return False
 
     def astar(self, goal):
         current_position = self.current_position
