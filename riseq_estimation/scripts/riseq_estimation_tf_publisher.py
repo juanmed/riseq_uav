@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
         # Visual odometry method to use. SVO, ORB_SLAM2
         method = "ZED mini"
-        realsense = True
+        use_realsense = True
 
         while not rospy.is_shutdown():
             if method == "SVO":
@@ -46,8 +46,8 @@ if __name__ == "__main__":
                 br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "map", "world")
                 br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "local_origin", "world")
 
-            if realsense == True:
-                br.sendTransform((0.1, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "camera_link", "fcu")
+            if use_realsense == True:
+                br.sendTransform((0.12, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "camera_link", "fcu")
 
             r.sleep()
 
