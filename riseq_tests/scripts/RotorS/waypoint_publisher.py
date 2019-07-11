@@ -19,7 +19,7 @@ def publish_waypoint(x,y,z,yaw):
 	Publish a waypoint to 
 	"""
 
-	command_publisher = rospy.Publisher('/firefly/command/trajectory', MultiDOFJointTrajectory, queue_size = 10)
+	command_publisher = rospy.Publisher('/command/trajectory', MultiDOFJointTrajectory, queue_size = 10)
 
 	# create trajectory msg
 	traj = MultiDOFJointTrajectory()

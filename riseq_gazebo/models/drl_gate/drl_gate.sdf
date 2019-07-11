@@ -19,7 +19,7 @@
           <pose>0 0 0 0 0 0</pose>
           <geometry>
             <mesh>
-                <uri>model://drl_gate/meshes/DRL_Gate.dae</uri>
+                <uri>model://drl_gate/meshes/DRL_Gate_collision.dae</uri>
                 <scale>1.0 1.0 1.0</scale>
             </mesh>
           </geometry>

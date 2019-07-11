@@ -1,0 +1,7 @@
+https://download.pytorch.org/whl/cu90/torch-0.4.0-cp35-cp35m-linux_x86_64.whl
+torchvision==0.2.1
+pillow==5.2.0
+numpy==1.15.1
+shapely==1.6.4.post2
+scipy==1.1.0
+opencv-python

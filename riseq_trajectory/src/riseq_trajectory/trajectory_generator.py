@@ -11,6 +11,7 @@ import tf
 
 class TrajectoryGenerator(object):
     def __init__(self, order, time):
+
         self.order = order
         self.time = time
 
@@ -53,7 +54,6 @@ class TrajectoryGenerator(object):
         time = rospy.get_time()
 
         # stay hover at the last waypoint position
-        if self.index == self.count:
             hovering_point = self.waypoint[-1]
             ref_trajectory = hv.hovering_traj(hovering_point)
 
@@ -71,6 +71,7 @@ class TrajectoryGenerator(object):
 
     def pub_traj(self):
         hz = rospy.get_param('riseq/trajectory_update_rate', 200)
+        print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(hz))
 
         # publish at Hz
         rate = rospy.Rate(hz)
@@ -161,7 +162,6 @@ class TrajectoryGenerator(object):
 
             # publish message
             self.traj_pub.publish(traj)
-            rospy.loginfo(traj)
             rate.sleep()
 
     def waypoint_update(self, msg):
@@ -196,4 +196,3 @@ class TrajectoryGenerator(object):
         velocity = np.array([vx, vy, vz, psi_dot])
 
         self.state[0] = position
-        self.state[1] = velocity

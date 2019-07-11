@@ -1,6 +1,13 @@
 *.pyc
 **/.idea
-
+.ss6d_env/*
+*.ply
+*.weights
+*.jpg
+*.jpeg
+*.avi
+*.mp4
+*.png
 # Created by https://www.gitignore.io/api/pycharm
 # Edit at https://www.gitignore.io/?templates=pycharm
 
