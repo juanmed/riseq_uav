@@ -71,10 +71,6 @@ if __name__ == "__main__":
         print "connected is False"
         rate.sleep()
 
-    #while not receive_path:
-    #    print "waiting path"
-    #    rate.sleep()
-
     pose = PoseStamped()
     # set position here
     pose.pose.position.x = 0
@@ -100,7 +96,7 @@ if __name__ == "__main__":
     last_position = np.zeros(3)  # [ x, y, z ]
     iteration = 0
     height = 2
-    width = 1
+    width = 3
 
     print "Start loop"
     while not rospy.is_shutdown():
@@ -145,9 +141,18 @@ if __name__ == "__main__":
                         last_position[2] = position[2]
                         iteration = iteration + 1
                     pose.pose.position.x = last_position[0]
-                    pose.pose.position.y = last_position[1] - width * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
+                    pose.pose.position.y = last_position[1] - 3.5 * (rospy.Time.now() - last_request - rospy.Duration(15.0)) / rospy.Duration(10.0)
                     pose.pose.position.z = height
-
+                elif rospy.Time.now() - last_request < rospy.Duration(35.0):
+                    if iteration == 3:
+                        print "Start Mode: go forward to find window"
+                        last_position[0] = position[0]
+                        last_position[1] = position[1]
+                        last_position[2] = position[2]
+                        iteration = iteration + 1
+                    pose.pose.position.x = last_position[0] + 3 * (rospy.Time.now() - last_request - rospy.Duration(25.0)) / rospy.Duration(10.0)
+                    pose.pose.position.y = last_position[1]
+                    pose.pose.position.z = height
                 else:
                     print "Start Mode Over"
                     mode = "Window"

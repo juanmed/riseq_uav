@@ -72,7 +72,7 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
 
-        if rospy.Time.now() - start_time > rospy.Duration(15.0):
+        if rospy.Time.now() - start_time > rospy.Duration(20.0):
             break
 
     print("Return")

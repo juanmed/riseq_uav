@@ -1,0 +1,5 @@
+<launch>
+    <!-- Start nodes -->
+    <node pkg="riseq_tests" name="riesq_flight_test" type="flight_test.py" output="screen"/>
+    <node pkg="riseq_planning" name="riseq_planning" type="astar_replanning.py" output="screen"/>
+</launch>
