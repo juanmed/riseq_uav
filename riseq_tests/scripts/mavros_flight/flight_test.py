@@ -11,12 +11,17 @@ from nav_msgs.msg import Path
 import tf
 import numpy as np
 
+from collections import deque
+
 
 current_state = State()
 waypoint = []
 receive_path = False
 position = np.zeros(3) # [ x y z ]
 
+avg_samples = 10
+monocular_waypoints = deque( maxlen = avg_samples )
+uav_positions = deque( maxlen = avg_samples )
 
 def state_cb(msg):
     global current_state
@@ -39,12 +44,32 @@ def path_cb(msg):
              msg.poses[i].pose.orientation.w], axes='sxyz')
         waypoint[i][3] = psi
 
+def monocular_waypoint_cb(msg):
+    """
+    """
+    global monocular_waypoints
+    wp = np.zeros((3,1))
+    if(len(msg.poses)>0):
+        wp[0][0] = msg.poses[0].pose.position.x
+        wp[1][0] = msg.poses[0].pose.position.y
+        wp[2][0] = msg.poses[0].pose.position.z
+        monocular_waypoints.append(wp)
+
+
 
 def pose_cb(msg):
     global position
+    global uav_positions
     position[0] = msg.pose.position.x
     position[1] = msg.pose.position.y
     position[2] = msg.pose.position.z
+
+
+    pos = np.zeros((3,1))
+    pos[0][0] = msg.pose.position.x
+    pos[1][0] = msg.pose.position.y
+    pos[2][0] = msg.pose.position.z    
+    uav_positions.append(pos)
 
 
 if __name__ == "__main__":
@@ -53,6 +78,18 @@ if __name__ == "__main__":
     global receive_path
     global position
 
+
+    global monocular_waypoints
+    global uav_positions
+    global avg_samples
+    global send_mono_waypoint
+    send_mono_waypoint = True
+    param = 0.0
+    param_step = 0.1
+    global avg_samples
+    mode_wait_time = rospy.Duration(5.0)
+    step = 0
+
     rospy.init_node('Flight_node', anonymous=True)
 
     rospy.Subscriber("mavros/state", State, state_cb)
@@ -60,6 +97,8 @@ if __name__ == "__main__":
     rospy.Subscriber("mavros/local_position/pose", PoseStamped, pose_cb)
     local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
     att_raw_pub = rospy.Publisher('mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
+
+    rospy.Subscriber("riseq/perception/uav_mono_waypoint", Path, monocular_waypoint_cb)
 
     arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
     set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
@@ -99,7 +138,7 @@ if __name__ == "__main__":
     last_request = rospy.Time.now()
     last_position = np.zeros(3)  # [ x, y, z ]
     iteration = 0
-    height = 2
+    height = 1.5
     width = 1
 
     print "Start loop"
@@ -123,8 +162,7 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
 
-        if current_state.mode == "OFFBOARD" and current_state.armed and rospy.Time.now() - last_request > rospy.Duration(
-                5.0):
+        if current_state.mode == "OFFBOARD" and current_state.armed and ((rospy.Time.now() - last_request) > mode_wait_time):
             if mode == "Start":
                 if iteration == 0:
                     print "Start Mode"
@@ -159,26 +197,74 @@ if __name__ == "__main__":
                     print "Window mode"
                     #pub_mode = "Attitude"
                     iteration = iteration + 1
+                    calculate_waypoint = True
+                    #mode_wait_time = rospy.Duration(1.0)
 
                 '''
                 Juan's code for detecting window, generating trajectory, control drone.
                 '''
-                rospy.set_param('monocular_cv', 'window')
+                rospy.set_param('riseq/monocular_cv', 'window')
 
-                if (len(waypoint)!= 0):
-                    pose.pose.position.x = waypoint[0][0]
-                    pose.pose.position.y = waypoint[0][1]
-                    pose.pose.position.z = waypoint[0][2]
+                if ( send_mono_waypoint ) :
+                    if( calculate_waypoint):
+                        print("Calculate waypoint {}".format(step))
+                        if (len(monocular_waypoints) == avg_samples):
 
+                            # get avg waypoint
+                            avg_mono_waypoint = np.zeros((3,1))
+                            for wp in monocular_waypoints:
+                                avg_mono_waypoint = avg_mono_waypoint + wp/avg_samples
 
-                if rospy.Time.now() - last_request < rospy.Duration(5.0):
-                    pass
+                            # get avg uav position
+                            avg_uav_position = np.zeros((3,1))
+                            for pos in uav_positions:
+                                avg_uav_position = avg_uav_position + pos/avg_samples
+
+                            avg_waypoint = (avg_mono_waypoint * param) + avg_uav_position
+                            calculate_waypoint = False
+                            param = param + param_step
+
+                            pose.pose.position.x = avg_waypoint[0][0] 
+                            pose.pose.position.y = avg_waypoint[1][0]
+                            pose.pose.position.z = avg_waypoint[2][0]
+
+                    else:
+                        avg_waypoint= (avg_mono_waypoint * param) + avg_uav_position
+                        print(avg_waypoint)
+                        param = param + param_step
+
+                        pose.pose.position.x = avg_waypoint[0][0] 
+                        pose.pose.position.y = avg_waypoint[1][0]
+                        pose.pose.position.z = avg_waypoint[2][0]
+
+                    if( param >= 1.0):
+                        send_mono_waypoint = False
 
                 else:
-                    print "Window mode Over"
-                    mode = "Pole"
-                    iteration = 0
-                    last_request = rospy.Time.now()
+                    # get avg uav position
+                    avg_uav_position = np.zeros((3,1))
+                    for pos in uav_positions:
+                        avg_uav_position = avg_uav_position + pos/avg_samples
+
+                    error = np.array([[pose.pose.position.x], [pose.pose.position.y], [pose.pose.position.y]]) - avg_uav_position
+                    error = np.linalg.norm(error)
+                    print("Error: {}".format(error))
+                    print("Step: {}".format(step))
+                    if error < 0.2:
+                        if (step == 0):
+                            step = step + 1
+                            send_mono_waypoint = True
+                            calculate_waypoint = True
+                            param = 0.0
+                            param_step = 0.5  # distance should be shorter so go fasterS
+                        else:
+
+                            print "Window mode Over"
+                            mode = "Pole"
+                            iteration = 0
+                            last_request = rospy.Time.now()
+                            step = 0
+
             elif mode == "Pole":
                 if iteration == 0:
                     print "Pole mode"
@@ -191,6 +277,7 @@ if __name__ == "__main__":
                     pose.pose.position.z = last_position[2]
                     rospy.loginfo(pose)
                     iteration = iteration + 1
+                    mode_wait_time = rospy.Duration(5.0)
 
                 # To Construct Octomap, it moves left and right for 30 seconds
                 if rospy.Time.now() - last_request < rospy.Duration(15.0):

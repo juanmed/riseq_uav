@@ -44,7 +44,7 @@ class MonoWaypointDetector():
         Initialize CNN for gate pose detection
         """
 
-        self.waypoint_pub = rospy.Publisher("riseq/planning/uav_waypoint", Path, queue_size = 10)
+        self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
         
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
 
@@ -103,16 +103,17 @@ class MonoWaypointDetector():
                 R, t, R_exp, cnt = self.wd.detect(img.copy(), self.max_size)
 
                 if cnt is not None:
+
                     img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
-                    print(R)
+                    img = self.wd.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0, 1.0]]).T ), axis = 1)
                     gate_quat = tf.transformations.quaternion_from_matrix(R)
 
                     # gate waypoint
-                    wp.pose.position.x = t[0][0]
-                    wp.pose.position.y = t[1][0]
-                    wp.pose.position.z = t[2][0]
+                    wp.pose.position.x = t[2][0]
+                    wp.pose.position.y = -t[0][0]
+                    wp.pose.position.z = t[1][0]
                     wp.pose.orientation.x = gate_quat[0]
                     wp.pose.orientation.y = gate_quat[1]
                     wp.pose.orientation.z = gate_quat[2]
@@ -123,7 +124,6 @@ class MonoWaypointDetector():
 
             elif(self.mode == 'gate'):
                 R, t, img, conf = self.gateDetector.predict(img.copy())
-                #print("R: {},\n t: {}, conf: {:.3f}".format(R, t/3.45, conf))
 
                 gate_x = rospy.get_param("riseq/gate_x", 0.0)
                 gate_y = rospy.get_param("riseq/gate_y", 0.0)

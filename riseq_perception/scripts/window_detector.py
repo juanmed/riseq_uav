@@ -29,7 +29,7 @@ class WindowDetector():
         self.max_size = 460
         self.img = 0
         self.window_width = 1.2 #m
-        self.window_height = 1.2 #m 
+        self.window_height = 2 #m 
 
         # This params must be initialized with the best performing values
         self.canny_lt = 75
@@ -39,12 +39,12 @@ class WindowDetector():
         self.gauss_k = 5    # should be 3 or 5, but no more
 
         #Define corners of 3D Model's bounding cube
-        self.corners3D = np.zeros((5,3))
-        self.corners3D[0] = np.array([0.0, 0.0, 0.0]) #center
+        self.corners3D = np.zeros((4,3))
+        self.corners3D[0] = np.array([0.0, self.window_width/2, self.window_height/2])
         self.corners3D[1] = np.array([0.0, -self.window_width/2, self.window_height/2])
         self.corners3D[2] = np.array([0.0, -self.window_width/2, -self.window_height/2])
-        self.corners3D[3] = np.array([0.0, self.window_width/2, self.window_height/2])
-        self.corners3D[4] = np.array([0.0, self.window_width/2, -self.window_height/2]) 
+        self.corners3D[3] = np.array([0.0, self.window_width/2, -self.window_height/2]) 
+        #self.corners3D[4] = np.array([0.0, 0.0, 0.0]) #center
 
         # camera intrinsic matrix
         self.K = np.zeros((3,3), dtype='float64')
@@ -94,8 +94,7 @@ class WindowDetector():
         #print("Rotation:\n{}\ntranslation:\n{}".format(R,t))
 
         if(cnt is not None):
-            imgpts, jac = cv2.projectPoints(self.axis, R_exp, t, self.K, self.distCoeffs)
-            img = self.draw_frame(self.img.copy(),(cnt[0][0],cnt[0][1]),imgpts)
+            img = self.draw_frame(self.img.copy(),(cnt[0][0],cnt[0][1]), R_exp, t)
             img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
         else:
             print("No Countours found")
@@ -141,17 +140,26 @@ class WindowDetector():
                 screenCnt = (approx*(1.0/scale)).astype('float32')
                 screenCnt = screenCnt.reshape((4,-1))
 
+                #screenCnt2 = np.sort(screenCnt, axis = 0)
+                #screenCnt2 = np.sort(screenCnt2, axis = 1)
+                #print(screenCnt2)
+
                 #get centroid
                 m = cv2.moments(screenCnt)
                 try:
-                    cx = int(m["m10"] / m["m00"])
-                    cy = int(m["m01"] / m["m00"])
+                    cx = int( m["m10"] / m["m00"] )
+                    cy = int( m["m01"] / m["m00"] )
                 except ZeroDivisionError:
                     continue
+
                 centroid = np.array([[cx,cy]])
-                corners2D = np.concatenate((centroid, screenCnt), axis = 0)
+                corners2D = screenCnt
+                #corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
+
                 #print(self.corners3D, corners2D)
                 R, t, R_exp = self.getPose(self.corners3D, corners2D)
+
+                corners2D = np.concatenate((centroid, screenCnt), axis = 0)
                 corners2D = corners2D.astype('int')
                 break
 
@@ -169,12 +177,12 @@ class WindowDetector():
         """
         assert points_3D.shape[0] == points_2D.shape[0], 'points 3D and points 2D must have same number of vertices'
 
-        #points_2D = np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2))
-        _, R_exp, t = cv2.solvePnP(points_3D, points_2D, self.K, self.distCoeffs)
+        points_2D = np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2))
+        _, R_exp, t = cv2.solvePnP(points_3D, points_2D, self.K, None, flags = cv2.SOLVEPNP_EPNP)
         R, _ = cv2.Rodrigues(R_exp)
         return R, t, R_exp
 
-    def draw_frame(self, img, corner, imgpts):
+    def draw_frame(self, img, corner, R_exp, t):
         """
         Draw over the image a coordinate frame with origin in corner 
         and axis extending to the points in imgpts.
@@ -187,6 +195,8 @@ class WindowDetector():
         Taken from: https://docs.opencv.org/master/d7/d53/tutorial_py_pose.html
         """
         #corner = tuple(corners[0].ravel())
+        imgpts, jac = cv2.projectPoints(self.axis, R_exp, t, self.K, self.distCoeffs)
+
         img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (255,0,0), 2)
         img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 2)
         img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (0,0,255), 2)

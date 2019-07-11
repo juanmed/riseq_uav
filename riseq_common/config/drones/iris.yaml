@@ -19,4 +19,4 @@ riseq:
     arm_vector: [0.199, 0.199, 0.0372]
     environment: 'simulator'
     challenge_name: 'easy'
-    monocular_cv: 'window'
+    monocular_cv: 'disable'
