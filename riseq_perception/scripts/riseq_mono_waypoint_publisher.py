@@ -62,10 +62,10 @@ class MonoWaypointDetector():
         self.wd = WindowDetector(mode="eval")
 
         # ADR Gate Detector
-        cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
-        ply_file = rospy.get_param("riseq/gate_pose_nn_ply")
-        wgt_file = rospy.get_param("riseq/gate_pose_nn_wgt")
-        data_file = rospy.get_param("riseq/gate_pose_nn_data")
+        #cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
+        #ply_file = rospy.get_param("riseq/gate_pose_nn_ply")
+        #wgt_file = rospy.get_param("riseq/gate_pose_nn_wgt")
+        #data_file = rospy.get_param("riseq/gate_pose_nn_data")
         #self.gateDetector = GateDetector(cfg_file, ply_file, wgt_file, data_file)
 
 

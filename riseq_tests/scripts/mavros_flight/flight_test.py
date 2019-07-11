@@ -134,14 +134,9 @@ if __name__ == "__main__":
     last_request = rospy.Time.now()
     last_position = np.zeros(3)  # [ x, y, z ]
     iteration = 0
-<<<<<<< HEAD
-    height = 2
-    width = 3
-=======
+
     height = 1.5
     width = 1
->>>>>>> ed1e2d7d341ead4ab52edcc6ac7a908fac0714e3
-
     print "Start loop"
     while not rospy.is_shutdown():
         # print(current_state)

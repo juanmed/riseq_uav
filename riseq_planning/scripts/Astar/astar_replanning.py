@@ -142,7 +142,7 @@ class AStarMap:
     def octomap_cb(self, msg):
         self.occupied = set()
         for point in msg.markers[16].points:
-            if 0.95 <= point.z <= 1.05:
+            if 1.45 <= point.z <= 1.55:
                 for i in range(0, int(self.scale * 10) + 1):
                     for j in range(0, int(self.scale * 10) + 1):
                         x = point.x + float(i)/10
