@@ -1,4 +1,0 @@
-bool goal
-geometry_msgs/Vector3 goalpoint
----
-bool success
