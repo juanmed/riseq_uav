@@ -26,7 +26,7 @@ def qp_solution(order, waypoint, state, time):
     G, b : Inequality Constraint ( Corridor Constraint, Minimum Maximum speed)
     A, b : Equality Constraint ( Way point Constraint, Derivative Constraint)
     """
-    # change format of keyframe
+    # change format of way point
     # m : segment number
     # time scaling : time which is taken for each segment
     m = len(waypoint) - 1
@@ -73,7 +73,7 @@ def qp_solution(order, waypoint, state, time):
     #G = matrix([G1, G2])
     #h = matrix([h1, h2])
 
-    sol = solvers.qp(P, q, None, None, A, b)
+    sol = solvers.qp(P, q, G, h, A, b)
     sol_x = sol['x']
     val = sol['primal objective']
 

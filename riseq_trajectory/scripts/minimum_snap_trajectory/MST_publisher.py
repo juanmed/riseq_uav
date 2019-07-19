@@ -34,6 +34,7 @@ class MinimumSnapTrajectory:
         self.state = None
         self.m = 0
 
+        # TODO: make callback to receive state
         # Position, velocity, acceleration, jerk and snap
         # Assume that drone start and arrive at rest.
         self.state = np.zeros((5, 4))
