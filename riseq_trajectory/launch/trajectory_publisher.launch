@@ -1,0 +1,7 @@
+<launch>
+    <rosparam command="load" file="$(find riseq_common)/config/drones/flightgoggles.yaml"/>
+
+    <!-- Start nodes -->
+        <node pkg="riseq_trajectory" name="riseq_trajectory_publisher" type="MST_publisher.py" output="screen"/>
+
+</launch>

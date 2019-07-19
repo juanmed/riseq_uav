@@ -1,0 +1,17 @@
+<launch>
+  <node name="orb_slam2" pkg="orb_slam2_ros"
+      type="orb_slam2_ros_stereo" args="
+          $(find orb_slam2_ros)/orb_slam2/Vocabulary/ORBvoc.txt
+          $(find riseq_estimation)/cfg/orb_slam2_zedm.yaml"
+      output="screen">
+    <remap from="/image_left/image_color_rect" to="/zed/zed_node/left/image_rect_color" />
+    <remap from="/image_right/image_color_rect" to="/zed/zed_node/right/image_rect_color" />
+
+    <param name="publish_pointcloud" type="bool" value="false" />
+    <param name="publish_pose" type="bool" value="true" />
+    <param name="pointcloud_frame_id" type="string" value="map" />
+    <param name="camera_frame_id" type="string" value="camera_link" />
+
+    <remap from="/orb_slam2/pose" to="/riseq/estimation/vo_pose" />
+  </node>
+</launch>

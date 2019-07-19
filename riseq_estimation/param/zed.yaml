@@ -1,0 +1,14 @@
+# params/zedm_yaml
+# Parameters for Stereolabs ZED mini camera
+---
+
+camera_model: 'zed'
+
+# Dynamic parameters cannot have a namespace
+max_depth:                      20.0                 # Dynamic
+
+depth:
+    min_depth:                  0.5             # Min: 0.1, Max: 3.0
+
+tracking:
+    imu_fusion:                 false            # enable/disable IMU fusion. When set to false, only the optical odometry will be used.

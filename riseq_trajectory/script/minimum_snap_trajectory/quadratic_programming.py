@@ -1,3 +1,14 @@
+###########################
+# Reference
+#
+# [1]Daniel Mellinger and Vijay Kumar
+# Minimum Snap Trajectory Generation and Control for Quadrotors
+#
+# [2]Marcelino M. de Almeida, Rahul Moghe and Maruthi Akella
+# Real-Time Minimum Snap Trajectory Generation for Quadcopters: Algorithm speed-up Through Machine Learning
+###########################
+
+
 from cvxopt import matrix, solvers
 import numpy as np
 
@@ -9,6 +20,11 @@ def qp_solution(order, waypoint, keyframe, current_state, time):
     Function for calculating quadratic programming
     qp(P, q, G, h, A, b)
     min { 1/2 c.T * P * c + q * c } ---------- c is array of polynomial of flat output [ x y z psi ].
+    s.t. { A*c = b  }
+         { G*c <= h }
+    c : polynomial coefficients
+    P : Hessian matrix
+
     G, b : Inequality Constraint ( Corridor Constraint, Minimum Maximum speed)
     A, b : Equality Constraint ( Way point Constraint, Derivative Constraint)
     """
@@ -32,6 +48,14 @@ def qp_solution(order, waypoint, keyframe, current_state, time):
     P = qp_matrix.compute_p(mu_r, mu_psi)
     q = matrix(0.0, (m * (order + 1) * 4, 1))
     P = 2 * P
+
+
+    '''
+     Equality constraints are used to constrain position, velocity, orientation or angular velocity through way points
+    as well as enforcing continuity of trajectory and its derivatives[2]
+     Inequality constraints are added to enforce safety constraints, such as collision avoidance, maximum velocity
+    or maximum acceleration[2]
+    '''
 
     # compute equality constraint: A,b
     A1, b1 = qp_matrix.waypoint_constraint()

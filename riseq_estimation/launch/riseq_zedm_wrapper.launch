@@ -58,6 +58,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
       <!-- GPU ID -->
       <param name="general/gpu_id"             value="$(arg gpu_id)" />
+
+      <remap from="/zed/zed_node/pose" to="/mavros/vision_pose/pose" />
     </node>
   </group>
 </launch>

@@ -5,7 +5,7 @@ import tf
 
 import quadratic_programming as qp
 import draw_trajectory as dt
-import optimal_time as ot
+
 import gate_event as ga
 
 import riseq_common.differential_flatness as df
@@ -13,16 +13,19 @@ import riseq_perception.keyframe_generator as kg
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_common.msg import riseq_uav_state
-
-import cProfile
-from pycallgraph import PyCallGraph
-from pycallgraph import output
-from pycallgraph.output import GraphvizOutput
-import graphviz
-
+from nav_msgs.msg import Path
 
 class TrajectoryGenerator:
     def __init__(self):
+        self.keyframe = []
+        self.waypoint = 0
+        self.gate_count = 0
+        # create subscriber for subscribing way point
+        self.point_sub = rospy.Subscriber('riseq/uav_waypoint', Path, self.waypoint_callback)
+
+        # waiting for callback function complete
+        rospy.sleep(1)
+
         # create publisher for publishing ref trajectory
         self.traj_pub = rospy.Publisher('riseq/uav_trajectory', riseq_uav_trajectory, queue_size=10)
 
@@ -33,26 +36,28 @@ class TrajectoryGenerator:
         self.n = 4
 
         # determine environment
-        self.environment = rospy.get_param("riseq/environment")
+        #self.environment = rospy.get_param("riseq/environment")
 
-        if self.environment == "simulator":
-            # select mode (easy, medium, hard, scorer)
-            mode = rospy.get_param("/uav/challenge_name", -1)
-            if mode == -1:
-                rospy.logerr("mode is not specified!")
-                rospy.signal_shutdown("[challenge_name] could not be read")
+        #if self.environment == "simulator":
+        #    # select mode (easy, medium, hard, scorer)
+        #    mode = rospy.get_param("/uav/challenge_name", -1)
+        #    if mode == -1:
+        #        rospy.logerr("mode is not specified!")
+        #        rospy.signal_shutdown("[challenge_name] could not be read")
+
 
             # For keyframe generation, It needs drone initial position and way point.
             # Initial orientation can be quaternion, so should be transformed to euler angle.
             # Checking way point count: n. Polynomial segment: m = gate_count
-            init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
-            self.gate_name = rospy.get_param("/uav/gate_names")
-            self.gate_count = len(self.gate_name)
-            self.gate_location = np.zeros((self.gate_count, 4, 3))
-            for i, g in enumerate(self.gate_name):
-                self.gate_location[i] = np.asarray(rospy.get_param("/uav/%s/location" % g))
-            self.keyframe = kg.gate_keyframe(init_pose, self.gate_location, self.gate_count)
-            self.waypoint = self.gate_count + 1
+            #init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+            #self.gate_name = rospy.get_param("/uav/gate_names")
+            #self.gate_count = len(self.gate_name)
+            #self.gate_location = np.zeros((self.gate_count, 4, 3))
+            #for i, g in enumerate(self.gate_name):
+            #    self.gate_location[i] = np.asarray(rospy.get_param("/uav/%s/location" % g))
+            #self.keyframe = kg.gate_keyframe(init_pose, self.gate_location, self.gate_count)
+            #self.waypoint = self.gate_count + 1
+        '''
 
             # TODO : change to ROS topic to get current state just when request for updating trajectory.
             # create publisher for publishing ref trajectory
@@ -77,8 +82,9 @@ class TrajectoryGenerator:
             self.tolerance = 1
             # Make array Class for counting gate which is traversed
             self.gate_events = []
-            for i in range(self.gate_count):
-                self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
+            #for i in range(self.gate_count):
+            #    self.gate_events.append(ga.GateEvent(self.gate_location[i], self.inflation, self.tolerance))
+
             # count pass
             self.gate_pass = 0
 
@@ -95,22 +101,34 @@ class TrajectoryGenerator:
                 self.time_scaling = [5, 2, 2, 5]
                 self.time_scaling = np.array(self.time_scaling)
             else:
-                self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-                self.time_scaling = np.array(self.time_scaling)
+                self.time_scaling = np.ones(self.gate_count) * 5
+                # self.time_scaling = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+                # self.time_scaling = np.array(self.time_scaling)
+
+
         elif self.environment == "embedded_computer":
             pass
         else:
             pass
-
-        if self.environment == "simulator":
+        '''
+        #if self.environment == "simulator":
             # Solution for piecewise polynomial and draw trajectory in plot
             # drawing plot is needed only at simulator
-            self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-            dt.draw_in_plot(self.sol_x, self.order, self.waypoint, self.keyframe)
-        elif self.environment == "embedded_computer":
-            self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-        else:
-            pass
+        current_pos = self.keyframe[0]  # x y z psi
+        current_vel = np.array([0, 0, 0, 0])
+        current_acc = np.array([0, 0, 0, 0])
+        current_jerk = np.array([0, 0, 0, 0])
+        current_snap = np.array([0, 0, 0, 0])
+        self.current_state = np.vstack(
+            (current_pos, current_vel, current_acc, current_jerk, current_snap))
+        self.time_scaling = np.ones(self.gate_count) * 5
+        self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+        dt.draw_in_plot(self.sol_x, self.order, self.waypoint, self.keyframe)
+        #elif self.environment == "embedded_computer":
+        #    self.sol_x, self.val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
+        #else:
+        #    pass
+
 
         # initialize time
         self.start_time = rospy.get_time()
@@ -256,66 +274,40 @@ class TrajectoryGenerator:
                 rospy.loginfo('People...we have a problem: {}'.format(Exception))
                 continue
 
-    # TODO
-    ### Function which search minimum time
-    # Not Finish
-    def optimal_time(self):
-        sol_x = ot.random_search(self.order, self.waypoint, self.keyframe, self.current_state, self.time_scaling)
-        #dt.draw_in_plot(sol_x, self.order, self.waypoint, self.keyframe)
-
-    # TODO
-    # It would be long time to study and apply GDM
-    # so for now, postpone this work later
-    ''' 
-    # Constrained Gradient Descent method
-    def CGDmethod(self, total_time, iteration, precision):
-        # h is some small number
-        h = 0.0000001
-        # m is segment
-        m = self.waypoint -1
-
-        # First, time is set as equal at each segment.
-        time = np.ones(m) * total_time / m
-        for i in range(0, iteration):
-            print "hi"
-            prev_time = time
-            sol_x, f_before = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, prev_time)
-            prev_val = f_before
-            for j in range(0, m):
-                g = np.ones(m) * (-1/(m-1))
-                g[j] = 1
-                print h*g
-                print prev_time
-                sol_x, f_after = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, prev_time + h*g)
-                print prev_time
-                gradient = (f_after - f_before)/h
-                print gradient
-                time[j] = time[j] - gradient
-                print prev_time
-            sol_x, val = qp.qp_solution(self.order, self.waypoint, self.keyframe, self.current_state, time)
-            if abs(val - prev_val) < precision:
-                return time, sol_x
-    '''
+    def waypoint_callback(self, msg):
+        self.waypoint = len(msg.poses)
+        self.gate_count = len(msg.poses) - 1
+        self.keyframe = np.zeros((self.waypoint, 4))
+        for i in range(0, self.waypoint):
+            self.keyframe[i][0] = msg.poses[i].pose.position.x
+            self.keyframe[i][1] = msg.poses[i].pose.position.y
+            self.keyframe[i][2] = msg.poses[i].pose.position.z
+            phi, theta, psi = tf.transformations.euler_from_quaternion(
+                [msg.poses[i].pose.orientation.x, msg.poses[i].pose.orientation.y, msg.poses[i].pose.orientation.z, msg.poses[i].pose.orientation.w], axes='sxyz')
+            self.keyframe[i][3] = psi
 
 
 if __name__ == "__main__":
-    ### Init Node and Class
+    # Init Node and Class
     rospy.init_node('riseq_ref_trajectory_publisher', anonymous=True)
 
+    # Wait some time before running. This is to adapt to some simulators
+    # which require some 'settling time'
+
+    try:
+        wait_time = int(rospy.get_param('riseq/trajectory_wait'))
+    except:
+        print('riseq/trajectory_wait_time parameter is unavailable')
+        print('Setting a wait time of 0 seconds.')
+        wait_time = 1
+
     # wait time for simulator to get ready...
-    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
     while rospy.Time.now().to_sec() < wait_time:
         if (int(rospy.Time.now().to_sec()) % 1) == 0:
             rospy.loginfo(
                 "Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
+    
 
-    # traj_gen.optimal_time()
-    ### CProfile method
-    # cProfile.run('traj_gen.optimal_time()')
-    ### GraphvizOutput (Recommended) : This code shows profile Graphically
-    # graphviz = output.GraphvizOutput(output_file='profile.png')
-    # with PyCallGraph(output=graphviz):
-    #   traj_gen.optimal_time()
 
     rospy.sleep(0.1)
     # IMPORTANT WAIT TIME!

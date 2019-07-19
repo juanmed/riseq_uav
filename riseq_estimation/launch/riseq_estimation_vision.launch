@@ -1,0 +1,17 @@
+<launch>
+  <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch" />
+  <include file="$(find realsense2_camera)/launch/rs_rgbd.launch" />
+
+  <!-- Voxel filter node -->
+  <include file="$(find riseq_estimation)/launch/riseq_voxel_filter.launch" />
+
+  <include file="$(find riseq_estimation)/launch/riseq_octomap.launch" />
+  <!--include file="$(find riseq_estimation)/launch/riseq_orb_slam2_zedm.launch" /-->
+
+
+  <!-- TF publisher to set VO position and point cloud -->
+  <node pkg="riseq_estimation" type="riseq_estimation_tf_publisher.py" name="riseq_estimation_tf_publisher" />
+
+  <!-- Pose publisher convert vision into PX4 -->
+  <!--node pkg="riseq_estimation" type="riseq_estimation_vision_publisher.py" name="riseq_estimation_vision_publisher" /-->
+</launch>

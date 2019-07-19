@@ -2,8 +2,7 @@
 """
 author:  Eugene Auh
 version: 0.1.0
-brief: This node publishes /tf topic to connect world frame of SVO and map frame of ZED camera
-       not to ZED odometry data on octomap.
+brief: This node publishes /tf topic to connect frames of Visual Odometry and frames of ZED camera.
 
 MIT License
 
@@ -34,8 +33,22 @@ if __name__ == "__main__":
         br = tf.TransformBroadcaster()
         r = rospy.Rate(1000)
 
+        # Visual odometry method to use. SVO, ORB_SLAM2
+        method = "ZED mini"
+        use_realsense = True
+
         while not rospy.is_shutdown():
-            br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "zed_left_camera_optical_frame")
+            if method == "SVO":
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "cam_pos", "base_link")
+            elif method == "ORB_SLAM2":
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "base_link", "camera_link")
+            elif method == "ZED mini":
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "map", "world")
+                br.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "local_origin", "world")
+
+            if use_realsense == True:
+                br.sendTransform((0.12, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "camera_link", "fcu")
+
             r.sleep()
 
     except rospy.ROSInterruptException:

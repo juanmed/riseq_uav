@@ -22,3 +22,4 @@ def saturate_vector_dg(v, max_value):
         return v
     else:
         return np.dot(v/mag,max_value)  # return vector in same direction but maximum possible magnitude
+

@@ -10,7 +10,7 @@
         <!--<node pkg="riseq_trajectory" name="riseq_hovering_publisher" type="hovering_publisher.py">
             <remap from="riseq/uav_hovering_trajectory" to="riseq/uav_trajectory"/>
         </node>-->
-        <node pkg="riseq_trajectory" name="riseq_MST_publisher" type="MST_publisher.py"/>
+        <node pkg="riseq_trajectory" name="riseq_mst_publisher" type="MST_publisher.py" output="screen"/>
         <node pkg="riseq_control" name="riseq_high_level_control_publisher" type="riseq_high_level_control_publisher.py"/>
         <node pkg="riseq_control" name="riseq_low_level_control_publisher" type="riseq_low_level_control_publisher.py" output="screen" />
         <node pkg="rqt_plot" name="rqt_plot" type="rqt_plot"/>

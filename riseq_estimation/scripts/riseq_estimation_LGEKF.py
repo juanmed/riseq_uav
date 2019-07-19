@@ -35,7 +35,7 @@ class LieGroupExtendedKalmanFilter():
         self.dt = 1.0/self.frequency
         self.g = 9.81
 
-        # state variables: T, w, v
+        # State variables: T, v, w
         # SE(3) x R3 x R3
         self.x_pre = np.array
         self.x_est

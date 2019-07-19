@@ -6,6 +6,7 @@ import numpy as np
 
 from riseq_trajectory.msg import riseq_uav_trajectory
 import riseq_tests.df_flat as df_flat 
+from mavros_msgs.msg import State
 
 import trajgen2_helper as trajGen3D
 
@@ -20,7 +21,7 @@ class Trajectory_Generator2():
         # initialize heading
         environment = rospy.get_param("riseq/environment")
         if (environment == "simulator"):
-            self.init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
+            self.init_pose = rospy.get_param("riseq/init_pose")
         elif (environment == "embedded_computer"):
             self.init_pose = rospy.get_param("riseq/init_pose")
         else:
@@ -31,8 +32,26 @@ class Trajectory_Generator2():
         # ---------------------------- #
         # Compute trajectory waypoints #
         # ---------------------------- #
+        gate=True
+        if(gate==True):
+            gate_x = rospy.get_param("riseq/gate_x")
+            gate_y = rospy.get_param("riseq/gate_y")
+            gate_z = rospy.get_param("riseq/gate_z")
+            gate_yaw = rospy.get_param("riseq/gate_yaw")
 
-        self.waypoints = self.get_vertical_waypoints(0.1)
+            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+            p2 = np.array([[0.0],[0.0],[gate_z]])
+            p3 = np.array([[gate_x],[gate_y],[gate_z]])    
+                    
+        else:
+            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+            p2 = np.array([[0],[0],[1.67]])
+            p3 = np.array([[6],[3],[1.67]])
+
+        point_list = [p1,p2,p3]
+        #self.waypoints = self.get_waypoint_list(point_list)
+        #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
+        self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -52,8 +71,16 @@ class Trajectory_Generator2():
 
 
 
+        #PX4
+        self.mavros_state = State()
+        self.mavros_state.connected = False
+        self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)
+
+    def mavros_state_cb(self, state_msg):
+        self.mavros_state = state_msg
+
     def compute_reference_traj(self, time):
-        vel = 0.05     #max vel = 3
+        vel = 0.25    #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
@@ -92,7 +119,7 @@ class Trajectory_Generator2():
 
         return waypoints
 
-    def get_vertical_waypoints(self, height):
+    def get_goal_waypoint(self, x, y ,z):
 
         # First waypoint is initial position
         waypoints = np.zeros((2,3))
@@ -101,9 +128,21 @@ class Trajectory_Generator2():
         waypoints[0][2] = self.init_pose[2]   
         
         # now add a waypoint exactly 1m above the drone 
-        waypoints[1][0] = waypoints[0][0]
-        waypoints[1][1] = waypoints[0][1] 
-        waypoints[1][2] = waypoints[0][2] + height
+        waypoints[1][0] = waypoints[0][0] + x
+        waypoints[1][1] = waypoints[0][1] + y
+        waypoints[1][2] = waypoints[0][2] + z
+
+        return waypoints  
+
+    def get_waypoint_list(self, point_list):
+
+        # First waypoint is initial position
+        waypoints = np.zeros((len(point_list),3))
+
+        for i, point in enumerate(point_list):
+                waypoints[i][0] = point[0][0]
+                waypoints[i][1] = point[1][0]
+                waypoints[i][2] = point[2][0]
 
         return waypoints  
 
@@ -118,9 +157,10 @@ def pub_traj():
     # wait time for simulator to get ready...
     wait_time = int(rospy.get_param("riseq/trajectory_wait"))
     while( rospy.Time.now().to_sec() < wait_time ):
-        if( ( int(rospy.Time.now().to_sec()) % 1) == 0 ):
+        if( ( rospy.Time.now().to_sec() % 1.0) == 0.0 ):
             rospy.loginfo("Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
     
+
 
     # create a trajectory generator
     #traj_gen = Trajectory_Generator()
@@ -134,7 +174,12 @@ def pub_traj():
     # time for the trajectory will be degenerated
 
     # publish at 10Hz
-    rate = rospy.Rate(100.0)
+
+    while ((traj_gen.mavros_state.armed != True) and (traj_gen.mavros_state.mode != 'OFFBOARD')):
+        print(" >> Trajectory generator waiting for Drone ARMing")
+
+    rate = rospy.Rate(rospy.get_param('riseq/trajectory_update_rate', 200))
+    print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(rospy.get_param('riseq/trajectory_update_rate', 200)))
 
     while not rospy.is_shutdown():
 
@@ -231,7 +276,7 @@ def pub_traj():
 
             # publish message
             traj_publisher.publish(traj)
-            rospy.loginfo(traj)
+            #rospy.loginfo(traj)
             rate.sleep()
 
         except Exception:
