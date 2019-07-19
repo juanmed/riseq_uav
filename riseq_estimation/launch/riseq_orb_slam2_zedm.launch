@@ -1,11 +1,8 @@
 <launch>
-  <!-- Pose publisher convert ORB_SLAM2 into PX4 -->
-  <node pkg="riseq_estimation" type="riseq_estimation_vision_publisher.py" name="riseq_estimation_vision_publisher" />
-
   <node name="orb_slam2" pkg="orb_slam2_ros"
       type="orb_slam2_ros_stereo" args="
           $(find orb_slam2_ros)/orb_slam2/Vocabulary/ORBvoc.txt
-          $(find riseq_estimation)/param/orb_slam2_zedm.yaml"
+          $(find riseq_estimation)/cfg/orb_slam2_zedm.yaml"
       output="screen">
     <remap from="/image_left/image_color_rect" to="/zed/zed_node/left/image_rect_color" />
     <remap from="/image_right/image_color_rect" to="/zed/zed_node/right/image_rect_color" />

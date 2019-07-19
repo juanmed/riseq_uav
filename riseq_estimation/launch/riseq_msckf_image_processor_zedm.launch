@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="robot" default="zed"/>
+  <arg name="robot" default="msckf"/>
   <arg name="calibration_file"
     default="$(find riseq_estimation)/cfg/camchain-imucam-zedm.yaml"/>
 
