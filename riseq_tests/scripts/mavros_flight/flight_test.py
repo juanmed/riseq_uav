@@ -203,11 +203,11 @@ if __name__ == "__main__":
                 '''
                 Juan's code for detecting window, generating trajectory, control drone.
                 '''
-                rospy.set_param('riseq/monocular_cv', 'window')
+                rospy.set_param('riseq/monocular_cv', 'pipe')
 
                 if ( send_mono_waypoint ) :
                     if( calculate_waypoint):
-                        print("Calculate waypoint {}".format(step))
+                        #print("Calculate waypoint {}".format(step))
                         if (len(monocular_waypoints) == avg_samples):
 
                             # get avg waypoint
@@ -250,8 +250,8 @@ if __name__ == "__main__":
                     error = goal_point - avg_uav_position
                     error = np.linalg.norm(error)
 
-                    print("Error: {}".format(error))
-                    print("Step: {}".format(step))
+                    #print("Error: {}".format(error))
+                    #print("Step: {}".format(step))
                     if error < 0.2:
                         if (step == 0):
                             step = step + 1
@@ -268,7 +268,7 @@ if __name__ == "__main__":
                             step = 0
                     else:
                         quien = "waypoint" if (np.linalg.norm(avg_uav_position) < np.linalg.norm(goal_point)) else "position"
-                        print("Mayor es {}".format(quien))
+                        #print("Mayor es {}".format(quien))
 
             elif mode == "Pole":
                 if iteration == 0:

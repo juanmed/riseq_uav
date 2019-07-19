@@ -30,6 +30,7 @@ import cv2
 
 #from detector import *
 from window_detector import WindowDetector
+from ellipse_detector import EllipseDetector
 from cv_bridge import CvBridge, CvBridgeError
 
 from sensor_msgs.msg import Image 
@@ -60,6 +61,7 @@ class MonoWaypointDetector():
 
         # AI Challenge detectors
         self.wd = WindowDetector(mode="eval")
+        self.pd = EllipseDetector(mode = "eval")
 
         # ADR Gate Detector
         cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
@@ -67,9 +69,6 @@ class MonoWaypointDetector():
         wgt_file = rospy.get_param("riseq/gate_pose_nn_wgt")
         data_file = rospy.get_param("riseq/gate_pose_nn_data")
         #self.gateDetector = GateDetector(cfg_file, ply_file, wgt_file, data_file)
-
-
-
 
     def estimate_object_pose(self, image_msg):
         """
@@ -121,6 +120,29 @@ class MonoWaypointDetector():
 
                     path.poses = [wp]
 
+            elif(self.mode == 'pipe'):
+
+                ellipses = self.pd.detect(img.copy(), self.max_size)
+                
+                if len(ellipses) == 1:
+                    R, t, R_exp, e = ellipses[0]
+                    img = cv2.ellipse(img, e, (255,0,0), 2)
+                    img = self.pd.draw_frame(img, (e[0][0],e[0][1]), R_exp, t)
+
+                    R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
+                    R = np.concatenate((R, np.array([[0.0, 0.0, 0.0, 1.0]]).T ), axis = 1)
+                    gate_quat = tf.transformations.quaternion_from_matrix(R)
+
+                    # gate waypoint
+                    wp.pose.position.x = t[2][0]
+                    wp.pose.position.y = -t[0][0]
+                    wp.pose.position.z = t[1][0]
+                    wp.pose.orientation.x = gate_quat[0]
+                    wp.pose.orientation.y = gate_quat[1]
+                    wp.pose.orientation.z = gate_quat[2]
+                    wp.pose.orientation.w = gate_quat[3]
+
+                    path.poses = [wp]
 
             elif(self.mode == 'gate'):
                 R, t, img, conf = self.gateDetector.predict(img.copy())
@@ -185,9 +207,6 @@ def gate_pose_publisher():
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass
-
-
-
 
 if __name__ == '__main__':
     gate_pose_publisher()
