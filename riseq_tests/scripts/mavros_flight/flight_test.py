@@ -88,7 +88,7 @@ if __name__ == "__main__":
     param_step = 0.1
     global avg_samples
     mode_wait_time = rospy.Duration(5.0)
-    step = 0
+    step = 1
 
     rospy.init_node('Flight_node', anonymous=True)
 
@@ -227,11 +227,16 @@ if __name__ == "__main__":
                     calculate_waypoint = True
                     #mode_wait_time = rospy.Duration(1.0)
 
+                '''
+                Juan's code for detecting window, generating trajectory, control drone.
+                '''
+
                 rospy.set_param('riseq/monocular_cv', 'window')
+
 
                 if ( send_mono_waypoint ) :
                     if( calculate_waypoint):
-                        print("Calculate waypoint {}".format(step))
+                        #print("Calculate waypoint {}".format(step))
                         if (len(monocular_waypoints) == avg_samples):
 
                             # get avg waypoint
@@ -248,13 +253,13 @@ if __name__ == "__main__":
                             calculate_waypoint = False
                             param = param + param_step
 
-                            pose.pose.position.x = avg_waypoint[0][0] 
-                            pose.pose.position.y = avg_waypoint[1][0]
-                            pose.pose.position.z = avg_waypoint[2][0]
+                            pose.pose.position.x = avg_waypoint[0][0] + 1.1
+                            pose.pose.position.y = avg_waypoint[1][0] + 0.0
+                            pose.pose.position.z = avg_waypoint[2][0] + 0.0
 
                     else:
                         avg_waypoint= (avg_mono_waypoint * param) + avg_uav_position
-                        print(avg_waypoint)
+                        #print(avg_waypoint)
                         param = param + param_step
 
                         pose.pose.position.x = avg_waypoint[0][0] 
@@ -270,10 +275,12 @@ if __name__ == "__main__":
                     for pos in uav_positions:
                         avg_uav_position = avg_uav_position + pos/avg_samples
 
-                    error = np.array([[pose.pose.position.x], [pose.pose.position.y], [pose.pose.position.y]]) - avg_uav_position
+                    goal_point = np.array([[pose.pose.position.x], [pose.pose.position.y], [pose.pose.position.y]])
+                    error = goal_point - avg_uav_position
                     error = np.linalg.norm(error)
-                    print("Error: {}".format(error))
-                    print("Step: {}".format(step))
+
+                    #print("Error: {}".format(error))
+                    #print("Step: {}".format(step))
                     if error < 0.2:
                         if (step == 0):
                             step = step + 1
@@ -288,6 +295,9 @@ if __name__ == "__main__":
                             iteration = 0
                             last_request = rospy.Time.now()
                             step = 0
+                    else:
+                        quien = "waypoint" if (np.linalg.norm(avg_uav_position) < np.linalg.norm(goal_point)) else "position"
+                        #print("Mayor es {}".format(quien))
 
             elif mode == "Pole":
                 if iteration == 0:

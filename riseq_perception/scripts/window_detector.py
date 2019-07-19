@@ -28,8 +28,8 @@ class WindowDetector():
         """
         self.max_size = 460
         self.img = 0
-        self.window_width = 1.2 #m
-        self.window_height = 2 #m 
+        self.window_width = 1.4 #m
+        self.window_height = 2.2 #m 
 
         # This params must be initialized with the best performing values
         self.canny_lt = 75
@@ -120,14 +120,21 @@ class WindowDetector():
         edges = cv2.Canny(blur.copy(), self.canny_lt, self.canny_ht, self.canny_k)
         dilate = cv2.dilate(edges, None, iterations = 1)
         erode = cv2.erode(dilate, None, iterations = 1)
-        inf, cnts, hrch = cv2.findContours(erode.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+        inf, cnts, hrch = cv2.findContours(erode.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        #cnts_tree = cnts.copy()
+        try:
+            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+        except:
+            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:len(cnts)]
 
         screenCnt = None
         R = None
         t = None
         R_exp = None
         corners2D = None
+
+        squares = []
+
         for cnt in cnts:
 
             # approximate the contour
@@ -137,31 +144,71 @@ class WindowDetector():
             # if our approximated contour has four points, then we
             # can assume that we have found our screen
             if (len(approx) == 4):
-                screenCnt = (approx*(1.0/scale)).astype('float32')
-                screenCnt = screenCnt.reshape((4,-1))
+                squares.append(approx)
 
-                #screenCnt2 = np.sort(screenCnt, axis = 0)
-                #screenCnt2 = np.sort(screenCnt2, axis = 1)
-                #print(screenCnt2)
+        square_couples = []
+        for i, square_i in enumerate(squares):
 
-                #get centroid
-                m = cv2.moments(screenCnt)
-                try:
-                    cx = int( m["m10"] / m["m00"] )
-                    cy = int( m["m01"] / m["m00"] )
-                except ZeroDivisionError:
+            m = cv2.moments(square_i)
+            try:
+                cx = int( m["m10"] / m["m00"] )
+                cy = int( m["m01"] / m["m00"] )
+            except ZeroDivisionError:
+                continue
+
+            centroid_i = np.array([[cx],[cy]])
+
+            for j in range(len(squares)):
+
+                if (i == j):
                     continue
+                else:
+                    square_j = squares[j]
 
-                centroid = np.array([[cx,cy]])
-                corners2D = screenCnt
-                #corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
+                    m = cv2.moments(square_j)
+                    try:
+                        cx_j = int( m["m10"] / m["m00"] )
+                        cy_j = int( m["m01"] / m["m00"] )
+                    except ZeroDivisionError:
+                        continue
 
-                #print(self.corners3D, corners2D)
-                R, t, R_exp = self.getPose(self.corners3D, corners2D)
+                    centroid_j = np.array([[cx_j],[cy_j]])
 
-                corners2D = np.concatenate((centroid, screenCnt), axis = 0)
-                corners2D = corners2D.astype('int')
-                break
+                    dist = np.linalg.norm(centroid_i - centroid_j)
+                    if dist < 10:
+                        square_couples.append([square_i, square_j, dist])
+
+        square_couples.sort(key=(lambda x: x[2]), reverse = True)
+
+        if len(square_couples) > 0:
+            screenCnt = square_couples[0][0].reshape((-1,2))
+            screenCnt = (screenCnt*(1.0/scale)).astype('float32')
+                
+
+            screenCnt = screenCnt.reshape((4,-1))
+
+            #screenCnt2 = np.sort(screenCnt, axis = 0)
+            #screenCnt2 = np.sort(screenCnt2, axis = 1)
+            #print(screenCnt2)
+
+            #get centroid
+            m = cv2.moments(screenCnt)
+            try:
+                cx = int( m["m10"] / m["m00"] )
+                cy = int( m["m01"] / m["m00"] )
+            except ZeroDivisionError:
+                pass
+
+            centroid = np.array([[cx,cy]])
+            corners2D = screenCnt
+            #corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
+
+            #print(self.corners3D, corners2D)
+            R, t, R_exp = self.getPose(self.corners3D, corners2D)
+
+            corners2D = np.concatenate((centroid, screenCnt), axis = 0)
+            corners2D = corners2D.astype('int')
+            
 
         return R, t, R_exp, corners2D
 
