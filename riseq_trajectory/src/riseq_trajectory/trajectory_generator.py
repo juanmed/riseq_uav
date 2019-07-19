@@ -54,13 +54,15 @@ class TrajectoryGenerator(object):
         time = rospy.get_time()
 
         # stay hover at the last waypoint position
+        if self.index == self.count:
             hovering_point = self.waypoint[-1]
             ref_trajectory = hv.hovering_traj(hovering_point)
 
         # In other word, reference time should be time which is subtracted by last time
         else:
             ref_time = time - self.last_time
-            solution = self.solution[self.n * (self.order + 1) * self.index: self.n * (self.order + 1) * (self.index + 1)]
+            solution = self.solution[
+                       self.n * (self.order + 1) * self.index: self.n * (self.order + 1) * (self.index + 1)]
             ref_trajectory = df.get_trajectory(solution, self.order, self.time[self.index], ref_time)
             # If the time is gone, segment should be changed
             # Index increases.

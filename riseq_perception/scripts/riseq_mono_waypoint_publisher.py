@@ -49,12 +49,12 @@ class MonoWaypointDetector():
         
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
 
-        self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
+        self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
 
         self.bridge = CvBridge()
 
-        self.init_pose = rospy.get_param("riseq/init_pose")
-        self.init_pose = [float(a) for a in self.init_pose]
+        #self.init_pose = rospy.get_param("riseq/init_pose")
+        #self.init_pose = [float(a) for a in self.init_pose]
         self.mode = rospy.get_param("riseq/monocular_cv", 'disable')
         self.max_size = 460
 
@@ -64,10 +64,10 @@ class MonoWaypointDetector():
         self.pd = EllipseDetector(mode = "eval")
 
         # ADR Gate Detector
-        cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
-        ply_file = rospy.get_param("riseq/gate_pose_nn_ply")
-        wgt_file = rospy.get_param("riseq/gate_pose_nn_wgt")
-        data_file = rospy.get_param("riseq/gate_pose_nn_data")
+        #cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
+        #ply_file = rospy.get_param("riseq/gate_pose_nn_ply")
+        #wgt_file = rospy.get_param("riseq/gate_pose_nn_wgt")
+        #data_file = rospy.get_param("riseq/gate_pose_nn_data")
         #self.gateDetector = GateDetector(cfg_file, ply_file, wgt_file, data_file)
 
     def estimate_object_pose(self, image_msg):

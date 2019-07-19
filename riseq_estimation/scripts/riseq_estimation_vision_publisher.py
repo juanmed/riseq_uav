@@ -29,16 +29,17 @@ class VisionPublisher():
     def pose_cb(self, vo_pose):
         """
         Convert the coordinate of the visual odometry pose into mavros message.
-        MAVLINK uses NED frames.
+        MAVROS uses ENU and flu frames.
         """
-        self.px4_pose.pose.position.x = vo_pose.pose.position.x
-        self.px4_pose.pose.position.y = vo_pose.pose.position.y
-        self.px4_pose.pose.position.z = vo_pose.pose.position.z
-        self.px4_pose.pose.orientation.x = -vo_pose.pose.orientation.x
-        self.px4_pose.pose.orientation.y = -vo_pose.pose.orientation.y
-        self.px4_pose.pose.orientation.z = -vo_pose.pose.orientation.z
-        self.px4_pose.pose.orientation.w = -vo_pose.pose.orientation.w
-        self.px4_pose.header.stamp = rospy.Time.now()
+        if self.method == "ORB_SLAM2":
+            self.px4_pose.pose.position.x = vo_pose.pose.position.x
+            self.px4_pose.pose.position.y = vo_pose.pose.position.y
+            self.px4_pose.pose.position.z = vo_pose.pose.position.z
+            self.px4_pose.pose.orientation.x = -vo_pose.pose.orientation.x
+            self.px4_pose.pose.orientation.y = -vo_pose.pose.orientation.y
+            self.px4_pose.pose.orientation.z = -vo_pose.pose.orientation.z
+            self.px4_pose.pose.orientation.w = -vo_pose.pose.orientation.w
+            self.px4_pose.header.stamp = rospy.Time.now()
 
         self.pose_publisher.publish(self.px4_pose)
 
@@ -53,6 +54,8 @@ class VisionPublisher():
         self.pose_publisher = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
         rospy.Subscriber('/riseq/estimation/vo_pose', PoseStamped, self.pose_cb)
 
+        self.method = "ORB_SLAM2"
+        
 
     def loop(self):
         self.r.sleep()

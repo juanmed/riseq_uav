@@ -1,0 +1,8 @@
+<launch>
+    <!-- Start nodes -->
+    <!--<node pkg = "riseq_tests" name = "riesq_flight_test" type = "flight_test.py" output = "screen"/>-->
+    <node pkg = "riseq_tests" name = "offboard_test" type = "offb.py" output = "screen"/>
+    <node pkg = "riseq_planning" name = "riseq_planning" type = "astar_replanning.py" />
+    <node pkg = "riseq_perception" name = "riseq_mono_waypoint_publisher" type = "riseq_mono_waypoint_publisher.py" output = "screen" />
+    <include file="$(find riseq_estimation)/launch/riseq_estimation_vision.launch" />
+</launch>

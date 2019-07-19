@@ -1,23 +1,20 @@
 <launch>
-    <!-- TF publisher to set SVO position as origin of the camera on world frame -->
-    <node pkg="riseq_estimation" type="riseq_estimation_tf_publisher.py" name="riseq_estimation_tf_publisher" />
-
     <!-- OctoMap -->
     <arg name="path" default="" />
     <arg name="changeIdFrame" default="" />
     <node pkg="octomap_server" type="octomap_tracking_server_node" name="riseq_estimation_octomap_talker" output="screen" args="$(arg path)">
-      <param name="frame_id" type="string" value="map" />
+      <param name="frame_id" type="string" value="local_origin" />
 
       <!-- The resolution of the grid -->
       <param name="resolution" value="0.1" />
 
-      <param name="sensor_model/max_range" value="12.0" />
+      <param name="sensor_model/max_range" value="7.5" />
       <!--param name="sensor_model/[hit|miss]" value="0.7/0.4" /-->
       <!--param name="sensor_model/[min|max]" value="0.12/0.97" /-->
 
       <!-- The range of the map in z direction to use -->
-      <param name="pointcloud_min_z" value="-0.5" />
-      <param name="pointcloud_max_z" value="3.0" />
+      <param name="pointcloud_min_z" value="-1.5" />
+      <param name="pointcloud_max_z" value="3.5" />
 
       <param name="save_directory" value="$(optenv OCTOMAP_SAVE_DIR ./)" />
       <param name="track_changes" value="true"/>

@@ -1,18 +1,18 @@
 #!/usr/bin/env python
+
 import rospy
-from tf.transformations import euler_from_quaternion
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
+import tf
 import numpy as np
-from riseq_planning.waypoint_publisher import WayPointPublisher
+# from riseq_planning.srv import MakeTrajectory
 
 
-class FG_WayPoint(WayPointPublisher):
+class FG_WayPoint():
     """
     Class to publish way point only when flight goggle simulator
     """
     def __init__(self):
-        """
-        Function to construct way point
-        """
         init_pose = rospy.get_param("/uav/flightgoggles_uav_dynamics/init_pose")
         gate_name = rospy.get_param("/uav/gate_names")
         gate_count = len(gate_name)
@@ -22,7 +22,7 @@ class FG_WayPoint(WayPointPublisher):
 
         # if pose is written as quaternion form, it needs to be transformed to euler form.
         # if current_pose == [ x y z x y z w ]   3 position 4 quaternion  -> 3 position and 1 yaw
-        init_pose_orientation = euler_from_quaternion(
+        init_pose_orientation = tf.transformations.euler_from_quaternion(
             [init_pose[3], init_pose[4], init_pose[5], init_pose[6]], axes='sxyz')
         init_waypoint = np.array([init_pose[0], init_pose[1], init_pose[2], init_pose_orientation[2]])
 
@@ -32,7 +32,11 @@ class FG_WayPoint(WayPointPublisher):
         for i in range(0, gate_count):
             waypoint[i+1] = self.gate_point(gate_location[i])
         self.waypoint = self.compensate_direction(waypoint, gate_count)
-        super(FG_WayPoint, self).__init__()
+
+        # Create Publisher
+        self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
+
+        # self.make_trajectory = rospy.ServiceProxy('make_trajectory', MakeTrajectory)
 
     def gate_point(self, gate):
         """
@@ -80,6 +84,51 @@ class FG_WayPoint(WayPointPublisher):
 
         return waypoint
 
+    def pub_point(self):
+        hz = 10
+        rate = rospy.Rate(hz)
+
+        while not rospy.is_shutdown():
+            point = Path()
+            point.header.stamp = rospy.Time.now()
+            point.header.frame_id = "map"
+            for i in range(0, len(self.waypoint)):
+                pose = PoseStamped()
+                pose.header.frame_id = str(i)
+                pose.pose.position.x = self.waypoint[i][0]
+                pose.pose.position.y = self.waypoint[i][1]
+                pose.pose.position.z = self.waypoint[i][2]
+                q = tf.transformations.quaternion_from_euler(0, 0, self.waypoint[i][3])
+                pose.pose.orientation.x = q[0]
+                pose.pose.orientation.y = q[1]
+                pose.pose.orientation.z = q[2]
+                pose.pose.orientation.w = q[3]
+                point.poses.append(pose)
+
+            self.point_pub.publish(point)
+            rate.sleep()
+
+    """
+    def request_trajectory(self):
+        path = Path()
+        path.header.stamp = rospy.Time.now()
+        path.header.frame_id = "map"
+        for i in range(0, len(self.waypoint)):
+            pose = PoseStamped()
+            pose.header.frame_id = str(i)
+            pose.pose.position.x = self.waypoint[i][0]
+            pose.pose.position.y = self.waypoint[i][1]
+            pose.pose.position.z = self.waypoint[i][2]
+            q = tf.transformations.quaternion_from_euler(0, 0, self.waypoint[i][3])
+            pose.pose.orientation.x = q[0]
+            pose.pose.orientation.y = q[1]
+            pose.pose.orientation.z = q[2]
+            pose.pose.orientation.w = q[3]
+            path.poses.append(pose)
+    
+        self.make_trajectory(path)
+    """
+
 
 if __name__ == "__main__":
     # Init Node and Class
@@ -101,16 +150,11 @@ if __name__ == "__main__":
             rospy.loginfo(
                 "Starting Waypoint Publisher in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
 
-    rospy.sleep(0.1)
-    # IMPORTANT WAIT TIME!
-    # If this is not here, the "start_time" in the trajectory generator is
-    # initialized to zero (because the node has not started fully) and the
-    # time for the trajectory will be degenerated
-
     way_point = FG_WayPoint()
     try:
         rospy.loginfo("UAV Waypoint Publisher Created")
         way_point.pub_point()
+        # way_point.request_trajectory()
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass

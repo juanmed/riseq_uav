@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="robot" default="zed"/>
+  <arg name="robot" default="msckf"/>
   <arg name="fixed_frame_id" default="map"/>
   <arg name="calibration_file"
     default="$(find riseq_estimation)/cfg/camchain-imucam-zedm.yaml"/>
@@ -21,7 +21,7 @@
       <rosparam command="load" file="$(arg calibration_file)"/>
 
       <param name="publish_tf" value="true"/>
-      <param name="frame_rate" value="30"/>
+      <param name="frame_rate" value="60"/>
       <param name="fixed_frame_id" value="$(arg fixed_frame_id)"/>
       <param name="child_frame_id" value="cam_pose"/>
       <param name="max_cam_state_size" value="20"/>
@@ -53,8 +53,9 @@
       <param name="initial_covariance/extrinsic_translation_cov" value="2.5e-5"/>
 
       <remap from="~imu" to="/zed/zed_node/imu/data_raw"/>
-      <remap from="~features" to="image_processor/features"/>
+      <remap from="~features" to="/msckf/image_processor/features"/>
 
+      <remap from="/msckf/vio/odom" to="/riseq/estimation/vo_pose" />
     </node>
   </group>
 
