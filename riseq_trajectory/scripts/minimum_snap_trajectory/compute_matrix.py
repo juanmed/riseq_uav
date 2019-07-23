@@ -13,6 +13,8 @@ class QpMatrix:
         self.k_r = k_r
         self.k_psi = k_psi
         self.time_scaling = time_scaling
+
+        # dimension of variable. 3: [ x y z ]   4: [ x y z psi ]
         self.n = 4
 
         # polynomial coefficient

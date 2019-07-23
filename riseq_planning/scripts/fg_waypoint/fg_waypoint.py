@@ -85,7 +85,7 @@ class FG_WayPoint():
         return waypoint
 
     def pub_point(self):
-        hz = 10
+        hz = 5
         rate = rospy.Rate(hz)
 
         while not rospy.is_shutdown():
