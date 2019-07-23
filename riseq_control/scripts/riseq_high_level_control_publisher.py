@@ -127,7 +127,7 @@ class uav_High_Level_Controller():
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
         self.min_thrust = 0.0
 
-        self.position_control_frequency_ratio = 1       # This is the factor by which the high_level_controller is slower
+        self.position_control_frequency_ratio = 5       # This is the factor by which the high_level_controller is slower
                                                          # than low_level controller
         self.position_control_loops = 0                                        
         self.pos_error_integral = np.zeros((3,1))       # Store position error integral
@@ -151,12 +151,12 @@ class uav_High_Level_Controller():
         if (environment == "simulator"):
             self.dpr = np.array([-8.0]) 
             self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
-            self.Kr = 20.#self.Kr.item(0,0)
+            self.Kr = self.Kr.item(0,0)
         elif (environment == "embedded_computer"):
             self.Kr = 8.
         else:
             print("riseq/environment parameter not found. Setting Kr = 1")
-            self.Kr = 1
+            self.Kr = 8
         
         # debugging variables
         #self.a_e = np.zeros((3,1))
@@ -284,7 +284,7 @@ class uav_High_Level_Controller():
                 self.Rbw_des = Rbw_des1
             """
 
-            #self.position_control_loops = self.position_control_loops + 1
+            self.position_control_loops = self.position_control_loops + 1
         else:
             self.position_control_loops = self.position_control_loops + 1
             if(self.position_control_loops == self.position_control_frequency_ratio):

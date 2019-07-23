@@ -161,7 +161,7 @@ class uav_Low_Level_Controller():
         llc_msg.torque.z = M[0][0]
         llc_msg.rotor_speeds = w_i
         self.llc_pub.publish(llc_msg)
-        rospy.loginfo(llc_msg)
+        #rospy.loginfo(llc_msg)
 
 
         # publish to flightgoggles

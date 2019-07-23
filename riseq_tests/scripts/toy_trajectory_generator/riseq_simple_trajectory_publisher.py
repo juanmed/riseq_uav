@@ -32,8 +32,8 @@ class Trajectory_Generator2():
         # ---------------------------- #
         # Compute trajectory waypoints #
         # ---------------------------- #
-        gate=True
-        if(gate==True):
+        gate=False
+        if(gate):
             gate_x = rospy.get_param("riseq/gate_x")
             gate_y = rospy.get_param("riseq/gate_y")
             gate_z = rospy.get_param("riseq/gate_z")
@@ -52,6 +52,7 @@ class Trajectory_Generator2():
         #self.waypoints = self.get_waypoint_list(point_list)
         #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
         self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
+        #self.waypoints = trajGen3D.get_poly_waypoints(10, 3)
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
