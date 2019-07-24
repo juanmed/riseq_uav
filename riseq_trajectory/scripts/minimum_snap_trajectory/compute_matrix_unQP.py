@@ -2,6 +2,8 @@ import numpy as np
 from cvxopt import matrix, spdiag
 
 
+# TODO : consider that cost matrix and mapping matrix are constant over all dimensions.
+# TODO : consider easy method to construct mapping matrix
 class UnConstraintQpMatrix:
     """
      Class for computing matrix which is used at unconstrained QP.
@@ -148,8 +150,8 @@ class UnConstraintQpMatrix:
         Construct re-ordering matrix.
         dF : fixed ,dP: free constraints.
         [ dF dP ]
-        fixed constraint : 2 * m + 4 * ( m + 1) = 6 m + 4
-        free constraint : 10 * m - ( 6 m + 4 ) = 4 m - 4
+        fixed constraint : 2 * m + 4 * ( m + 1) = 6 m + 4  --> A2
+        free constraint : 10 * m - ( 6 m + 4 ) = 4 m - 4   --> A3
         """
         # Derivative Constraint
         # It should guarantee continuity until snap.

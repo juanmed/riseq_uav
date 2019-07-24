@@ -11,6 +11,7 @@ import riseq_common.differential_flatness as df
 
 import numpy as np
 import unconstrained_QP as unqp
+import local_replanner as lr
 
 
 # TODO : Time Optimal
@@ -33,21 +34,22 @@ class GlobalTrajectory:
     def __init__(self):
         # Our flat output is 4 [ x y z psi ], but psi is not considered sometimes.
         # It is recommended to adjust 9 order polynomial to construct square matrix for unconstrained QP.
+        # unconstrained QP is more stable and faster than typical QP.
         self.order = 9
         self.n = 4
 
-        self.solution = None
-        self.waypoint = None
-        self.time = None
-        self.m = 0
+        self.solution = None  # coefficients of polynomial
+        self.waypoint = None  # way point which drone needs to traverse
+        self.m = 0  # polynomial segment
+        self.time = None  # segment time allocation
+        self.val = 0  # value of cost function which is minimized by optimization
 
         # Ros parameter
         rospy.set_param("riseq/global_trajectory_update", True)
 
         # Create subscriber and publisher
-        rospy.Subscriber("riseq/planning/uav_waypoint", Path, self.path_cb)
+        rospy.Subscriber("riseq/planning/uav_global_waypoint", Path, self.path_cb)
         self.traj_pub = rospy.Publisher('riseq/trajectory/uav_global_trajectory', riseq_uav_trajectory, queue_size=10)
-        self.future_traj_pub = rospy.Publisher('riseq/trajectory/uav_global_future_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # Wait until callback function receive way point and compute trajectory solution
         while self.waypoint is None or self.solution is None:
@@ -69,7 +71,6 @@ class GlobalTrajectory:
         """
         is_update = rospy.get_param("riseq/global_trajectory_update", True)
         if is_update is True:
-            rospy.set_param("riseq/global_trajectory_update", False)
             # m is segment
             self.m = len(msg.poses) - 1
             self.time = np.ones(self.m)
@@ -84,13 +85,19 @@ class GlobalTrajectory:
                      msg.poses[i].pose.orientation.w], axes='sxyz')
                 self.waypoint[i][3] = psi
 
-            solution, val = unqp.unconstrained_qp(self.waypoint, self.time)
-            print solution
-            self.solution = solution
+            self.solution, self.val = unqp.unconstrained_qp(self.waypoint, self.time)
 
             self.start_time = rospy.get_time()
             self.last_time = self.start_time
             self.index = 0
+
+            rospy.set_param("riseq/global_trajectory_update", False)
+
+            # plot trajectory
+            # dt.plot_traj3D(solution, self.order, self.m, np.delete(self.waypoint, 3, 1))
+
+    def get_global_trajectory(self):
+        return self.solution, self.m, self.time
 
     def compute_reference_traj(self):
         # Compute trajectory at time = now
@@ -208,8 +215,6 @@ class GlobalTrajectory:
             #rospy.loginfo(traj)
             rate.sleep()
 
-    def pub_futur_traj(self):
-
 
 if __name__ == "__main__":
     # Init Node and Class
@@ -237,6 +242,8 @@ if __name__ == "__main__":
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
     traj_gen = GlobalTrajectory()
+    solution, m, time = traj_gen.get_solution()
+    lr.LocalTrajectory(solution, m, time)
 
     try:
         rospy.loginfo("UAV Trajectory Publisher Created")

@@ -29,6 +29,80 @@ def get_trajectory(solution, order, time_scaling, ref_time):
     return ref_trajectory
 
 
+def compute_output3D(solution, order, time_scaling, ref_time):
+    """
+    get coefficient of each trajectory [x y z], especially 3D without yaw
+    position --> until 4th derivative
+    """
+    solution = np.hstack(solution)
+
+    # Getting coefficient of position, velocity, acceleration, jerk, snap of x y z
+    # In psi case, only position velocity acceleration
+    x_coeff = np.array(solution[0 * (order + 1): 1 * (order + 1)])
+    y_coeff = np.array(solution[1 * (order + 1): 2 * (order + 1)])
+    z_coeff = np.array(solution[2 * (order + 1): 3 * (order + 1)])
+
+    x_dot_coeff = np.polyder(x_coeff)
+    y_dot_coeff = np.polyder(y_coeff)
+    z_dot_coeff = np.polyder(z_coeff)
+
+    x_ddot_coeff = np.polyder(x_dot_coeff)
+    y_ddot_coeff = np.polyder(y_dot_coeff)
+    z_ddot_coeff = np.polyder(z_dot_coeff)
+
+    x_dddot_coeff = np.polyder(x_ddot_coeff)
+    y_dddot_coeff = np.polyder(y_ddot_coeff)
+    z_dddot_coeff = np.polyder(z_ddot_coeff)
+
+    x_ddddot_coeff = np.polyder(x_dddot_coeff)
+    y_ddddot_coeff = np.polyder(y_dddot_coeff)
+    z_ddddot_coeff = np.polyder(z_dddot_coeff)
+
+    # Considering time scaling
+    # Our polynomial has variable t, range [0, 1]
+    # But in real, we need polynomial which has variable T, range [0, a]
+    # t -> T, at time T, Position is X(T) = x(T/a)
+    pos_x = np.polyval(x_coeff, ref_time / time_scaling)
+    pos_y = np.polyval(y_coeff, ref_time / time_scaling)
+    pos_z = np.polyval(z_coeff, ref_time / time_scaling)
+
+    # Apply chain rule
+    # Velocity is V(T) = v(T/a) * (1/a)
+    vel_x = np.polyval(x_dot_coeff, ref_time / time_scaling) * (1.0 / time_scaling)
+    vel_y = np.polyval(y_dot_coeff, ref_time / time_scaling) * (1.0 / time_scaling)
+    vel_z = np.polyval(z_dot_coeff, ref_time / time_scaling) * (1.0 / time_scaling)
+
+    # Apply chain rule
+    # Acceleration is A(T) = a(T/a) * (1/ag^2)
+    acc_x = np.polyval(x_ddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**2)
+    acc_y = np.polyval(y_ddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**2)
+    acc_z = np.polyval(z_ddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**2)
+
+    # Apply chain rule
+    # Jerk is J(T) = j(T/a) * (1/a^3)
+    jerk_x = np.polyval(x_dddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**3)
+    jerk_y = np.polyval(y_dddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**3)
+    jerk_z = np.polyval(z_dddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**3)
+
+    # Apply chain rule
+    # Snap is S(T) = s(T/a) * (1/a^4)
+    snap_x = np.polyval(x_ddddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**4)
+    snap_y = np.polyval(y_ddddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**4)
+    snap_z = np.polyval(z_ddddot_coeff, ref_time / time_scaling) * (1.0 / time_scaling**4)
+
+    pos = np.array([pos_x, pos_y, pos_z])
+    vel = np.array([vel_x, vel_y, vel_z])
+    acc = np.array([acc_x, acc_y, acc_z])
+    jerk = np.array([jerk_x, jerk_y, jerk_z])
+    snap = np.array([snap_x, snap_y, snap_z])
+
+    # This is our flat output [ x y z psi ]
+    # plus... derivative of output
+    # remember that all this form is np.array
+    flat_output = [pos, vel, acc, jerk, snap]
+    return flat_output
+
+
 def compute_output(solution, order, time_scaling, ref_time):
     """
     get coefficient of each trajectory [x y z psi]

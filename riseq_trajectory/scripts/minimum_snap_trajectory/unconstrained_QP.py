@@ -6,14 +6,14 @@
 #
 # [2]ARUN LAKSHMANAN,
 # PIECEWISE BEZIER CURVE TRAJECTORY GENERATION AND CONTROL FOR QUADROTORS
+#
+# [3]Michael Burri, ETH Zurich
+# Real-Time Visual-Inertial Mapping, Re-localization and Planning Onboard MAVs in Unknown Environments
 ###########################
 
 from cvxopt import matrix, solvers
 import numpy as np
-
 import compute_matrix_unQP
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 
 def unconstrained_qp(waypoint, time):
@@ -26,6 +26,9 @@ def unconstrained_qp(waypoint, time):
     In other words, inversion of matrices of that may be very close to singular.
     This reformulation is substantially more stable than the method above, allowing the joint optimization of more
     than 50 polynomial segments in a single matrix operation without encountering numerical issues[1].
+
+     We briefly summarize the essentials in order to understand the non-linear solution and point out optimizations
+    for both numerical stability and to save computation time.
 
      The inverse of matrix can be evaluated if the matrix is square. If not, psuedo inverse should be calculated[2].
     To make square matrix, order of polynomial needs to be 9 so that have 10 coefficients because we have 10 constraints
@@ -118,5 +121,5 @@ def unconstrained_qp(waypoint, time):
 
 
 if __name__ == "__main__":
-    waypoint = np.array([[0, 0, 0, 0], [10, 10, 10, 10], [18, 20, 25, 20], [30, 30, 30, 30]])
+    waypoint = np.array([[0, 0, 0, 0], [10, 10, 10, 10], [20, 20, 20, 20], [30, 30, 30, 30]])
     unconstrained_qp(waypoint, 0)
