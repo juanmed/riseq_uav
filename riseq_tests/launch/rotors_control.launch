@@ -85,7 +85,7 @@
   <group ns="$(arg mav_name)">
     <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
-      <arg name="model" value="$(find rotors_description)/urdf/mav_odometry_camera_magnetometer.gazebo" />
+      <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo" />
       <arg name="enable_logging" value="$(arg enable_logging)" />
       <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
       <arg name="log_file" value="$(arg log_file)"/>
@@ -107,11 +107,11 @@
   <param name="riseq/gate_pose_nn_wgt" value="$(find riseq_perception)/scripts/ss6p_gate/weights/model.weights"/>
   <param name="riseq/gate_pose_nn_data" value="$(find riseq_perception)/scripts/ss6p_gate/cfg/gate3.data"/>    
 
-  <rosparam command="load" file="$(find riseq_common)/config/drones/pelican.yaml"/>
+  <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
 
-  <node pkg = "riseq_perception" name ="riseq_mono_waypoint_publisher" type="riseq_mono_waypoint_publisher.py" output = "screen"/>
+  <!--node pkg = "riseq_perception" name ="riseq_mono_waypoint_publisher" type="riseq_mono_waypoint_publisher.py" output = "screen"/-->
 
-  <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py" output = "screen">
+  <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py">
     <remap from="riseq/tests/uav_simple_trajectory" to="riseq/trajectory/uav_trajectory" />
   </node>
   <!--node pkg="riseq_trajectory" name="riseq_MST_publisher" type="MST_publisher.py" output="screen">
@@ -120,7 +120,7 @@
 
   <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/>
   <node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/>
-  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/>
-  <node name="rviz" pkg="rviz" type="rviz"/>
+  <!--node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/-->
+  <!--node name="rviz" pkg="rviz" type="rviz"/-->
 
 </launch>

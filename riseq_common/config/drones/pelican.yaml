@@ -1,5 +1,5 @@
 riseq:
-    init_pose: [0, 0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    init_pose: [0, 0, 0.7, 0.0, 0.0, 0.0, 1.0]
     mass: 1.0
     gravity: 9.81
     thrust_coeff: 9.9865e-06  #1.3176 
@@ -7,7 +7,7 @@ riseq:
     max_rotor_speed: 2200  #rpm
     rotor_count : 4
     true_state_publish_rate: 100
-    trajectory_update_rate: 200
+    trajectory_update_rate: 100
     controller_state_input: 'fg_true_state'
     controller_type: 'euler_angle_controller'
     trajectory_wait: 5
