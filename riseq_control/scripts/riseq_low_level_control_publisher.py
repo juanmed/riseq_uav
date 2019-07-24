@@ -37,7 +37,7 @@ class uav_Low_Level_Controller():
 
         # flightgoggles publisher 
         if(self.environment == "simulator"):
-            self.fg_publisher = rospy.Publisher('/pelican/command/motor_speed', Actuators, queue_size = 10)
+            self.fg_publisher = rospy.Publisher('/iris/command/motor_speed', Actuators, queue_size = 10)
         else:
             pass
 
@@ -62,11 +62,17 @@ class uav_Low_Level_Controller():
         self.max_xy_torque = r*kt*(self.max_rotor_speed**2)
         self.max_z_torque = kq*(self.max_rotor_speed**2)
 
-        # for drones with rotors aligned to +X, +Y, -X, -Y axis
+        # for Iris drone
         self.B = np.array([[kt, kt, kt, kt],
-                           [0., r*kt, 0, -r*kt],
-                           [-r*kt, 0., r*kt, 0.],
+                           [0.22*kt, 0.22*kt, -0.2*kt, -0.2*kt],
+                           [-0.13*kt, 0.13*kt, 0.13*kt, -0.13*kt],
                            [-kq, kq, -kq, kq]])
+
+        # for drones with rotors aligned to +X, +Y, -X, -Y axis
+        #self.B = np.array([[kt, kt, kt, kt],
+        #                   [0., r*kt, 0, -r*kt],
+        #                   [-r*kt, 0., r*kt, 0.],
+        #                   [-kq, kq, -kq, kq]])
         
         # for drones with rotors located at 45 degrees from +X, +Y, -X, -Y axis
         q = np.sqrt(2.0)/2.0
