@@ -85,7 +85,7 @@
   <group ns="$(arg mav_name)">
     <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
-      <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo" />
+      <arg name="model" value="$(find rotors_description)/urdf/mav_odometry_camera_magnetometer.gazebo" />
       <arg name="enable_logging" value="$(arg enable_logging)" />
       <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
       <arg name="log_file" value="$(arg log_file)"/>
@@ -120,7 +120,7 @@
 
   <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/>
   <node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/>
-  <!--node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/-->
+  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/>
   <!--node name="rviz" pkg="rviz" type="rviz"/-->
 
 </launch>

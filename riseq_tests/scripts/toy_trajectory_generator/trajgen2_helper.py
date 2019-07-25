@@ -31,9 +31,11 @@ def get_poly_waypoints(t,n):
     k1 = 0.01
     k2 = 0.01
     k3 = 1.0
+    z0 = 0.055
+    
     x = (k1*waypoints_t)#**2
     y = (k2*waypoints_t)#**3
-    z = k3*waypoints_t
+    z = k3*waypoints_t + z0
     #x = k1*np.ones_like(waypoints_t)
     #y = k2*np.ones_like(waypoints_t)
     #z = waypoints_t
@@ -74,9 +76,9 @@ def get_helix_waypoints(t, n):
     wx = 1.0
     wy = 1.0
 
-    x_0 = -2
+    x_0 = -a
     y_0 = 0.0
-    z_0 = 0.07
+    z_0 = 0.0
 
     # positions in helix
     x = a*np.cos(wx*waypoints_t) + x_0

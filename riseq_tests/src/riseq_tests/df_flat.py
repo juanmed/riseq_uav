@@ -298,6 +298,7 @@ try:
                    [0, 0, Izz]]);
 
     invI = np.linalg.inv(I)
+    print("SIMPLE TRAJECTORY: Correctly loaded parameters:\n   mass: {:.2f}\n   Ixx:{:.2f}\n   Ixx:{:.2f}\n   Ixx:{:.2f}\n".format(m,Ixx,Iyy,Izz))
 except:
     print("WARNING: Quadrotor parameters not found for differential flatness df_flat.py. \nUsing default values.")
     # define constants

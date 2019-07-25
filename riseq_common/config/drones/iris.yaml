@@ -12,11 +12,11 @@ riseq:
     controller_type: 'euler_angle_controller'
     trajectory_wait: 5
     high_level_control_wait_time: 0
-    Ixx: 0.0347563
-    Iyy: 0.0458929
-    Izz: 0.0977
+    Ixx: 1.0 #0.03 #0.0347563
+    Iyy: 1.0 #0.03 # 0.0458929
+    Izz: 1.0 #0.06 #0.0977
     arm_length: 0.21   
     arm_vector: [0.13, 0.22, 0.023]
     environment: 'simulator'
     challenge_name: 'easy'
-    monocular_cv: 'disable'
+    monocular_cv: 'pipe'
