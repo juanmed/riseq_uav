@@ -11,7 +11,7 @@ import riseq_common.differential_flatness as df
 
 import numpy as np
 import unconstrained_QP as unqp
-import local_replanner as lr
+#import local_replanner as lr
 
 
 # TODO : Time Optimal
@@ -94,7 +94,7 @@ class GlobalTrajectory:
             rospy.set_param("riseq/global_trajectory_update", False)
 
             # plot trajectory
-            # dt.plot_traj3D(solution, self.order, self.m, np.delete(self.waypoint, 3, 1))
+            dt.plot_traj3D(self.solution, self.order, self.m, np.delete(self.waypoint, 3, 1))
 
     def get_global_trajectory(self):
         return self.solution, self.m, self.time
@@ -242,12 +242,13 @@ if __name__ == "__main__":
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
     traj_gen = GlobalTrajectory()
-    solution, m, time = traj_gen.get_solution()
-    lr.LocalTrajectory(solution, m, time)
+    solution, m, time = traj_gen.get_global_trajectory()
+    #lr.LocalTrajectory(solution, m, time)
 
     try:
         rospy.loginfo("UAV Trajectory Publisher Created")
-        traj_gen.pub_traj()
+        rospy.sleep(1)
+        # traj_gen.pub_traj()
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass

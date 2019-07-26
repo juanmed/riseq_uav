@@ -217,3 +217,341 @@ class UnConstraintQpMatrix:
         A2 = matrix([A2, A3])
         b2 = matrix([b2, b3])
         return A2, b2
+
+    def compute_p_1axis(self):
+        """
+         min { 1/2 c.T * P * c + q * c }
+        Build P matrix in 1 axis
+
+        In unconstrained QP, P matrix have same elements over all dimensions
+        because it depends on time only. Moreover, if I use time scaling method, P matrix have same elements over all
+        segments
+        """
+        P = []
+        polynomial_r = np.ones(self.order + 1)
+        for i in range(0, self.k_r):
+            polynomial_r = np.polyder(polynomial_r)
+
+        p = np.zeros((self.order + 1, self.order + 1))
+        for j in range(0, self.order + 1):
+            for k in range(j, self.order + 1):
+                # position
+                if j <= len(polynomial_r) - 1 and k <= len(polynomial_r) - 1:
+                    order_t_r = ((self.order - self.k_r - j) + (self.order - self.k_r - k))
+                    if j == k:
+                        p[j, k] = np.power(polynomial_r[j], 2) / (order_t_r + 1)
+                    else:
+                        p[j, k] = 2 * polynomial_r[j] * polynomial_r[k] / (order_t_r + 1)
+
+        p = matrix(p)
+        for i in range(self.m):
+            if i == 0:
+                P = spdiag([p])
+            else:
+                P = spdiag([P, p])
+
+        P = matrix(P)
+        P = P + matrix(np.transpose(P))
+        P = P * 0.5
+        return P
+
+    def compute_A_1axis(self):
+        # A is square matrix
+        A = np.zeros((2 * self.m * (self.k_r + 1), (self.order + 1) * self.m))
+
+        for i in range(0, self.m):
+            for h in range(0, self.k_r + 1):
+                # Initial vel, acc, jerk, snap: First polynomial which has time as 0.
+                start_values = self.poly_coef[h, 0]
+
+                # Final vel, acc, jerk, snap: Last polynomial which has time as 1.
+                end_values = self.poly_coef[h, 1]
+
+                if i == 0:
+                    A[2 * (self.k_r + 1) * i + h, i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = start_values
+                    A[2 * (self.k_r + 1) * i + h + (self.k_r + 1), i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = end_values
+                else:
+                    if h == 0:
+                        A[2 * (self.k_r + 1) * i + h, i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = start_values
+                        A[2 * (self.k_r + 1) * i + h + (self.k_r + 1),
+                        i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = end_values
+                    else:
+                        A[2 * (self.k_r + 1) * i + h,
+                        i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = start_values
+                        A[2 * (self.k_r + 1) * i + h,
+                        (i - 1) * (self.order + 1): (i - 1) * (self.order + 1) + (self.order + 1)] = -end_values
+                        A[2 * (self.k_r + 1) * i + h + (self.k_r + 1),
+                        i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = end_values
+        return A
+
+    def end_derivative(self):
+        """
+         Function to construct end constraints at each segments.
+        """
+        b = np.zeros((3, 2 * self.m * (self.k_r + 1)))
+        for i in range(3):
+            for j in range(self.m):
+                b[i][2 * (self.k_r + 1) * j] = self.keyframe[i][j]
+                b[i][2 * (self.k_r + 1) * j + 5] = self.keyframe[i][j + 1]
+
+        return b
+
+    def fixed_free_constraints(self, b):
+        """
+         Function to re order end derivative constraints to fixed and free constraints
+        """
+        bF = [[], [], []]
+        bP = [[], [], []]
+        for i in range(3):
+            for j in range(self.m):
+                # start point of segment
+                for k in range(self.k_r + 1):
+                    if j == self.m - 1:
+                            bF[i].append(b[i][2 * (self.m - 1) * (self.k_r + 1) + k])
+                    else:
+                        if k == 0:
+                            bF[i].append(b[i][2 * j * (self.k_r + 1)])
+                        else:
+                            bF[i].append(b[i][2 * j * (self.k_r + 1) + k])
+
+                # end point of segment
+                for k in range(self.k_r + 1):
+                    if j == self.m - 1:
+                            bF[i].append(b[i][2 * (self.m - 1) * (self.k_r + 1) + (self.k_r + 1) + k])
+                    else:
+                        if k == 0:
+                            bF[i].append(b[i][2 * j * (self.k_r + 1) + (self.k_r + 1) + k])
+                        else:
+                            bP[i].append(b[i][2 * j * (self.k_r + 1) + (self.k_r + 1) + k])
+
+        return [bF, bP]
+
+    def mapping_matrix(self):
+        """
+         Function to construct mapping matrix
+        """
+        M = np.zeros((2 * self.m * (self.k_r + 1), 2 * self.m * (self.k_r + 1)), dtype=int)
+        f = 0
+        p = 0
+        for j in range(self.m):
+            for k in range(self.k_r + 1):
+                if j == self.m - 1:
+                    M[2 * j * (self.k_r + 1) + k][f] = 1
+                else:
+                    if k == 0:
+                        M[2 * j * (self.k_r + 1) + k][f] = 1
+                    else:
+                        M[2 * j * (self.k_r + 1) + k][f] = 1
+                f = f + 1
+
+            for k in range(self.k_r + 1):
+                if j == self.m - 1:
+                    M[2 * j * (self.k_r + 1) + (self.k_r + 1) + k][f] = 1
+                else:
+                    if k == 0:
+                        M[2 * j * (self.k_r + 1) + (self.k_r + 1) + k][f] = 1
+                    else:
+                        M[2 * j * (self.k_r + 1) + (self.k_r + 1) + k][6 * self.m + 4 + p] = 1
+                        f = f - 1
+                        p = p + 1
+                f = f + 1
+
+        return M
+
+    def compute_p_1axis_replanning(self, m):
+        """
+         min { 1/2 c.T * P * c + q * c }
+        Build P matrix in 1 axis
+
+        In unconstrained QP, P matrix have same elements over all dimensions
+        because it depends on time only. Moreover, if I use time scaling method, P matrix have same elements over all
+        segments
+        """
+        P = []
+        polynomial_r = np.ones(self.order + 1)
+        for i in range(0, self.k_r):
+            polynomial_r = np.polyder(polynomial_r)
+
+        p = np.zeros((self.order + 1, self.order + 1))
+        for j in range(0, self.order + 1):
+            for k in range(j, self.order + 1):
+                # position
+                if j <= len(polynomial_r) - 1 and k <= len(polynomial_r) - 1:
+                    order_t_r = ((self.order - self.k_r - j) + (self.order - self.k_r - k))
+                    if j == k:
+                        p[j, k] = np.power(polynomial_r[j], 2) / (order_t_r + 1)
+                    else:
+                        p[j, k] = 2 * polynomial_r[j] * polynomial_r[k] / (order_t_r + 1)
+
+        p = matrix(p)
+        for i in range(m):
+            if i == 0:
+                P = spdiag([p])
+            else:
+                P = spdiag([P, p])
+
+        P = matrix(P)
+        P = P + matrix(np.transpose(P))
+        P = P * 0.5
+        return P
+
+    def compute_A_1axis_replanning(self, m=5):
+        """
+         Function to compute A matrix when re-planning.
+        It has less fixed constraints because we only know start and goal point.
+
+        segment : m
+        Fixed constraints: 5 * 2 +  5 * (m - 1) = 5m + 5
+        Free constraints: 10m - (5m +5) = 5m - 5
+        """
+        A = np.zeros((2 * m * (self.k_r + 1), (self.order + 1) * m))
+
+        for i in range(0, m):
+            for h in range(0, self.k_r + 1):
+                # Initial vel, acc, jerk, snap: First polynomial which has time as 0.
+                start_values = self.poly_coef[h, 0]
+
+                # Final vel, acc, jerk, snap: Last polynomial which has time as 1.
+                end_values = self.poly_coef[h, 1]
+
+                if i == 0:
+                    A[2 * (self.k_r + 1) * i + h, i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = start_values
+                    A[2 * (self.k_r + 1) * i + h + (self.k_r + 1), i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = end_values
+                else:
+
+                    A[2 * (self.k_r + 1) * i + h,
+                    i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = start_values
+                    A[2 * (self.k_r + 1) * i + h,
+                    (i - 1) * (self.order + 1): (i - 1) * (self.order + 1) + (self.order + 1)] = -end_values
+                    A[2 * (self.k_r + 1) * i + h + (self.k_r + 1),
+                    i * (self.order + 1): i * (self.order + 1) + (self.order + 1)] = end_values
+        return A
+
+    def end_derivative_replanning(self, m, start, goal):
+        """
+         Function to construct end constraints at each segments when re-planning.
+        For now, We know start state and goal state.
+        """
+        b = np.zeros((3, 2 * m * (self.k_r + 1)))
+        for i in range(3):
+            b[i][:self.k_r + 1] = start[i]
+            b[i][2 * (self.k_r + 1) * (m - 1) + (self.k_r + 1):] = goal[i]
+
+        return b
+
+    def fixed_free_constraints_replanning(self, b, m=5):
+        """
+         Function to re order end derivative constraints to fixed and free constraints
+        """
+        bF = [[], [], []]
+        bP = [[], [], []]
+        for i in range(3):
+            for j in range(m):
+                # start point of segment
+                for k in range(self.k_r + 1):
+                    bF[i].append(b[i][2 * j * (self.k_r + 1) + k])
+
+                # end point of segment
+                for k in range(self.k_r + 1):
+                    if j == m - 1:
+                        bF[i].append(b[i][2 * (m - 1) * (self.k_r + 1) + (self.k_r + 1) + k])
+                    else:
+                        bP[i].append(b[i][2 * j * (self.k_r + 1) + (self.k_r + 1) + k])
+
+        return [bF, bP]
+
+    def mapping_matrix_replanning(self, m):
+        """
+         Function to construct mapping matrix
+        """
+        M = np.zeros((2 * m * (self.k_r + 1), 2 * m * (self.k_r + 1)), dtype=int)
+        f = 0
+        p = 0
+        for j in range(m):
+            for k in range(self.k_r + 1):
+                M[2 * j * (self.k_r + 1) + k][f] = 1
+                f = f + 1
+
+            for k in range(self.k_r + 1):
+                if j == m - 1:
+                    M[2 * j * (self.k_r + 1) + (self.k_r + 1) + k][f] = 1
+                else:
+                    M[2 * j * (self.k_r + 1) + (self.k_r + 1) + k][5 * m + 5 + p] = 1
+                    f = f - 1
+                    p = p + 1
+                f = f + 1
+
+        return M
+
+
+if __name__ == "__main__":
+    waypoint = np.array([[0, 0, 0], [1, 5, 5], [20, 20, 20], [30, 30, 30]])
+    m = len(waypoint) - 1
+    time = np.ones(m)
+    waypoint = np.transpose(waypoint)
+    unqp = UnConstraintQpMatrix(m, waypoint, 4, time)
+
+    P = unqp.compute_p_1axis()
+    np.savetxt("P.csv", P, delimiter=",")
+
+    A = unqp.compute_A_1axis()
+    np.savetxt("A2.csv", A, delimiter=",")
+
+    b = unqp.end_derivative()
+    [bF, bP] = unqp.fixed_free_constraints(b)
+
+    M = unqp.mapping_matrix()
+    np.savetxt("M.csv", M, delimiter=",")
+
+    A = matrix(A)
+    M = matrix(M)
+
+    invA = matrix(np.linalg.inv(A))
+    R = M.T * invA.T * P * invA * M
+
+    RFP = R[0:(6 * m + 4), (6 * m + 4):]
+    RPP = R[(6 * m + 4):, (6 * m + 4):]
+
+    invRPP = matrix(np.linalg.inv(RPP))
+    X = -invRPP * RFP.T
+
+    cost = 0
+    solution = np.zeros((3, 10 * m))
+    for i in range(3):
+        dF = np.array(bF[i])
+        dF = matrix(dF)
+        dP = X * matrix(dF)
+
+        d = matrix([dF, dP])
+        p = invA * M * d
+
+        solution[i][:] = np.array(p.T)
+        # value of cost function which is minimized by optimization
+        cost_val = p.T * P * p
+        cost = cost + cost_val
+
+    #print cost
+
+
+    P = unqp.compute_p_1axis_replanning(5)
+    A = unqp.compute_A_1axis_replanning(5)
+    np.savetxt("A.csv", A, delimiter=",")
+    m = 5
+    start = [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
+    goal = [[2, 2, 2, 2, 2], [1, 1, 1, 1, 1], [2, 2, 2, 2, 2]]
+    b = unqp.end_derivative_replanning(5, start, goal)
+    [bF, bP] = unqp.fixed_free_constraints_replanning(b, 5)
+
+    M = unqp.mapping_matrix_replanning(5)
+    M = matrix(M)
+    np.savetxt("M.csv", M, delimiter=",")
+    bFP = np.hstack((bF[0], bP[0]))
+
+    invA = matrix(np.linalg.inv(A))
+    R = M.T * invA.T * P * invA * M
+
+    RFP = R[0:(5 * m + 5), (5 * m + 5):]
+    RPP = R[(5 * m + 5):, (5 * m + 5):]
+
+    invRPP = matrix(np.linalg.inv(RPP))
+    X = -invRPP * RFP.T

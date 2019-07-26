@@ -16,7 +16,7 @@ import numpy as np
 import compute_matrix_unQP
 
 
-def unconstrained_qp(waypoint, time):
+def unconstrained_qp(waypoint, time, intermediate=False):
     """
     Function to solve unconstrained quadratic programming.
 
@@ -40,6 +40,9 @@ def unconstrained_qp(waypoint, time):
      When the number of segments is m, in one dimension ( [ x y z ] we have 3 dimension without yaw for square matrix)
     fixed constraint : 2 * m + 4 * ( m + 1) = 6 m + 4
     free constraint : 10 * m - ( 6 m + 4 ) = 4 m - 4
+
+     Note that both the cos-Matrix Q and mapping matrix A only depend on the segment time Ts,i and thus are constant
+    over all dimensions for the segment, which allow for computation-time savings in the case of multiple dimensions.
 
     qp(P, q, None, None, A, b)
     min J = { 1/2 * c.T * P * c } ---------- c is array of polynomial of flat output [ x y z psi ].
@@ -70,7 +73,6 @@ def unconstrained_qp(waypoint, time):
     # time scaling : time which is taken for each segment
     order = 9
     n = 3
-    keyframe = waypoint
     m = len(waypoint) - 1
     waypoint = np.delete(waypoint, 3, 1)
     waypoint = np.transpose(waypoint)
@@ -80,35 +82,41 @@ def unconstrained_qp(waypoint, time):
     # These are relative to input T,M. Minimum snap equals minimum effort.
     # guarantee continuity until jerk and snap.
     k_r = 4
-    qp_matrix = compute_matrix_unQP.UnConstraintQpMatrix(m, waypoint, k_r, time)
+    unqp = compute_matrix_unQP.UnConstraintQpMatrix(m, waypoint, k_r, time)
 
-    # compute P, q
-    mu_r = 1
-    P = qp_matrix.compute_p(mu_r)
+    P = unqp.compute_p_1axis()
+    A = unqp.compute_A_1axis()
+    b = unqp.end_derivative()
+    [bF, bP] = unqp.fixed_free_constraints(b)
+    M = unqp.mapping_matrix()
 
-    # compute equality constraint: A,b
-    A1, b1 = qp_matrix.waypoint_constraint()
-    A2, b2 = qp_matrix.derivative_constraint()
-    A = matrix([A1, A2])
-    b = matrix([b1, b2])
-
+    A = matrix(A)
+    M = matrix(M)
     invA = matrix(np.linalg.inv(A))
-    dF = b[:(6 * m + 4) * n]
+    R = M.T * invA.T * P * invA * M
 
-    R = invA.T * P * invA
-    RFP = R[0:(6 * m + 4) * n, (6 * m + 4) * n:]
-    RPP = R[(6 * m + 4) * n:, (6 * m + 4) * n:]
+    RFP = R[0:(6 * m + 4), (6 * m + 4):]
+    RPP = R[(6 * m + 4):, (6 * m + 4):]
+
     invRPP = matrix(np.linalg.inv(RPP))
+    X = -invRPP * RFP.T
 
-    dP = -invRPP * RFP.T * dF
+    cost_sum = 0
+    solution = np.zeros((3, 10 * m))
+    for i in range(3):
+        dF = np.array(bF[i])
+        dF = matrix(dF)
+        dP = X * matrix(dF)
 
-    d = matrix([dF, dP])
-    p = invA * d
+        d = matrix([dF, dP])
+        p = invA * M * d
 
-    # value of cost function which is minimized by optimization
-    cost_val = p.T * A * p
+        solution[i][:] = np.array(p.T)
+        # value of cost function which is minimized by optimization
+        cost = p.T * P * p
+        cost_sum = cost_sum + cost
 
-    return p, cost_val
+    return solution, cost_sum
 
     # np.savetxt("A1.csv", A1, delimiter=",")
     # np.savetxt("A2.csv", A2, delimiter=",")
@@ -121,5 +129,6 @@ def unconstrained_qp(waypoint, time):
 
 
 if __name__ == "__main__":
-    waypoint = np.array([[0, 0, 0, 0], [10, 10, 10, 10], [20, 20, 20, 20], [30, 30, 30, 30]])
+    np.array([[0, 0, 0], [1, 5, 5], [20, 20, 20], [30, 30, 30]])
+    waypoint = np.array([[0, 0, 0, 0], [1, 5, 5, 10], [20, 20, 20, 20], [30, 30, 30, 30]])
     unconstrained_qp(waypoint, 0)

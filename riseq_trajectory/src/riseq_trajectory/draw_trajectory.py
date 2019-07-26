@@ -15,13 +15,13 @@ def plot_traj3D(solution, order, m, keyframe):
     for i in range(0, m):
         # we can use np.arrange instead of np.linspace
         x_trajec = np.append(x_trajec, np.polyval(
-            solution[i * n * (order + 1) + 0 * (order + 1): i * n * (order + 1) + (order + 1) + 0 * (order + 1)],
+            solution[0][i * (order + 1): i * (order + 1) + (order + 1)],
             np.linspace(0, 1, 50)))
         y_trajec = np.append(y_trajec, np.polyval(
-            solution[i * n * (order + 1) + 1 * (order + 1): i * n * (order + 1) + (order + 1) + 1 * (order + 1)],
+            solution[1][i * (order + 1): i * (order + 1) + (order + 1)],
             np.linspace(0, 1, 50)))
         z_trajec = np.append(z_trajec, np.polyval(
-            solution[i * n * (order + 1) + 2 * (order + 1): i * n * (order + 1) + (order + 1) + 2 * (order + 1)],
+            solution[2][i * (order + 1): i * (order + 1) + (order + 1)],
             np.linspace(0, 1, 50)))
 
     # plot x y z
@@ -35,8 +35,9 @@ def plot_traj3D(solution, order, m, keyframe):
     ax.set_xlabel('x axis')
     ax.set_ylabel('y axis')
     ax.set_zlabel('z axis')
-    for i in range(0, len(keyframe)):
-        ax.text(keyframe[i][0], keyframe[i][1], keyframe[i][2], i, color='red')
+    if keyframe is not None:
+        for i in range(0, len(keyframe)):
+            ax.text(keyframe[i][0], keyframe[i][1], keyframe[i][2], i, color='red')
     plt.show()
 
 
