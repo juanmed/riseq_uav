@@ -162,17 +162,19 @@ D_ = np.matrix([0.0])
 
 # PID Gains for 2nd order system  with transfer function
 #    H(s) = 1 / s**2
-Kpx2 = 8.0
-Kix2 = 0.1*0.0
-Kdx2 = 1.5
+# for PX4 with IRIS drone use: Kp = 8, Kd = 1.5, Ki = 0.0
+# for Pelican with RotorS use: Kp = 3.3, Kd = 3.3, Ki = 0.0
+Kpx2 = 3.3
+Kix2 = 0.1*0.1
+Kdx2 = 3.0
 
-Kpy2 = 8.0
-Kiy2 = 0.1*0.0
-Kdy2 = 1.5
+Kpy2 = 3.0
+Kiy2 = 0.1*0.1
+Kdy2 = 3.5
 
-Kpz2 = 10.0
-Kiz2 = 0.1*0.0
-Kdz2 = 3.3
+Kpz2 = 3.0
+Kiz2 = 0.1*0.1
+Kdz2 = 10.3
 
 # PID Gains for 1st order system with transfer function
 #    H(s) = 1 / s

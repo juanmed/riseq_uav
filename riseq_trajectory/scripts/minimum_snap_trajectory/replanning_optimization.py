@@ -104,10 +104,10 @@ def optimization(waypoint, time):
         # value of cost function which is minimized by optimization
         cost = p.T * P * p
 
-    print d[0]
-    print M * matrix(d[0])
-    print dF
-    print dP
+    #print d[0]
+    #print M * matrix(d[0])
+    #print dF
+    #print dP
     plot_traj3D(solution, 9, 5, None)
 
     L = invA * M
@@ -118,8 +118,8 @@ def optimization(waypoint, time):
     Jd = np.zeros(3)
     Jc = np.zeros(3)
     J = np.zeros(3)
-    wd = 1
-    wc = 1
+    wd = 0.00001
+    wc = 100
     dt = 1
     e = 3
     obstacle = [2, 2, 2]
@@ -130,7 +130,7 @@ def optimization(waypoint, time):
     # dp = dp - rate * dJ_ddp
 
     solution = np.zeros((3, 10 * m))
-    for h in range(4):
+    for h in range(5):
         # iteration h for gradient descent
 
         for i in range(3):
@@ -186,7 +186,7 @@ def optimization(waypoint, time):
                 summation = sum1 + sum2 + summation
                 summation_cost = c_f * norm_velocity * dt + summation_cost
 
-            #djc_ddp[k] = summation
+            djc_ddp[k] = summation
             Jc[k] = summation_cost
 
         for k in range(3):
@@ -197,7 +197,7 @@ def optimization(waypoint, time):
             dP[i] = dP[i] - rate * wd * djd_ddp[i] - rate * wc * djc_ddp[i]
 
         #print dP[0]
-        # print J
+        print J
 
     #print solution
     plot_traj3D(solution, 9, 5, None)

@@ -43,9 +43,7 @@ from mavros_msgs.msg import State
 from mavros_msgs.msg import AttitudeTarget
 from geometry_msgs.msg import PoseStamped
 
-import riseq_tests.df_flat as df_flat
 import riseq_common.dyn_utils as utils
-import control_gains as gains
 import numpy as np
 #from rpg_controllers import attitude_controller, reinit_attitude_controller
 from feedback_linearization_controller import Feedback_Linearization_Controller
@@ -88,8 +86,8 @@ class uav_High_Level_Controller():
 
         elif(self.state_input == 'fg_true_state'):
             # for flight googles simulator
-            self.state_sub = message_filters.Subscriber('/mavros/local_position/odom', Odometry)
-            #self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
+            #self.state_sub = message_filters.Subscriber('/mavros/local_position/odom', Odometry)
+            self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
             print(' The only possible controller input states  are: true_state, estimated_state')
@@ -129,15 +127,10 @@ class uav_High_Level_Controller():
         self.rotor_count = rospy.get_param("riseq/rotor_count")
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
         self.min_thrust = 0.0
-        self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
-        #self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
+        #self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
+        self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
         
-        # debugging variables
-        #self.a_e = np.zeros((3,1))
-        #self.a_e2 = np.zeros((3,1))
-        #self.Traw2 = 0
-
-
+        """
         # PX4 SITL 
         self.mavros_state = State()
         self.mavros_state.connected = False
@@ -150,6 +143,7 @@ class uav_High_Level_Controller():
 
         self.status_timer = rospy.Timer(rospy.Duration(0.3), self.mavros_status_cb)
         self.last_mavros_request = rospy.Time.now()
+        """
 
     def euler_angle_controller(self, state, trajectory):
         """
@@ -187,8 +181,8 @@ class uav_High_Level_Controller():
         state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]
         ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
-        self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
-        #self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+        #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
+        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
 
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
@@ -204,15 +198,16 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity.x = angular_velocity[0][0]
         hlc_msg.angular_velocity.y = angular_velocity[1][0]
         hlc_msg.angular_velocity.z = angular_velocity[2][0]
-        hlc_msg.angular_velocity_des.x = w_des[0][0]
-        hlc_msg.angular_velocity_des.y = w_des[1][0]
-        hlc_msg.angular_velocity_des.z = w_des[2][0]
+        hlc_msg.angular_velocity_des.x = 0.1*w_des[0][0]
+        hlc_msg.angular_velocity_des.y = 0.1*w_des[1][0]
+        hlc_msg.angular_velocity_des.z = 0.1*w_des[2][0]
         hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
-        #self.hlc_pub.publish(hlc_msg)
+        self.hlc_pub.publish(hlc_msg)
         #rospy.loginfo(hlc_msg)
 
+        """
         px4_msg = AttitudeTarget()
         px4_msg.header.stamp = rospy.Time.now()
         px4_msg.header.frame_id = 'map'
@@ -222,12 +217,12 @@ class uav_High_Level_Controller():
         px4_msg.orientation.y = q[1]
         px4_msg.orientation.z = q[2]
         px4_msg.orientation.w = q[3]
-        px4_msg.body_rate.x = 0.1*w_des[0][0]
-        px4_msg.body_rate.y = 0.1*w_des[1][0]
-        px4_msg.body_rate.z = 0.1*w_des[2][0]
+        px4_msg.body_rate.x = 0.01*w_des[0][0]
+        px4_msg.body_rate.y = 0.01*w_des[1][0]
+        px4_msg.body_rate.z = 0.01*w_des[2][0]
         px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
         self.px4_pub.publish(px4_msg)
-
+        """
 
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
         """

@@ -1,3 +1,28 @@
+"""
+author:  Juan Medrano
+version: 0.1
+brief: A controller for a quadrotor. Based on 
+        feedback linearization control theory and using euler angle representation
+        for control of orientation.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the ""Software""), to deal in the 
+Software without restriction, including without limitation the rights to use, copy, 
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
+and to permit persons to whom the Software is furnished to do so, subject to the 
+following conditions:
+The above copyright notice and this permission notice shall be included in all copies 
+or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+
 import tf
 import numpy as np
 import control_gains as gains
@@ -7,10 +32,18 @@ import riseq_tests.df_flat as df_flat
    
 class Feedback_Linearization_Controller():
 
-    def __init__(self, mass= 1.0, max_thrust = 1.0, min_thrust = 0.0):
+    def __init__(self, mass= 1.0, max_thrust = 1.0, min_thrust = 0.0, inertia = np.diag([1.0,1.0,1.0])):
         """
+        Initialize this controller's parameters
+
+        Args:
+            mass (float): mass of the rigid body in kilograms
+            max_thrust (float): maximum value of collective thrust
+            min_thrust (float): minimum value of collective thrust
+            inertia (3x3 np.array): inertia tensor of the quadrotor
         """
         self.mass = mass
+        self.Inertia = inertia
         self.Traw = 0
         self.pos_error_integral = 0
 
@@ -28,6 +61,29 @@ class Feedback_Linearization_Controller():
 
     def position_controller(self, state, ref):
         """
+        Calculate required thrust, body orientation, and body rate in order to converge
+        the state into the reference state:
+
+        The order of elements for both the state and reference state is as follows:
+        element 0: position (3x1 np.array)
+        element 1: velocity (3x1 np.array)
+        element 2: acceleration (3x1 np.array)
+        element 3: jerk (3x1 np.array)
+        element 4: snap (3x1 np.array)
+        element 5: orientation rotation matrix (3x3 np.array)
+        element 6: yaw angle (float)
+        element 7: yaw angle rate (float)
+        element 8: yaw angle acceleration (float)
+        element 9: body rate in euler representation (3x1 np.array)
+
+        Args:
+            state (list): current state vector of the quadrotor
+            ref (list): reference state vector of the quadrotor
+
+        Returns:
+            Required collective thrust (float), orientation (3x3 rotation matrix, np.array)
+            and body rate (3x1 np.array)
+
         """
         p = state[0]
         v = state[1]
@@ -79,6 +135,15 @@ class Feedback_Linearization_Controller():
 
     def desired_attitude(self, zb_des, Rbw_ref):
         """
+        Calculate a desired attitude based on a desired direction of body z-axis vector
+        and a reference orientation
+
+        Args:
+            zb_des (3x1 np.array): desired body zb axis
+            Rbw_ref (3x3 np.array): reference 3x3 orientation as rotation matrix
+
+        Returns:
+            Desired attitude as a 3x3 rotation matrix (np.array) and reference yaw angle
         """
         Rbw_h = utils.to_homogeneous_transform(Rbw_ref)
         psi_ref, theta_ref, phi_ref = tf.transformations.euler_from_matrix(Rbw_h, axes = 'rzyx')
@@ -93,7 +158,19 @@ class Feedback_Linearization_Controller():
 
     def desired_body_rate(self, euler, euler_ref, euler_dot_ref, gain = 1.0):
         """
+        Compute the body rate that will take the orientation of the quadrotor (euler) to 
+        the reference orientation (euler_ref) using euler_dot_ref as feedforward term.
         Control law is of the form: u = K*(euler_ref - euler)
+    
+        Args:
+            euler (3x1 np.array): current orientation of the quadrotor in euler angles (phi -roll-, theta -pitch-, psi -yaw-)
+            euler_ref (3x1 np.array): reference orientation of the quadrotor in euler angles (phi -roll-, theta -pitch-, psi -yaw-)
+            euler_dot_ref (3x1 np.array): reference body rate expressed in euler angle rates
+            gain (float): control gain, must be positive value
+
+        Returns:
+            Desired body angular velocity 3x1 np.array
+
         """
         gain_matrix = np.diag([gain, gain, gain])
         euler_error = euler - euler_ref
@@ -118,13 +195,25 @@ class Feedback_Linearization_Controller():
 
         return w_des
 
-
     def attitude_controller(self, angular_velocity, angular_velocity_des, angular_velocity_dot_ref, gain = 8.0):
         """
+        Compute control torque vector based on current angular velocity, desired angular velocity
+        and a reference angular acceleration. This controller was designed using feedback linearization
+        of the rotation dynamics of drone motion.
+
         Based on:
           Mclain, T., Beard, R. W., Mclain, T. ;, Beard, R. W. ;, Leishman, R. C.
           Differential Flatness Based Control of a Rotorcraft For Aggressive Maneuvers 
           (September), 2688-2693.
+
+        Args:
+            angular_velocity (3x1 np.array): current body angular velocity
+            angular_velocity_des (3x1 np.array): desired body angular velocity
+            angular_velocity_dot_ref (3x1 np.array): reference body angular acceleration
+            gain (float): controller gain
+
+        Returns:  
+            3x1 np.array control torque
         """
 
         # angular velocity error
