@@ -13,6 +13,8 @@ class QpMatrix:
         self.k_r = k_r
         self.k_psi = k_psi
         self.time_scaling = time_scaling
+
+        # dimension of variable. 3: [ x y z ]   4: [ x y z psi ]
         self.n = 4
 
         # polynomial coefficient
@@ -145,8 +147,8 @@ class QpMatrix:
         This is very important for continuity of trajectory
         """
         # constraint_data_r[m, k_r]
-        # 0   -> zero ... In this case, Initial, Final velocity and acceleration is zero.
-        # 1   -> continuity             In Checkpoint, it must be continuous.
+        # 0   -> False ... In this case, Initial, Final velocity and acceleration is zero.
+        # 1   -> True  ... continuity, in way point it must be continuous.
         constraint_data_r = np.zeros((self.m, self.k_r))
         if self.k_r >= 1:
             constraint_data_r[0, 0] = 0

@@ -34,7 +34,7 @@ class FG_WayPoint():
         self.waypoint = self.compensate_direction(waypoint, gate_count)
 
         # Create Publisher
-        self.point_pub = rospy.Publisher('riseq/planning/uav_waypoint', Path, queue_size=10)
+        self.point_pub = rospy.Publisher('riseq/planning/uav_global_waypoint', Path, queue_size=10)
 
         # self.make_trajectory = rospy.ServiceProxy('make_trajectory', MakeTrajectory)
 
@@ -85,7 +85,7 @@ class FG_WayPoint():
         return waypoint
 
     def pub_point(self):
-        hz = 10
+        hz = 5
         rate = rospy.Rate(hz)
 
         while not rospy.is_shutdown():

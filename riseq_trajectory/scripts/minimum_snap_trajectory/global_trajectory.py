@@ -3,7 +3,6 @@
 import rospy
 from nav_msgs.msg import Path
 from riseq_trajectory.msg import riseq_uav_trajectory
-# from riseq_trajectory.srv import MakeTrajectory
 import tf
 
 import riseq_trajectory.draw_trajectory as dt
@@ -11,65 +10,46 @@ import riseq_trajectory.hovering as hv
 import riseq_common.differential_flatness as df
 
 import numpy as np
-import quadratic_programming as qp
+import unconstrained_QP as unqp
+#import local_replanner as lr
 
 
 # TODO : Time Optimal
-# TODO : Generate trajectory at non-rest.
 
 
-class MinimumSnapTrajectory:
+class GlobalTrajectory:
     """
-    Publish minimum snap trajectory.
+     Publish minimum snap trajectory in global frame.
+    It use unconstrained QP so that avoid singular matrix.
+    To construct global trajectory, it needs every way point from search based path planning algorithm like A*.
+    Once global trajectory is constructed, almost never changed unless local planner cannot find any path.
+    Instead, local path planner will re-construct local path.
+
+     2 stage global planner:
+    1. Straight-line path using A* or RRT* algorithm
+    2. Plan dynamically feasible polynomial trajectory
+
+    Assume that drone start and arrive at rest in global trajectory.
     """
     def __init__(self):
-        # Our flat output is 4
-        # For smooth curve of trajectory, change and adjust order of polynomial.
-        # It is recommended to adjust 9 order polynomial at least to avoid deficient rank.
+        # Our flat output is 4 [ x y z psi ], but psi is not considered sometimes.
+        # It is recommended to adjust 9 order polynomial to construct square matrix for unconstrained QP.
+        # unconstrained QP is more stable and faster than typical QP.
         self.order = 9
         self.n = 4
 
-        self.solution = None
-        self.waypoint = None
-        self.state = None
-        self.m = 0
+        self.solution = None  # coefficients of polynomial
+        self.waypoint = None  # way point which drone needs to traverse
+        self.m = 0  # polynomial segment
+        self.time = None  # segment time allocation
+        self.val = 0  # value of cost function which is minimized by optimization
 
-        # TODO: make callback to receive state
-        # Position, velocity, acceleration, jerk and snap
-        # Assume that drone start and arrive at rest.
-        self.state = np.zeros((5, 4))
-
-        # determine environment
-        environment = rospy.get_param("riseq/environment")
-        if environment == "simulator":
-            # select mode (easy, medium, hard, scorer)
-            mode = rospy.get_param("riseq/challenge_name", -1)
-            if mode == -1:
-                rospy.logerr("mode is not specified!")
-                rospy.signal_shutdown("[challenge_name] could not be read")
-
-            # Time Segment and Scaling
-            # In this case, the polynomial of trajectory has variable t whose range is [0, 1]
-            # For using, time scaling method is applied
-            if mode == "easy":
-                time_scaling = [40]
-            elif mode == "medium":
-                time_scaling = [2, 2]
-            elif mode == "hard":
-                time_scaling = [20, 20, 2, 5]
-            else:
-                time_scaling = [20, 20, 20, 5, 5, 5, 5, 5, 5, 5, 5]
-        else:
-            time_scaling = None
-
-        self.time = time_scaling
-
-        # create service server for generating trajectory
-        # rospy.Service('make_trajectory', MakeTrajectory, self.make_trajectory)
+        # Ros parameter
+        rospy.set_param("riseq/global_trajectory_update", True)
 
         # Create subscriber and publisher
-        rospy.Subscriber("riseq/planning/uav_waypoint", Path, self.path_cb)
-        self.traj_pub = rospy.Publisher('riseq/trajectory/uav_trajectory', riseq_uav_trajectory, queue_size=10)
+        rospy.Subscriber("riseq/planning/uav_global_waypoint", Path, self.path_cb)
+        self.traj_pub = rospy.Publisher('riseq/trajectory/uav_global_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # Wait until callback function receive way point and compute trajectory solution
         while self.waypoint is None or self.solution is None:
@@ -80,32 +60,21 @@ class MinimumSnapTrajectory:
         self.start_time = rospy.get_time()
         self.last_time = self.start_time
 
-        # start in trajectory from initial position to final gate
+        # start in trajectory from initial position to final position
         # start with Index = 0
         # It is index for where drone is now.
         self.index = 0
 
-    '''
-    def make_trajectory(self, req):
-        self.path_cb(req.path)
-        self.index = 0
-        time_scaling = np.ones(self.m) * 5
-        self.time = time_scaling
-        self.state = np.zeros((5, 4))
-        solution, val = qp.qp_solution(self.order, self.waypoint, self.state, self.time)
-        self.solution = solution
-        return True
-    '''
-
     def path_cb(self, msg):
         """
-         Callback function that receive path message.
-        After that, generate trajectory or update trajectory.
+         Callback function that receive path message generate trajectory
         """
-        is_update = rospy.get_param("riseq/trajectory_update", True)
+        is_update = rospy.get_param("riseq/global_trajectory_update", True)
         if is_update is True:
             # m is segment
             self.m = len(msg.poses) - 1
+            self.time = np.ones(self.m)
+
             self.waypoint = np.zeros((self.m + 1, 4))
             for i in range(0, self.m + 1):
                 self.waypoint[i][0] = msg.poses[i].pose.position.x
@@ -116,16 +85,19 @@ class MinimumSnapTrajectory:
                      msg.poses[i].pose.orientation.w], axes='sxyz')
                 self.waypoint[i][3] = psi
 
-            solution, val = qp.qp_solution(self.order, self.waypoint, self.state, self.time)
-            self.solution = solution
+            self.solution, self.val = unqp.unconstrained_qp(self.waypoint, self.time)
 
             self.start_time = rospy.get_time()
             self.last_time = self.start_time
             self.index = 0
 
-            rospy.set_param("riseq/trajectory_update", False)
-            # Draw trajectory
-            # dt.plot_traj(self.solution, self.order, self.m, self.waypoint)
+            rospy.set_param("riseq/global_trajectory_update", False)
+
+            # plot trajectory
+            dt.plot_traj3D(self.solution, self.order, self.m, np.delete(self.waypoint, 3, 1))
+
+    def get_global_trajectory(self):
+        return self.solution, self.m, self.time
 
     def compute_reference_traj(self):
         # Compute trajectory at time = now
@@ -150,7 +122,7 @@ class MinimumSnapTrajectory:
         return ref_trajectory
 
     def pub_traj(self):
-        hz = rospy.get_param('riseq/trajectory_update_rate', 200)
+        hz = rospy.get_param('riseq/trajectory_update_rate', 100)
 
         # publish at Hz
         rate = rospy.Rate(hz)
@@ -216,7 +188,6 @@ class MinimumSnapTrajectory:
             traj.ub.y = uby
             traj.ub.z = ubz
 
-
             traj.uc.x = ucx
             traj.uc.y = ucy
             traj.uc.z = ucz
@@ -270,11 +241,14 @@ if __name__ == "__main__":
     # If this is not here, the "start_time" in the trajectory generator is
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
-    traj_gen = MinimumSnapTrajectory()
+    traj_gen = GlobalTrajectory()
+    solution, m, time = traj_gen.get_global_trajectory()
+    #lr.LocalTrajectory(solution, m, time)
 
     try:
         rospy.loginfo("UAV Trajectory Publisher Created")
-        traj_gen.pub_traj()
+        rospy.sleep(1)
+        # traj_gen.pub_traj()
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass
