@@ -11,9 +11,9 @@
 # Real-Time Visual-Inertial Mapping, Re-localization and Planning Onboard MAVs in Unknown Environments
 ###########################
 
-from cvxopt import matrix
 import numpy as np
 import compute_matrix_unQP
+from scipy.linalg import block_diag
 
 
 def optimization(waypoint, time):
@@ -53,98 +53,114 @@ def optimization(waypoint, time):
     waypoint = np.transpose(waypoint)
     unqp = compute_matrix_unQP.UnConstraintQpMatrix(m, waypoint, 4, time)
 
-    P = unqp.compute_p_1axis_replanning(5)
-    P = matrix(P)
-
-    A = unqp.compute_A_1axis_replanning(5)
-
     m = 5
-    start = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
-    goal = [[4, 0, 0, 0, 0], [4, 0, 0, 0, 0], [7, 0, 0, 0, 0]]
-    b = unqp.end_derivative_replanning(5, start, goal)
-    [bF, bP] = unqp.fixed_free_constraints_replanning(b, 5)
+    P = unqp.compute_p_1axis_replanning(m)
+    # convert to matrix for computing easily
+    P = np.matrix(P)
 
-    dF = np.array(bF)
-    dP = np.array(bP)
+    A = unqp.compute_A_1axis_replanning(m)
+
+    start = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
+    goal = [[4, 0, 0, 0, 0], [4, 0, 0, 0, 0], [4, 0, 0, 0, 0]]
+    b = unqp.end_derivative_replanning(m, start, goal)
+    [dF, dP] = unqp.fixed_free_constraints_replanning(b, m)
+    dF = np.transpose(dF)
+    dF = np.matrix(dF)
 
     # dP is free constraint
+    dP = np.ones((5 * m - 5, 3))
+    dP = np.matrix(dP)
+
+    d = np.zeros((10*m, 3))
+    d = np.matrix(d)
+
+    # d = [dF dP]
+    for i in range(3):
+        d[:, i] = np.vstack((dF[:, i], dP[:, i]))
+
+    M = unqp.mapping_matrix_replanning(m)
+    M = np.matrix(M)
+
+    invA = np.linalg.inv(A)
+    R = M.T * invA.T * P * invA * M
+
+    RFP = R[0:(5 * m + 5), (5 * m + 5):]
+    RPP = R[(5 * m + 5):, (5 * m + 5):]
+
+    invRPP = np.linalg.inv(RPP)
+    L = invA * M
+    Lpp = L[:, (5 * m + 5):]
+
+    solution = np.zeros((10 * m, 3))
+
     # initial guess
+
+    for i in range(3):
+        dP[:, i] = -invRPP * RFP.T * dF[:, i]
+        d[:, i] = np.vstack((dF[:, i], dP[:, i]))
+        p = invA * M * d[:, i]
+
+        solution[:, i] = np.array(p).flatten()
+        # value of cost function which is minimized by optimization
+        cost = (p.T * P * p).item(0)
+    print dP
+
     '''
-    dP = np.ones((3, 5 * m - 5))
     for i in range(3):
         intermediate = np.linspace(start[i][0], goal[i][0], m + 1)
         for j in range(m-1):
             dP[i][j*5] = intermediate[j+1]
     '''
-    # d = [dF dP]
-    d = np.zeros((3, 10 * m))
-    for i in range(3):
-        d[i] = np.hstack((dF[i], dP[i]))
 
-    M = unqp.mapping_matrix_replanning(5)
-    M = matrix(M)
-    np.savetxt("A.csv", A, delimiter=",")
-    np.savetxt("M.csv", M, delimiter=",")
-    invA = matrix(np.linalg.inv(A))
-    R = M.T * invA.T * P * invA * M
+    plot_traj3D(solution.T, 9, m, None)
 
-    np.savetxt("R.csv", R, delimiter=",")
-    RFP = R[0:(5 * m + 5), (5 * m + 5):]
-    RPP = R[(5 * m + 5):, (5 * m + 5):]
+    djd_ddp = np.zeros((5 * m - 5, 3))
+    djc_ddp = np.zeros((5 * m - 5, 3))
+    djd_ddp = np.matrix(djd_ddp)
+    djc_ddp = np.matrix(djc_ddp)
 
-    invRPP = matrix(np.linalg.inv(RPP))
-    X = -invRPP * RFP.T
-    solution = np.zeros((3, 10 * m))
-    for i in range(3):
-        dP[i][:] = np.array(X * matrix(dF[i])).T
-        d[i] = np.hstack((dF[i], dP[i]))
-        p = invA * M * matrix(d[i])
-
-        solution[i][:] = np.array(p.T)
-        # value of cost function which is minimized by optimization
-        cost = p.T * P * p
-
-    print d[0]
-    print M * matrix(d[0])
-    print dF
-    print dP
-    plot_traj3D(solution, 9, 5, None)
-
-    L = invA * M
-    Lpp = L[:, (5 * m + 5):]
-
-    djd_ddp = np.zeros((3, 5 * m - 5))
-    djc_ddp = np.zeros((3, 5 * m - 5))
     Jd = np.zeros(3)
     Jc = np.zeros(3)
     J = np.zeros(3)
-    wd = 1
-    wc = 1
-    dt = 1
-    e = 3
-    obstacle = [2, 2, 2]
 
-    rate = 0.01
+    dt = 1
+    e = 2
+    obstacle = [3, 3, 2]
+
+    wd = 0.01
+    wc = 1000
+    rate = 0.0001
 
     # J = wd * Jd + wc * Jc
     # dp = dp - rate * dJ_ddp
 
-    solution = np.zeros((3, 10 * m))
-    for h in range(4):
+    # TODO
+    """
+     We choose to evaluate the function along every arc length point ds equal to the map voxel resoltion.
+    This significantly speeds up computation without compromising safety
+    """
+
+    for h in range(100):
         # iteration h for gradient descent
+        dF = np.matrix(dF)
+        dP = np.matrix(dP)
+
+        for i in range(3):
+            # stack dF and dP
+            d[:, i] = np.vstack((dF[:, i], dP[:, i]))
 
         for i in range(3):
             # First cost function Jd
-            d[i] = np.hstack((dF[i], dP[i]))
-            p = invA * M * matrix(d[i])
-            solution[i][:] = np.array(p.T)
-            Jd[i] = (p.T * P * p)[0]
-            djd_ddp[i] = 2 * matrix(-dF[i]).T * RFP + 2 * matrix(dP[i]).T * RPP
+            p = invA * M * d[:, i]
+            solution[:, i] = p.flatten()
+            Jd[i] = (p.T * P * p).item(0)
+            djd_ddp[:, i] = (2 * dF[:, i].T * RFP + 2 * dP[:, i].T * RPP).T
 
         for k in range(3):
             # Second cost function Jc
+            summation_jacobian = np.zeros(5 * m - 5)
             summation_cost = 0
-            summation = np.zeros(5 * m - 5)
+
             for i in range(m + 1):
                 if i == m:
                     P_vector = np.zeros(m * 10)
@@ -160,11 +176,11 @@ def optimization(waypoint, time):
                 vk = np.zeros(3)
                 fk = np.zeros(3)
                 for j in range(3):
-                    vk[j] = (matrix(V_vector).T * L * matrix(d[j]))[0]
-                    fk[j] = (matrix(P_vector).T * L * matrix(d[j]))[0]
+                    vk[j] = (np.matrix(V_vector) * L * d[:, j]).item(0)
+                    fk[j] = (np.matrix(P_vector) * L * d[:, j]).item(0)
                 norm_velocity = np.linalg.norm((vk[0], vk[1], vk[2]))
                 distance = np.linalg.norm((fk[0] - obstacle[0], fk[1] - obstacle[1], fk[2] - obstacle[2]))
-                # print distance
+
                 if distance <= e:
                     dc_dd = 1.0 / e * (distance - e)
                     dd_df = 1.0 / 2 * np.power(
@@ -175,18 +191,21 @@ def optimization(waypoint, time):
                     dc_dd = 0
                     dd_df = 0
                     c_f = 0
-                VL = matrix(V_vector).T * Lpp
-                PL = matrix(P_vector).T * Lpp
+                VL = np.matrix(V_vector) * Lpp
+                PL = np.matrix(P_vector) * Lpp
                 sum1 = PL * norm_velocity * dc_dd * dd_df * dt
+                sum1 = sum1
+
                 if norm_velocity == 0 or norm_velocity == 0.0:
                     sum2 = VL * c_f * vk[k] / 0.001 * dt
                 else:
                     sum2 = VL * c_f * vk[k] / norm_velocity * dt
+                sum2 = sum2
 
-                summation = sum1 + sum2 + summation
+                summation_jacobian = sum1 + sum2 + summation_jacobian
                 summation_cost = c_f * norm_velocity * dt + summation_cost
 
-            #djc_ddp[k] = summation
+            djc_ddp[:, k] = summation_jacobian.T
             Jc[k] = summation_cost
 
         for k in range(3):
@@ -194,13 +213,14 @@ def optimization(waypoint, time):
 
         # update dP
         for i in range(3):
-            dP[i] = dP[i] - rate * wd * djd_ddp[i] - rate * wc * djc_ddp[i]
+            dP[:, i] = dP[:, i] - rate * (wd * djd_ddp[:, i] + wc * djc_ddp[:, i])
 
         #print dP[0]
         # print J
 
-    #print solution
-    plot_traj3D(solution, 9, 5, None)
+    # print solution
+    print dP
+    plot_traj3D(solution.T, 9, m, None)
 
 
 def get_vector(k, t):
