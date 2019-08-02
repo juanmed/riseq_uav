@@ -1,0 +1,65 @@
+<launch>
+
+  <!-- PX4 args -->
+  <arg name="mav_name" default="iris"/>
+  <arg name="fcu_url" default="udp://:14540@127.0.0.1:14557"/>
+  <arg name="gcs_url" default="" />
+  <arg name="tgt_system" default="1" />
+  <arg name="tgt_component" default="1" />
+  <arg name="command_input" default="2" />
+  <arg name="gazebo_simulation" default="true" />
+  <arg name="visualization" default="true"/>
+  <arg name="log_output" default="screen" />
+  <arg name="fcu_protocol" default="v2.0" />
+  <arg name="respawn_mavros" default="false" />
+
+  <!-- RISEQ args -->
+  <arg name="gate_x" default="6"/>
+  <arg name="gate_y" default="6"/>
+  <arg name="gate_z" default="1.67"/>
+  <arg name="gate_roll" default = "0.0"/>
+  <arg name="gate_pitch" default = "0.0"/>
+  <arg name="gate_yaw" default = "-1.5707"/>
+
+
+
+  <!-- PX4 SITL, MAVROS, GAZEBO -->
+  <include file="$(find mavros)/launch/px4.launch">
+    <arg name="fcu_url" value="$(arg fcu_url)"/>
+  </include>
+
+  <include file="$(find px4)/launch/posix_sitl.launch">
+      <arg name="vehicle" value="$(arg mav_name)"/>
+  </include>
+
+
+  <!-- RISEQ NAVIGATION launch -->
+  <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
+  <param name="/riseq/gate_x" value="$(arg gate_x)" type="double"/>
+  <param name="/riseq/gate_y" value="$(arg gate_y)" type="double"/>
+  <param name="/riseq/gate_z" value="$(arg gate_z)" type="double"/>
+  <param name="/riseq/gate_yaw" value="$(arg gate_yaw)" type="double"/>
+
+  <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py" output="screen"/>
+
+  <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py" output="screen">
+    <remap from="riseq/tests/uav_simple_trajectory" to="riseq/trajectory/uav_trajectory" />
+  </node>
+
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O 20190802_Test1 /riseq/trajectory/uav_trajectory/pose/position /mavros/local_position/pose/pose/position"/>
+
+  <include file="$(find mavros)/launch/node.launch">
+      <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
+      <arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
+
+      <arg name="fcu_url" value="$(arg fcu_url)" />
+      <arg name="gcs_url" value="$(arg gcs_url)" />
+      <arg name="tgt_system" value="$(arg tgt_system)" />
+      <arg name="tgt_component" value="$(arg tgt_component)" />
+      <arg name="log_output" value="$(arg log_output)" />
+      <arg name="fcu_protocol" value="$(arg fcu_protocol)" />
+      <arg name="respawn_mavros" default="$(arg respawn_mavros)" />
+  </include>
+
+</launch>
