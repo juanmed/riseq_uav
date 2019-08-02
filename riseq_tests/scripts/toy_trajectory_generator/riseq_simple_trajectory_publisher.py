@@ -178,7 +178,7 @@ def pub_traj():
     # publish at 10Hz
 
     while ((traj_gen.mavros_state.armed != True) or (traj_gen.mavros_state.mode != 'OFFBOARD')):
-        print(" >> Trajectory generator waiting for Drone ARMing")
+        #print(" >> Trajectory generator waiting for Drone ARMing")
         continue
 
     traj_gen.start_time = rospy.get_time()
