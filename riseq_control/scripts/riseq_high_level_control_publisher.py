@@ -31,12 +31,8 @@ from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
 
-if(rospy.get_param("riseq/environment") == "simulator"):
-    from mav_msgs.msg import RateThrust             # for flightgoggles
-    from nav_msgs.msg import Odometry 
-else:
-    pass
-
+from mav_msgs.msg import RateThrust             # for flightgoggles
+from nav_msgs.msg import Odometry 
 from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
 from mavros_msgs.msg import State

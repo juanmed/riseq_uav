@@ -21,18 +21,6 @@
   <arg name="gate_pitch" default = "0.0"/>
   <arg name="gate_yaw" default = "-1.5707"/>
 
-
-
-  <!-- PX4 SITL, MAVROS, GAZEBO -->
-  <include file="$(find mavros)/launch/px4.launch">
-    <arg name="fcu_url" value="$(arg fcu_url)"/>
-  </include>
-
-  <include file="$(find px4)/launch/posix_sitl.launch">
-      <arg name="vehicle" value="$(arg mav_name)"/>
-  </include>
-
-
   <!-- RISEQ NAVIGATION launch -->
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
   <param name="/riseq/gate_x" value="$(arg gate_x)" type="double"/>
