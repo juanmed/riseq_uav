@@ -46,7 +46,8 @@
       <arg name="vehicle" value="$(arg mav_name)"/>
   </include>
 
-   <node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/>
+  <!-- Speed up mavros topic publishing rate-->
+   <!--node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/-->
 
   <!-- DRL GATE and any other objects -->
   <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">

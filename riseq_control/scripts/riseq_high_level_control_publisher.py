@@ -308,6 +308,9 @@ class uav_High_Level_Controller():
             pose.pose.position.y = 0
             pose.pose.position.z = 0            
             self.local_pos_pub.publish(pose)
+        else:
+            self.status_timer.shutdown()
+            #pass
 
     def send_setpoints(self):
         """
