@@ -52,9 +52,9 @@ class Feedback_Linearization_Controller():
         self.Kd = np.diag([gains.Kdx2, gains.Kdy2, gains.Kdz2])
         self.Ki = np.diag([gains.Kix2, gains.Kiy2, gains.Kiz2])
 
-        self.dpr = np.array([-8.0]) 
-        self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
-        self.Kr = self.Kr.item(0,0)
+        #self.dpr = np.array([-8.0]) 
+        #self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
+        self.Kr = 8.0 #self.Kr.item(0,0)
 
         self.max_thrust = max_thrust
         self.min_thrust = min_thrust
