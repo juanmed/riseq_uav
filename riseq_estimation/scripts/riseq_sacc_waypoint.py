@@ -123,16 +123,22 @@ class Waypoint():
                 print("Set home position.")
                 break
 
-        last_request = rospy.Time.now()
+        print("Sending waypoint.")
+        for i in range(100):
+            self.position_publisher.publish(self.wp1)
+            print(i)
+            self.r.sleep()
+
+        self.last_request = rospy.Time.now()
         start_time = rospy.Time.now()
 
 
     def loop(self):
-        if (self.current_state.mode != "OFFBOARD") and ((rospy.Time.now() - last_request) > rospy.Duration(5.0)):
+        if (self.current_state.mode != "OFFBOARD") and ((rospy.Time.now() - self.last_request) > rospy.Duration(5.0)):
             set_mode = self.set_mode_client(0, "OFFBOARD")
             if set_mode.mode_sent is True:
                 print("Offboard enabled.")
-        elif (not current_state.armed) and ((rospy.Time.now() - last_request) > rospy.Duration(5.0)):
+        elif (not self.current_state.armed) and ((rospy.Time.now() - self.last_request) > rospy.Duration(5.0)):
             arming = arming_client(True)
             if arming.success is True:
                 print("Vehicle armed.")
