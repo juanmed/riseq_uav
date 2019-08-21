@@ -1,0 +1,106 @@
+<launch>
+
+  <!-- PX4 args -->
+  <arg name="mav_name" default="iris"/>
+  <arg name="fcu_url" default="udp://:14540@127.0.0.1:14557"/>
+  <arg name="gcs_url" default="" />
+  <arg name="tgt_system" default="1" />
+  <arg name="tgt_component" default="1" />
+  <arg name="command_input" default="2" />
+  <arg name="gazebo_simulation" default="true" />
+  <arg name="visualization" default="true"/>
+  <arg name="log_output" default="screen" />
+  <arg name="fcu_protocol" default="v2.0" />
+  <arg name="respawn_mavros" default="false" />
+
+  <!-- RISEQ args -->
+  <arg name="gate_x" default="6"/>
+  <arg name="gate_y" default="6"/>
+  <arg name="gate_z" default="1.67"/>
+  <arg name="gate_roll" default = "0.0"/>
+  <arg name="gate_pitch" default = "0.0"/>
+  <arg name="gate_yaw" default = "-1.5707"/>
+
+  <!-- Wall Window args -->
+  <arg name="wallwindow_x" default="6"/>
+  <arg name="wallwindow_y" default="0"/>
+  <arg name="wallwindow_z" default="1.5"/>
+  <arg name="wallwindow_roll" default = "1.5707"/>
+  <arg name="wallwindow_pitch" default = "0.0"/>
+  <arg name="wallwindow_yaw" default = "0.0"/>  
+
+  <!-- Pipe args -->
+  <arg name="pipe_x" default="10"/>
+  <arg name="pipe_y" default="-6"/>
+  <arg name="pipe_z" default="1.5"/>
+  <arg name="pipe_roll" default = "0.0"/>
+  <arg name="pipe_pitch" default = "0.0"/>
+  <arg name="pipe_yaw" default = "3.141692"/> 
+
+  <!-- PX4 SITL, MAVROS, GAZEBO -->
+  <include file="$(find mavros)/launch/px4.launch">
+    <arg name="fcu_url" value="$(arg fcu_url)"/>
+  </include>
+
+  <include file="$(find px4)/launch/posix_sitl.launch">
+      <arg name="vehicle" value="$(arg mav_name)"/>
+  </include>
+
+  <!-- Speed up mavros topic publishing rate-->
+   <!--node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/-->
+
+  <!-- DRL GATE and any other objects -->
+  <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+    <arg name="robot_name" default="drl_gate"/>
+    <arg name="x" value="$(arg gate_x)"/>
+    <arg name="y" value="$(arg gate_y)"/>
+    <arg name="z" value="$(arg gate_z)"/>
+    <arg name="roll" value="$(arg gate_roll)"/>
+    <arg name="pitch" value="$(arg gate_pitch)"/>
+    <arg name="yaw" value="$(arg gate_yaw)"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/drl_gate/drl_gate.sdf"/>
+  </include>
+
+  <!-- Wall Window  -->
+  <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+    <arg name="robot_name" default="wall_window"/>
+    <arg name="x" value="$(arg wallwindow_x)"/>
+    <arg name="y" value="$(arg wallwindow_y)"/>
+    <arg name="z" value="$(arg wallwindow_z)"/>
+    <arg name="roll" value="$(arg wallwindow_roll)"/>
+    <arg name="pitch" value="$(arg wallwindow_pitch)"/>
+    <arg name="yaw" value="$(arg wallwindow_yaw)"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/wall_window/wall_window.sdf"/>
+  </include>
+
+  <!-- Pipe  -->
+  <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+    <arg name="robot_name" default="pipe"/>
+    <arg name="x" value="$(arg pipe_x)"/>
+    <arg name="y" value="$(arg pipe_y)"/>
+    <arg name="z" value="$(arg pipe_z)"/>
+    <arg name="roll" value="$(arg pipe_roll)"/>
+    <arg name="pitch" value="$(arg pipe_pitch)"/>
+    <arg name="yaw" value="$(arg pipe_yaw)"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/pipe/pipe.sdf"/>
+  </include>
+
+
+  <!-- RISEQ NAVIGATION launch -->
+
+  <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
+
+  <param name="/riseq/gate_x" value="$(arg pipe_x)" type="double"/>
+  <param name="/riseq/gate_y" value="$(arg pipe_y)" type="double"/>
+  <param name="/riseq/gate_z" value="$(arg pipe_z)" type="double"/>
+  <param name="/riseq/gate_yaw" value="$(arg gate_yaw)" type="double"/>
+  <param name="riseq/gate_pose_nn_cfg" value="$(find riseq_perception)/scripts/ss6p_gate/cfg/yolo-pose.cfg"/>
+  <param name="riseq/gate_pose_nn_ply" value="$(find riseq_perception)/scripts/ss6p_gate/cfg/gate.ply"/>
+  <param name="riseq/gate_pose_nn_wgt" value="$(find riseq_perception)/scripts/ss6p_gate/weights/model.weights"/>
+  <param name="riseq/gate_pose_nn_data" value="$(find riseq_perception)/scripts/ss6p_gate/cfg/gate3.data"/>
+
+  <node pkg = "riseq_estimation" name ="riseq_gps_tracKer" type="riseq_sacc_waypoint.py" output = "screen"/>
+
+
+
+</launch>
