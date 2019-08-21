@@ -1,11 +1,17 @@
 <launch>
   <node pkg="ocam" type="ocam" name="ocam" output="screen">
-    <param name="resolution"    value="2"/> <!-- 0: 1280x960, 1: 1280x720, 2: 640x480, 3: 640x360 -->
+    <param name="resolution"    value="2"/> <!-- 0: 1280x960, 1: 1280x720, 2: 640x480, 3: 320x240 -->
     <param name="frame_rate"    value="100"/>
-    <param name="gain"          value="200"/>
+    <param name="exposure"      value="100"/>
+    <param name="gain"          value="150"/>
     <param name="wb_blue"       value="200"/>
     <param name="wb_red"        value="160"/>
     <param name="auto_exposure" value="false"/>
-    <param name="show_image"    value="true"/>
+    <param name="show_image"    value="false"/>
+  </node>
+
+  <node pkg="image_proc" type="image_proc" name="camera" ns="/riseq/camera">
+    <remap from="/riseq/camera/camera_info" to="/camera/camera_info"/>
+    <remap from="/riseq/camera/image_raw" to="/camera/image_raw"/>
   </node>
 </launch>
