@@ -24,6 +24,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import rospy
 import numpy as np
+import geopy.distance
 from sensor_msgs.msg import NavSatFix
 from mavros_msgs.msg import State, GlobalPositionTarget, HomePosition
 from mavros_msgs.srv import CommandHome, CommandBool, SetMode, CommandTOL
@@ -36,12 +37,17 @@ class Waypoint():
     def homeCb(self, msg):
         self.home_position = msg
 
-
     def positionCb(self, msg):
         self.current_position = msg
 
 
     def setWatpoints(self):
+        """
+        Set square shaped waypoints on 5m height from home position altitude.
+        latitude: degree
+        longitude: degree
+        altitude: meter
+        """
         self.wp1 = GlobalPositionTarget()
         self.wp2 = GlobalPositionTarget()
         self.wp3 = GlobalPositionTarget()
@@ -53,52 +59,58 @@ class Waypoint():
         #  |    ^
         #  v    |
         #  3 -> 4
+        self.wp4.header.stamp = rospy.Time.now()
         self.wp1.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_TERRAIN_ALT
         self.wp1.type_mask = GlobalPositionTarget().IGNORE_VX + GlobalPositionTarget().IGNORE_VY + GlobalPositionTarget().IGNORE_VZ + GlobalPositionTarget().IGNORE_AFX + GlobalPositionTarget().IGNORE_AFY + GlobalPositionTarget().IGNORE_AFZ + GlobalPositionTarget().FORCE + GlobalPositionTarget().IGNORE_YAW + GlobalPositionTarget().IGNORE_YAW_RATE
         self.wp1.latitude = 37.293336
         self.wp1.longitude = 126.974861
-        self.wp1.altitude = 5.0
+        self.wp1.altitude = self.home_position.altitude + 5.0
 
+        self.wp4.header.stamp = rospy.Time.now()
         self.wp2.coordinate_frame = self.wp1.coordinate_frame
         self.wp2.type_mask = self.wp1.type_mask
         self.wp2.latitude = 37.293336
         self.wp2.longitude = 126.974661
-        self.wp2.altitude = 5.0
+        self.wp2.altitude = self.home_position.altitude + 5.0
 
+        self.wp4.header.stamp = rospy.Time.now()
         self.wp3.coordinate_frame = self.wp1.coordinate_frame
         self.wp3.type_mask = self.wp1.type_mask
         self.wp3.latitude = 37.293136
         self.wp3.longitude = 126.974661
-        self.wp3.altitude = 5.0
+        self.wp3.altitude = self.home_position.altitude + 5.0
 
+        self.wp4.header.stamp = rospy.Time.now()
         self.wp4.coordinate_frame = self.wp1.coordinate_frame
         self.wp4.type_mask = self.wp1.type_mask
         self.wp4.latitude = 37.293136
         self.wp4.longitude = 126.974861
-        self.wp4.altitude = 5.0
+        self.wp4.altitude = self.home_position.altitude + 5.0
 
 
     def getDistance(self, wp):
         """
         Calculate the distance between current position and waypoint in m.
         """
+        cur = (self.current_position.latitude, self.current_position.longitude)
         if wp == 1:
-            distance = np.sqrt((self.current_position.latitude-self.wp1.latitude)**2 + (self.current_position.longitude-self.wp1.longitude)**2) * 110000
+            nxt = (self.wp1.latitude, self.wp1. longitude)
         elif wp == 2:
-            distance = np.sqrt((self.current_position.latitude-self.wp2.latitude)**2 + (self.current_position.longitude-self.wp2.longitude)**2) * 110000
+            nxt = (self.wp2.latitude, self.wp2. longitude)
         elif wp == 3:
-            distance = np.sqrt((self.current_position.latitude-self.wp3.latitude)**2 + (self.current_position.longitude-self.wp3.longitude)**2) * 110000
+            nxt = (self.wp3.latitude, self.wp3. longitude)
         elif wp == 4:
-            distance = np.sqrt((self.current_position.latitude-self.wp4.latitude)**2 + (self.current_position.longitude-self.wp4.longitude)**2) * 110000
+            nxt = (self.wp4.latitude, self.wp4. longitude)
         elif wp == 5:
-            distance = np.sqrt((self.current_position.latitude-self.wp1.latitude)**2 + (self.current_position.longitude-self.wp1.longitude)**2) * 110000
+            nxt = (self.wp1.latitude, self.wp1. longitude)
 
+        distance = geopy.distance.vincenty(cur, nxt).m
+        print("Distance to next waypoint: %.2f" %distance)
         return distance
 
 
     def __init__(self):
         rospy.init_node('riseq_sacc_waypoint')
-
         self.rate = 50
         self.r = rospy.Rate(self.rate)
 
@@ -113,33 +125,44 @@ class Waypoint():
         self.takeoff_client = rospy.ServiceProxy('/mavros/cmd/takeoff', CommandTOL)
         self.landing_client = rospy.ServiceProxy('/mavros/cmd/land', CommandTOL)
 
-
-        self.setWaypoints()
-
         while True:
             set_home = self.set_home_client(True, 0.0, 0.0, 0.0)
             self.r.sleep()
             if set_home.success is True:
                 print("Set home position.")
                 break
+        self.setWaypoints()
 
-        last_request = rospy.Time.now()
+        print("sending waypoint")
+        for i in range(self.rate):
+            self.position_publisher.publish(self.wp1)
+            self.r.sleep()
+
+        self.last_request = rospy.Time.now()
         start_time = rospy.Time.now()
 
 
     def loop(self):
-        if (self.current_state.mode != "OFFBOARD") and ((rospy.Time.now() - last_request) > rospy.Duration(5.0)):
+        # Enter Offboard mode and then arm.
+        if self.current_state.mode != "OFFBOARD":
             set_mode = self.set_mode_client(0, "OFFBOARD")
+            print("entering offboard mode...")
+            rospy.sleep(2.5)
             if set_mode.mode_sent is True:
-                print("Offboard enabled.")
-        elif (not current_state.armed) and ((rospy.Time.now() - last_request) > rospy.Duration(5.0)):
-            arming = arming_client(True)
+                print(">>>>>Offboard enabled<<<<<\n")
+        elif not self.current_state.armed:
+            arming = self.arming_client(True)
+            print("arming...")
+            rospy.sleep(2.5)
             if arming.success is True:
-                print("Vehicle armed.")
+                print(">>>>>Vehicle armed<<<<<\n")
 
+        # Calculate the distance between waypoint and current position.
         if self.getDistance(self.wp) < 1.0:
             self.wp += 1
 
+        # Set waypoint.
+        self.setWaypoints()
         if self.wp == 1:
             self.position_publisher.publish(self.wp1)
         elif self.wp == 2:
@@ -150,10 +173,11 @@ class Waypoint():
             self.position_publisher.publish(self.wp4)
         elif self.wp == 5:
             self.position_publisher.publish(self.wp1)
-        else:
+        elif (self.wp > 5) and (self.current_state.mode == "LAND"):
+            print(">>>>>Landing<<<<<\n")
             self.landing_client(0.0, 0.0, 0.0, 0.0, 0.0)
 
-        last_request = rospy.Time.now()
+        self.last_request = rospy.Time.now()
         self.r.sleep()
 
 
