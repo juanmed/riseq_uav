@@ -49,8 +49,9 @@ class MonoWaypointDetector():
         
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
 
-        self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
-
+        #self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
+        self.frontCamera_Mono = rospy.Subscriber("/pelican/camera_nadir/image_raw", Image, self.estimate_object_pose)
+        
         self.bridge = CvBridge()
 
         #self.init_pose = rospy.get_param("riseq/init_pose")

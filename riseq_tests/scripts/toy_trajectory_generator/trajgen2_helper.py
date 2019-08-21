@@ -19,7 +19,7 @@ from numpy import linalg as LA
 yaw = 0.0
 current_heading = np.array([1.0,0.0]) #heading vector should always be unitary vector. [0,0] vector has no heading!
 
-def get_poly_waypoints(t,n):
+def get_poly_waypoints(t,n, init_pos = (0,0,0)):
     """ The function generate n waypoints from a polynomial at given t.
         The polynomial is 
             x = k1*t^2
@@ -28,12 +28,14 @@ def get_poly_waypoints(t,n):
         Output waypoints shape is [n, 3]
     """
     waypoints_t = np.linspace(0, t, n)
-    k1 = 0.1
-    k2 = 0.1
+    k1 = 0.01
+    k2 = 0.01
     k3 = 1.0
-    x = (k1*waypoints_t)#**2
-    y = (k2*waypoints_t)#**3
-    z = k3*waypoints_t
+    x0, y0, z0 = init_pos
+    
+    x = (k1*waypoints_t) + x0
+    y = (k2*waypoints_t) + y0
+    z = k3*waypoints_t + z0
     #x = k1*np.ones_like(waypoints_t)
     #y = k2*np.ones_like(waypoints_t)
     #z = waypoints_t
@@ -41,7 +43,7 @@ def get_poly_waypoints(t,n):
 
     return np.stack((x, y, z), axis=-1)
 
-def get_leminiscata_waypoints(t,n):
+def get_leminiscata_waypoints(t,n, init_pos = (0,0,0)):
     """ The function generate n waypoints from a leminiscata at given t.
         The leminiscata is 
             x = k1 * cos(wt/2)
@@ -55,13 +57,15 @@ def get_leminiscata_waypoints(t,n):
     k2 = 0.5#
     w = 0.7
     
-    x = k1*np.cos(w*waypoints_t/2.0)
-    y = k1*np.sin(w*waypoints_t)
-    z = k2*waypoints_t
+    x0, y0, z0 = init_pos
+
+    x = k1*np.cos(w*waypoints_t/2.0)+ x0
+    y = k1*np.sin(w*waypoints_t) + y0
+    z = k2*waypoints_t + z0
 
     return np.stack((x, y, z), axis=-1)
 
-def get_helix_waypoints(t, n):
+def get_helix_waypoints(t, n, init_pos = (0,0,0)):
     """ The function generate n helix waypoints from the given time t
         output waypoints shape is [n, 3]
     """
@@ -69,19 +73,17 @@ def get_helix_waypoints(t, n):
 
     a = 2
     b = 2
-    c = 0.5
+    c = 1
 
     wx = 1.0
     wy = 1.0
 
-    x_0 = -2
-    y_0 = 0.0
-    z_0 = 0.07
+    x0, y0, z0 = init_pos
 
     # positions in helix
-    x = a*np.cos(wx*waypoints_t) + x_0
-    y = b*np.sin(wy*waypoints_t) + y_0
-    z = c*waypoints_t + z_0
+    x = a*np.cos(wx*waypoints_t) + x0 - a
+    y = b*np.sin(wy*waypoints_t) + y0
+    z = c*waypoints_t + z0
 
 
     #x = 0.5*np.cos(waypoints_t)

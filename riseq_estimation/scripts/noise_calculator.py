@@ -25,6 +25,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import rospy
 import numpy as np
 from std_msgs.msg import Int32, Float32
+from sensor_msgs.msg import Imu
 
 
 class Calculator():
@@ -42,6 +43,33 @@ class Calculator():
             self.variance = total / self.n
 
 
+    def imu_cb(self, data):
+        if self.n < self.max:
+            self.average_x = (self.average_x * self.n + float(data.angular_velocity.x)) / float(self.n + 1)
+            self.arr_x[self.n] = float(data.angular_velocity.x)
+            self.average_y = (self.average_y * self.n + float(data.angular_velocity.y)) / float(self.n + 1)
+            self.arr_y[self.n] = float(data.angular_velocity.y)
+            self.average_z = (self.average_z * self.n + float(data.angular_velocity.z)) / float(self.n + 1)
+            self.arr_z[self.n] = float(data.angular_velocity.z)
+            self.n += 1
+            print self.n
+
+        if self.n == self.max:
+            total_x = 0.0
+            total_y = 0.0
+            total_z = 0.0
+            for i in range(self.n):
+                total_x += (self.average_x - self.arr_x[i])**2
+                total_y += (self.average_y - self.arr_y[i])**2
+                total_z += (self.average_z - self.arr_z[i])**2
+            self.variance_x = total_x / self.n
+            self.variance_y = total_y / self.n
+            self.variance_z = total_z / self.n
+
+            print self.average_x, self.average_y, self.average_z
+            print self.variance_x, self.variance_y, self.variance_z
+
+
     def __init__(self):
         rospy.init_node('riseq_variance_calculator')
 
@@ -55,8 +83,18 @@ class Calculator():
         self.arr = np.zeros((self.max))
         self.average = 0.0
         self.variance = 0.0
+        self.arr_x = np.zeros((self.max))
+        self.average_x = 0.0
+        self.variance_x = 0.0
+        self.arr_y = np.zeros((self.max))
+        self.average_y = 0.0
+        self.variance_y = 0.0
+        self.arr_z = np.zeros((self.max))
+        self.average_z = 0.0
+        self.variance_z = 0.0
 
         rospy.Subscriber('/distance', Int32, self.data_cb)
+        rospy.Subscriber('/mavros/imu/data_raw', Imu, self.imu_cb)
 
 
     def loop(self):

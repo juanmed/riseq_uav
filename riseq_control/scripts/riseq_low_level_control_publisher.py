@@ -62,6 +62,12 @@ class uav_Low_Level_Controller():
         self.max_xy_torque = r*kt*(self.max_rotor_speed**2)
         self.max_z_torque = kq*(self.max_rotor_speed**2)
 
+        # for Iris drones
+        #self.B = np.array([[kt, kt, kt, kt],
+        #                   [-0.22*kt, 0.2*kt, 0.22*kt, -0.2*kt],
+        #                   [-0.125*kt, 0.13*kt, -0.135*kt, +0.13*kt],
+        #                   [-kq, kq, -kq, kq]])
+
         # for drones with rotors aligned to +X, +Y, -X, -Y axis
         self.B = np.array([[kt, kt, kt, kt],
                            [0., r*kt, 0, -r*kt],
@@ -161,7 +167,7 @@ class uav_Low_Level_Controller():
         llc_msg.torque.z = M[0][0]
         llc_msg.rotor_speeds = w_i
         self.llc_pub.publish(llc_msg)
-        rospy.loginfo(llc_msg)
+        #rospy.loginfo(llc_msg)
 
 
         # publish to flightgoggles

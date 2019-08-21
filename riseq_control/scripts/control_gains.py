@@ -57,12 +57,9 @@
 
 
 import rospy
-environment = rospy.get_param("riseq/environment")
-if(environment == "simulator"):
-	import control as ctl
-else:	
-	# do not import control as it is not available
-	pass
+
+#import control as ctl
+
 import numpy as np 
 
 # In general    u = Nu*r - K(x -Nx*r) = -K*x + (Nu + K*Nx)*r
@@ -159,17 +156,19 @@ D_ = np.matrix([0.0])
 
 # PID Gains for 2nd order system  with transfer function
 #    H(s) = 1 / s**2
+# for PX4 with IRIS drone use: Kp = 8, Kd = 1.5, Ki = 0.0
+# for Pelican with RotorS use: Kp = 3.3, Kd = 3.3, Ki = 0.0
 Kpx2 = 8.0
-Kix2 = 0.5*0.0
+Kix2 = 0.1*0.0
 Kdx2 = 1.5
 
 Kpy2 = 8.0
-Kiy2 = 0.5*0.0
+Kiy2 = 0.1*0.0
 Kdy2 = 1.5
 
-Kpz2 = 30.0
-Kiz2 = 0.01*0.0
-Kdz2 = 3.3
+Kpz2 = 8.0
+Kiz2 = 0.1*0.0
+Kdz2 = 10.3
 
 # PID Gains for 1st order system with transfer function
 #    H(s) = 1 / s

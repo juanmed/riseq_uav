@@ -32,8 +32,8 @@ class Trajectory_Generator2():
         # ---------------------------- #
         # Compute trajectory waypoints #
         # ---------------------------- #
-        gate=True
-        if(gate==True):
+        gate = False
+        if(gate):
             gate_x = rospy.get_param("riseq/gate_x")
             gate_y = rospy.get_param("riseq/gate_y")
             gate_z = rospy.get_param("riseq/gate_z")
@@ -48,10 +48,11 @@ class Trajectory_Generator2():
             p2 = np.array([[0],[0],[1.67]])
             p3 = np.array([[6],[3],[1.67]])
 
-        point_list = [p1,p2,p3]
+        #point_list = [p1,p2,p3]
         #self.waypoints = self.get_waypoint_list(point_list)
         #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
-        self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
+        self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        #self.waypoints = trajGen3D.get_poly_waypoints(1, 2, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
@@ -158,7 +159,8 @@ def pub_traj():
     wait_time = int(rospy.get_param("riseq/trajectory_wait"))
     while( rospy.Time.now().to_sec() < wait_time ):
         if( ( rospy.Time.now().to_sec() % 1.0) == 0.0 ):
-            rospy.loginfo("Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
+            #rospy.loginfo("Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
+            continue
     
 
 
@@ -168,15 +170,18 @@ def pub_traj():
     # traj_gen = Trajectory_Generator_Test()
 
     # IMPORTANT WAIT TIME! DO NOT DELETE!
-    rospy.sleep(0.1)
+    #rospy.sleep(0.1)
     # If this is not here, the "start_time" in the trajectory generator is 
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
     # publish at 10Hz
 
-    while ((traj_gen.mavros_state.armed != True) and (traj_gen.mavros_state.mode != 'OFFBOARD')):
-        print(" >> Trajectory generator waiting for Drone ARMing")
+    while ((traj_gen.mavros_state.armed != True) or (traj_gen.mavros_state.mode != 'OFFBOARD')):
+        #print(" >> Trajectory generator waiting for Drone ARMing")
+        continue
+
+    traj_gen.start_time = rospy.get_time()
 
     rate = rospy.Rate(rospy.get_param('riseq/trajectory_update_rate', 200))
     print("\n\n  >>>>> Trajectory rate: {}  <<<<<<".format(rospy.get_param('riseq/trajectory_update_rate', 200)))

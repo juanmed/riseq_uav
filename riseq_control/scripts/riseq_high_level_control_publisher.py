@@ -31,22 +31,19 @@ from riseq_common.msg import riseq_uav_state
 from riseq_trajectory.msg import riseq_uav_trajectory
 from riseq_control.msg import riseq_high_level_control
 
-if(rospy.get_param("riseq/environment") == "simulator"):
-    from mav_msgs.msg import RateThrust             # for flightgoggles
-    from nav_msgs.msg import Odometry 
-else:
-    pass
-
+from mav_msgs.msg import RateThrust             # for flightgoggles
+from nav_msgs.msg import Odometry 
 from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
 from mavros_msgs.msg import State
 from mavros_msgs.msg import AttitudeTarget
 from geometry_msgs.msg import PoseStamped
 
-import riseq_tests.df_flat as df_flat
-import control_gains as gains
+import riseq_common.dyn_utils as utils
 import numpy as np
-
+#from rpg_controllers import attitude_controller, reinit_attitude_controller
+from feedback_linearization_controller import Feedback_Linearization_Controller
+from geometric_controller import Geometric_Controller
 
 class uav_High_Level_Controller():
 
@@ -86,14 +83,14 @@ class uav_High_Level_Controller():
         elif(self.state_input == 'fg_true_state'):
             # for flight googles simulator
             self.state_sub = message_filters.Subscriber('/mavros/local_position/odom', Odometry)
-
+            #self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
             print(' The only possible controller input states  are: true_state, estimated_state')
             self.state_sub = message_filters.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state)
 
         # filter messages based on time
-        ts = message_filters.ApproximateTimeSynchronizer([self.state_sub, self.reftraj_sub], 10, 0.03) # queue = 10, delay = 0.005s
+        ts = message_filters.ApproximateTimeSynchronizer([self.state_sub, self.reftraj_sub], 10, 0.01) # queue = 10, delay = 0.005s
         
         # select controller's controller type: euler angle based controller, geometric controller
         try:
@@ -126,44 +123,10 @@ class uav_High_Level_Controller():
         self.rotor_count = rospy.get_param("riseq/rotor_count")
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
         self.min_thrust = 0.0
-
-        self.position_control_frequency_ratio = 1       # This is the factor by which the high_level_controller is slower
-                                                         # than low_level controller
-        self.position_control_loops = 0                                        
-        self.pos_error_integral = np.zeros((3,1))       # Store position error integral
-        self.Traw = self.g*self.mass                    # Store thrust (before saturation) for anti-windup control
-        self.T = self.g*self.mass
-        self.Rbw_des = np.zeros((3,3))
-        self.e1 = np.array([[1],[0],[0]])       # Vectors e1, e2, e3 generate R3
-        self.e2 = np.array([[0],[1],[0]])
-        self.e3 = np.array([[0],[0],[1]])
+        self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
+        self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
         
-
-        # PID gains for position error controller 
-        self.Kp = np.diag([gains.Kpx2, gains.Kpy2, gains.Kpz2])
-        self.Kd = np.diag([gains.Kdx2, gains.Kdy2, gains.Kdz2])
-        self.Ki = np.diag([gains.Kix2, gains.Kiy2, gains.Kiz2])
-
-        # Gains for euler angle for desired angular velocity
-        #       POLE PLACEMENT DESIRED POLES
-        # Desired pole locations for pole placement method, for more aggresive tracking
-    
-        if (environment == "simulator"):
-            self.dpr = np.array([-8.0]) 
-            self.Kr, self.N_ur, self.N_xr = gains.calculate_pp_gains(gains.Ar, gains.Br, gains.Cr, gains.D_, self.dpr)
-            self.Kr = 20.#self.Kr.item(0,0)
-        elif (environment == "embedded_computer"):
-            self.Kr = 8.
-        else:
-            print("riseq/environment parameter not found. Setting Kr = 1")
-            self.Kr = 1
         
-        # debugging variables
-        #self.a_e = np.zeros((3,1))
-        #self.a_e2 = np.zeros((3,1))
-        #self.Traw2 = 0
-
-
         # PX4 SITL 
         self.mavros_state = State()
         self.mavros_state.connected = False
@@ -176,6 +139,7 @@ class uav_High_Level_Controller():
 
         self.status_timer = rospy.Timer(rospy.Duration(0.3), self.mavros_status_cb)
         self.last_mavros_request = rospy.Time.now()
+        
 
     def euler_angle_controller(self, state, trajectory):
         """
@@ -199,111 +163,24 @@ class uav_High_Level_Controller():
         Rbw = Rwb[0:3,0:3].T    # body to world transformation, only rotation part
         angular_velocity = np.array([[state.twist.twist.angular.x],[state.twist.twist.angular.y],[state.twist.twist.angular.z]])
 
-        # ------------------------------------ #
-        #  Thrust and Orientation Computation  #
-        # ------------------------------------ #
-        if(self.position_control_loops == 0):   # Update desired thrust and desired orientation
-
-            # extract reference values
-            p_ref = np.array([[trajectory.pose.position.x], [trajectory.pose.position.y], [trajectory.pose.position.z]])
-            v_ref = np.array([[trajectory.twist.linear.x], [trajectory.twist.linear.y], [trajectory.twist.linear.z]])
-
-            # extract real values
-            p = np.array([[state.pose.pose.position.x], [state.pose.pose.position.y], [state.pose.pose.position.z]])
-            v = np.array([[state.twist.twist.linear.x], [state.twist.twist.linear.y], [state.twist.twist.linear.z]])
-            v = np.dot(Rbw, v)
-
-            # ---------------------------------------------- #
-            #                POSITION CONTROL                #
-            #  Compute thrust for trajectory tracking        #
-            #  See [1] for details                           #
-            # ---------------------------------------------- #
-
-            # Calculate  PID control law for acceleration error: 
-            self.pos_error_integral = self.pos_error_integral + (p - p_ref)
-            self.a_e = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(self.Ki,self.pos_error_integral)  # PID control law
-
-            #        ****   Implement anti-windup integral control  ****
-            if((self.Traw >= self.max_thrust) or (self.Traw <= self.min_thrust)):
-                Ki = np.diag([0.0, 0.0, 0.0])
-                self.a_e2 = -1.0*np.dot(self.Kp,p-p_ref) -1.0*np.dot(self.Kd,v-v_ref) -1.0*np.dot(Ki,self.pos_error_integral)  # PID control law
-            else:
-                self.a_e2 = self.a_e            
-
-            # Reference acceleration from differential flatness
-            a_ref = np.array([trajectory.acc.x, trajectory.acc.y, trajectory.acc.z]).reshape(3,1)
-
-            # Desired acceleration
-            a_des = self.a_e2 + a_ref + self.g*self.e3
-            a_des2 = self.a_e + a_ref + self.g*self.e3
-
-            wzb = np.dot(Rbw, self.e3)          # body z-axis expressed in world frame
-            self.Traw = self.mass*np.dot(wzb.T,a_des)[0][0]            # Necessary thrust
-            #self.Traw2 = self.mass*np.dot(wzb.T,a_des2)[0][0]          # debugging only
-
-            #         ****        Input saturation  *      ****
-            self.T = self.saturate_scalar_minmax(self.Traw, self.max_thrust, self.min_thrust)    # Maximum possible thrust
-
-            # ---------------------------------------------- #
-            #             DESIRED ORIENTATION                #
-            # Compute desired orientation for trajectory     #
-            # tracking                                       #
-            # See [1] for details
-            # ---------------------------------------------- #
-
-            zb_des = a_des / np.linalg.norm(a_des)
-
-            yc_des = np.array(df_flat.get_yc(psi_ref))
-            xb_des = np.cross(yc_des, zb_des, axis = 0)
-            xb_des = xb_des/np.linalg.norm(xb_des)
-            yb_des = np.cross(zb_des, xb_des, axis = 0)
-
-            #        ****  Discriminate between two possible orientations ****  #
-            #   See [2] for Reference
-            #   Desired orientation is the one with smallest distance from current
-            #   orientation
-            #   THIS MUST NOT BE DONE FOR EULER ANGLE BASED CONTROLLER SINCE 
-            #   THE REFERENCE YAW (PSI) WILL BE DIRECTLY TRACKED!
-
-            # calculate desired orientation
-            self.Rbw_des = np.concatenate((xb_des, yb_des, zb_des), axis = 1)
-
-            """
-            Rbw_des2 = np.concatenate((-xb_des, -yb_des, zb_des), axis = 1)
-            
-            angle1 = self.rotation_distance(Rbw, Rbw_des1)
-            angle2 = self.rotation_distance(Rbw, Rbw_des2)
-            
-            if(angle1 > angle2):
-                print("Rbw_des2 selected")
-                self.Rbw_des = Rbw_des2
-                xb_des = -xb_des
-                yb_des = -yb_des
-            else:
-                print("Rbw_des1 selected")
-                self.Rbw_des = Rbw_des1
-            """
-
-            #self.position_control_loops = self.position_control_loops + 1
-        else:
-            self.position_control_loops = self.position_control_loops + 1
-            if(self.position_control_loops == self.position_control_frequency_ratio):
-                self.position_control_loops = 0
-            
-
-        # While thrust and desired orientation are not recalculated, send the same previous values.
-        # This makes a time separation between the position and the orientation
-        # controller, in order for the orientation controller to converge much faster than the 
-        # position controller. See [3], [4].
-
-        # ------------------------------------ #
-        #     Angular Velocity Computation     #
-        # ------------------------------------ #
-        euler = np.array([[phi],[theta],[psi]])
-        #euler_ref = np.array([[phi_ref],[theta_ref],[psi_ref]])
-        euler_des = np.array(df_flat.RotToRPY_ZYX(self.Rbw_des))  # get desired roll, pitch, yaw angles
+        # extract reference values
+        p_ref = np.array([[trajectory.pose.position.x], [trajectory.pose.position.y], [trajectory.pose.position.z]])
+        v_ref = np.array([[trajectory.twist.linear.x], [trajectory.twist.linear.y], [trajectory.twist.linear.z]])
+        a_ref = np.array([trajectory.acc.x, trajectory.acc.y, trajectory.acc.z]).reshape(3,1)
         euler_dot_ref = np.array([[trajectory.uc.x], [trajectory.uc.y],[trajectory.uc.z]])
-        w_des = self.euler_angular_velocity_des(euler, euler_des, euler_dot_ref, self.Kr)
+
+        # extract real values
+        p = np.array([[state.pose.pose.position.x], [state.pose.pose.position.y], [state.pose.pose.position.z]])
+        v = np.array([[state.twist.twist.linear.x], [state.twist.twist.linear.y], [state.twist.twist.linear.z]])
+        v = np.dot(Rbw, v)
+
+        state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]
+        ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
+
+        #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
+        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+
+        #w_des = attitude_controller(Rbw, self.Rbw_des)
 
         # Fill out message
         hlc_msg = riseq_high_level_control()
@@ -317,51 +194,31 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity.x = angular_velocity[0][0]
         hlc_msg.angular_velocity.y = angular_velocity[1][0]
         hlc_msg.angular_velocity.z = angular_velocity[2][0]
-        hlc_msg.angular_velocity_des.x = w_des[0][0]
-        hlc_msg.angular_velocity_des.y = w_des[1][0]
-        hlc_msg.angular_velocity_des.z = w_des[2][0]
+        hlc_msg.angular_velocity_des.x = 0.1*w_des[0][0]
+        hlc_msg.angular_velocity_des.y = 0.1*w_des[1][0]
+        hlc_msg.angular_velocity_des.z = 0.1*w_des[2][0]
         hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
         #self.hlc_pub.publish(hlc_msg)
         #rospy.loginfo(hlc_msg)
 
+        
         px4_msg = AttitudeTarget()
         px4_msg.header.stamp = rospy.Time.now()
         px4_msg.header.frame_id = 'map'
-        px4_msg.type_mask = px4_msg.IGNORE_ATTITUDE
-        px4_msg.body_rate.x = w_des[0][0]
-        px4_msg.body_rate.y = w_des[1][0]
-        px4_msg.body_rate.z = w_des[2][0]
-        px4_msg.thrust =  np.min([1.0, 0.05*self.T/self.mass])
+        px4_msg.type_mask = 7 #px4_msg.IGNORE_ATTITUDE
+        q = tf.transformations.quaternion_from_matrix(utils.to_homogeneous_transform(self.Rbw_des))
+        px4_msg.orientation.x = q[0]
+        px4_msg.orientation.y = q[1]
+        px4_msg.orientation.z = q[2]
+        px4_msg.orientation.w = q[3]
+        px4_msg.body_rate.x = 0.01*w_des[0][0]
+        px4_msg.body_rate.y = 0.01*w_des[1][0]
+        px4_msg.body_rate.z = 0.01*w_des[2][0]
+        px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
         self.px4_pub.publish(px4_msg)
-
-    def euler_angular_velocity_des(self, euler, euler_ref, euler_dot_ref,gain):
-        """
-        Control law is of the form: u = K*(euler_ref - euler)
-        """
-        gain_matrix = np.diag([gain, gain, gain])
-        euler_error = euler - euler_ref
-        u = -1.0*np.dot(gain_matrix, euler_error)
         
-        euler_dot = u + euler_dot_ref
-
-        # compute w_b angular velocity commands as
-        #  w_b = K.inv * uc
-        #  where  (euler dot) = K*(angular_velocity)
-        #  K is -not- a gain matrix, see definition below
-        phi = euler[0][0]
-        theta = euler[1][0]
-        psi = euler[2][0]
-        K = np.array([[1.0, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
-                      [0.0, np.cos(phi), -1.0*np.sin(phi)], 
-                      [0.0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)]])
-
-        Kinv = np.linalg.inv(K)        
-
-        w_des = np.dot(Kinv, euler_dot)
-
-        return w_des
 
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
         """
@@ -406,31 +263,6 @@ class uav_High_Level_Controller():
 
         return w_des
 
-    def geometric_controller(self, state, trajectory):
-        """
-        @description This controller uses an euler angle representation of orientation
-        in order to control it.
-        @state quadrotor state
-        @trajectory reference trajectory
-        """
-
-        return 0
-
-    def saturate_scalar(self, value, max_value):
-        return min(value,max_value)
-
-    def rotation_distance(self, R1, R2):
-        """
-        @description Measure the angle to rotate from R1 to R2
-        at http://www.boris-belousov.net/2016/12/01/quat-dist/
-        @R1 3x3 np.array, must be a member of the Special Orthogonal group SO(3)
-        @R2 3x3 np.array, must be a member of the Special Orthogonal group SO(3)
-        @return absolute value of the angle between R1 and R2
-        """
-        Rd = np.dot(R1.T, R2)       # get difference rotation matrix
-        angle = np.arccos((np.trace(Rd) -1.0 )/2.0)
-        return np.abs(angle)
-
     def publish_thrust(self, thrust):
         """
         @description publish thrust values to 'wake up' flightgoggles 
@@ -443,33 +275,12 @@ class uav_High_Level_Controller():
         rospy.loginfo(thrust_msg)
         rospy.loginfo("Published body vertical thrust: {}".format(thrust))
 
-    def saturate_scalar_minmax(self, value, max_value, min_value):
-        """
-        @ description saturation function for a scalar with definded maximum and minimum value
-        See Q. Quan. Introduction to Multicopter Design (2017), Ch11.3, page 265 for reference
-        """
-        mean = (max_value + min_value)/2.0
-        half_range = (max_value - min_value)/2.0
-        return self.saturate_vector_dg(value-mean, half_range) + mean
-
-    # saturation function for vectors
-    def saturate_vector_dg(self, v, max_value):
-        """
-        @description saturation function for the magnitude of a vector with maximum magnitude 
-        and guaranteed direction.
-        See Q. Quan. Introduction to Multicopter Design (2017), Ch. 10.2 for reference
-        """
-        mag = np.linalg.norm(v)
-        if( mag < max_value):
-            return v
-        else:
-            return np.dot(v/mag,max_value)  # return vector in same direction but maximum possible magnitude
-
     def mavros_state_cb(self, state_msg):
         self.mavros_state = state_msg
 
     def mavros_status_cb(self, timer):
 
+        """
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = "OFFBOARD"
         arm_cmd = CommandBool()
@@ -485,20 +296,53 @@ class uav_High_Level_Controller():
             if arm_client_1.success:
                 rospy.loginfo("Requested Vehicle Armed")
             self.last_mavros_request = rospy.Time.now() 
-
+        
         armed = self.mavros_state.armed
         mode = self.mavros_state.mode
         rospy.loginfo("Vehicle armed: {}".format(armed))
         rospy.loginfo("Vehicle mode: {}".format(mode))
 
-        if( (not armed ) and (mode != 'OFFBOARD')):
+        
+        if( (not armed ) or (mode != 'OFFBOARD')):
             pose = PoseStamped()
             pose.header.stamp = rospy.Time.now()
             pose.pose.position.x = 0
             pose.pose.position.y = 0
             pose.pose.position.z = 0            
             self.local_pos_pub.publish(pose)
+        else:
+            self.status_timer.shutdown()
+            #pass
+        """
 
+        offb_set_mode = SetMode()
+        offb_set_mode.custom_mode = "OFFBOARD"
+        arm_cmd = CommandBool()
+        arm_cmd.value = True
+
+        if(self.mavros_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_mavros_request > rospy.Duration(5.0))):
+            resp1 = self.set_mode_client(0,offb_set_mode.custom_mode)
+            if resp1.mode_sent:
+                rospy.loginfo("Requested Offboard Enable")
+            self.last_mavros_request = rospy.Time.now()
+
+        
+        armed = self.mavros_state.armed
+        mode = self.mavros_state.mode
+        rospy.loginfo("Vehicle armed: {}".format(armed))
+        rospy.loginfo("Vehicle mode: {}".format(mode))
+
+        
+        if( (not armed ) or (mode != 'OFFBOARD')):
+            pose = PoseStamped()
+            pose.header.stamp = rospy.Time.now()
+            pose.pose.position.x = 0
+            pose.pose.position.y = 0
+            pose.pose.position.z = 0            
+            self.local_pos_pub.publish(pose)
+        else:
+            self.status_timer.shutdown()
+            #pass
 
     def send_setpoints(self):
         """
