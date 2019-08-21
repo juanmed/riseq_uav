@@ -12,6 +12,7 @@
   <arg name="log_output" default="screen" />
   <arg name="fcu_protocol" default="v2.0" />
   <arg name="respawn_mavros" default="false" />
+  <arg name="rosbag_name" default="test1"/>
 
   <!-- RISEQ args -->
   <arg name="gate_x" default="6"/>
@@ -112,6 +113,9 @@
 
   <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"
         args="/riseq/trajectory/uav_trajectory/pose/position /mavros/local_position/pose/pose/position"/>
+
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose"/>
 
 
   <!--group if="$(arg visualization)">

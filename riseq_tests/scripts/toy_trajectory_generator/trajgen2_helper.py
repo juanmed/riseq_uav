@@ -81,9 +81,9 @@ def get_helix_waypoints(t, n, init_pos = (0,0,0)):
     x0, y0, z0 = init_pos
 
     # positions in helix
-    x = a*np.cos(wx*waypoints_t) + x_0
-    y = b*np.sin(wy*waypoints_t) + y_0
-    z = c*waypoints_t + z_0
+    x = a*np.cos(wx*waypoints_t) + x0 - a
+    y = b*np.sin(wy*waypoints_t) + y0
+    z = c*waypoints_t + z0
 
 
     #x = 0.5*np.cos(waypoints_t)

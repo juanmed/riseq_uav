@@ -280,6 +280,7 @@ class uav_High_Level_Controller():
 
     def mavros_status_cb(self, timer):
 
+        """
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = "OFFBOARD"
         arm_cmd = CommandBool()
@@ -295,12 +296,43 @@ class uav_High_Level_Controller():
             if arm_client_1.success:
                 rospy.loginfo("Requested Vehicle Armed")
             self.last_mavros_request = rospy.Time.now() 
-
+        
         armed = self.mavros_state.armed
         mode = self.mavros_state.mode
         rospy.loginfo("Vehicle armed: {}".format(armed))
         rospy.loginfo("Vehicle mode: {}".format(mode))
 
+        
+        if( (not armed ) or (mode != 'OFFBOARD')):
+            pose = PoseStamped()
+            pose.header.stamp = rospy.Time.now()
+            pose.pose.position.x = 0
+            pose.pose.position.y = 0
+            pose.pose.position.z = 0            
+            self.local_pos_pub.publish(pose)
+        else:
+            self.status_timer.shutdown()
+            #pass
+        """
+
+        offb_set_mode = SetMode()
+        offb_set_mode.custom_mode = "OFFBOARD"
+        arm_cmd = CommandBool()
+        arm_cmd.value = True
+
+        if(self.mavros_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_mavros_request > rospy.Duration(5.0))):
+            resp1 = self.set_mode_client(0,offb_set_mode.custom_mode)
+            if resp1.mode_sent:
+                rospy.loginfo("Requested Offboard Enable")
+            self.last_mavros_request = rospy.Time.now()
+
+        
+        armed = self.mavros_state.armed
+        mode = self.mavros_state.mode
+        rospy.loginfo("Vehicle armed: {}".format(armed))
+        rospy.loginfo("Vehicle mode: {}".format(mode))
+
+        
         if( (not armed ) or (mode != 'OFFBOARD')):
             pose = PoseStamped()
             pose.header.stamp = rospy.Time.now()

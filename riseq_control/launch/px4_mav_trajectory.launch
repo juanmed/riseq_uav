@@ -2,7 +2,7 @@
 
   <!-- PX4 args -->
   <arg name="mav_name" default="iris"/>
-  <arg name="fcu_url" default="udp://:14540@127.0.0.1:14557"/>
+  <arg name="fcu_url" default="tcp://:5760@127.0.0.1:5760"/>
   <arg name="gcs_url" default="" />
   <arg name="tgt_system" default="1" />
   <arg name="tgt_component" default="1" />
@@ -12,6 +12,7 @@
   <arg name="log_output" default="screen" />
   <arg name="fcu_protocol" default="v2.0" />
   <arg name="respawn_mavros" default="false" />
+  <arg name="rosbag_name" default="test1"/>
 
   <!-- RISEQ args -->
   <arg name="gate_x" default="6"/>
@@ -34,9 +35,6 @@
     <remap from="riseq/tests/uav_simple_trajectory" to="riseq/trajectory/uav_trajectory" />
   </node>
 
-  <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O 20190802_Test1 /riseq/trajectory/uav_trajectory/pose/position /mavros/local_position/pose/pose/position"/>
-
   <include file="$(find mavros)/launch/node.launch">
       <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
       <arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -49,5 +47,8 @@
       <arg name="fcu_protocol" value="$(arg fcu_protocol)" />
       <arg name="respawn_mavros" default="$(arg respawn_mavros)" />
   </include>
+
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose"/>
 
 </launch>
