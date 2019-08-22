@@ -48,6 +48,9 @@
       <arg name="respawn_mavros" default="$(arg respawn_mavros)" />
   </include>
 
+  <!-- Speed up mavros topic publishing rate-->
+   <node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/>  
+
   <node name="rosbag_record" pkg="rosbag" type="record"
         args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose"/>
 
