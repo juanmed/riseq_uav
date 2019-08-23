@@ -89,23 +89,6 @@ class uav_High_Level_Controller():
             self.state_sub = rospy.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state)
 
         # select controller's controller type: euler angle based controller, geometric controller
-        try:
-            self.controller_type = rospy.get_param('riseq/controller_type')
-        except:
-            print(' riseq/controller_type parameter unavailable')
-            print(' Setting controller type to: geometric')
-            print(' The only possible controller types are: euler_angle_controller, geometric_controller')
-            self.controller_type = 'geometric_controller'
-
-        if( self.controller_type == 'euler_angle_controller'):
-            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
-
-        elif( self.controller_type == 'geometric_controller'):
-            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.geometric_controller)
-        else:
-            print('riseq/controller_type parameter not recognized. Defaulting to geometric_controller')
-            print(' The only possible types are: euler_angle_controller, geometric_controller')
-            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
 
         # --------------------------------- #
         # Initialize controller parameters  #
@@ -127,6 +110,18 @@ class uav_High_Level_Controller():
         self.state.pose.pose.orientation.w = 1.0
         self.traj = riseq_uav_trajectory()
         self.traj.rot = [1,0,0,0,1,0,0,0,1]
+
+        self.controller_type = rospy.get_param('riseq/controller_type','euler_angle_controller')
+
+        if( self.controller_type == 'euler_angle_controller'):
+            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
+
+        elif( self.controller_type == 'geometric_controller'):
+            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.geometric_controller)
+        else:
+            print('riseq/controller_type parameter not recognized. Defaulting to geometric_controller')
+            print(' The only possible types are: euler_angle_controller, geometric_controller')
+            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
         
         # PX4 SITL 
         self.mavros_state = State()
