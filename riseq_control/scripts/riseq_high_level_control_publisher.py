@@ -282,7 +282,6 @@ class uav_High_Level_Controller():
 
     def mavros_status_cb(self, timer):
 
-        """
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = "OFFBOARD"
         arm_cmd = CommandBool()
@@ -315,8 +314,9 @@ class uav_High_Level_Controller():
         else:
             self.status_timer.shutdown()
             #pass
-        """
+        
 
+        """
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = "OFFBOARD"
         arm_cmd = CommandBool()
@@ -345,6 +345,7 @@ class uav_High_Level_Controller():
         else:
             self.status_timer.shutdown()
             #pass
+        """
 
     def send_setpoints(self):
         """
