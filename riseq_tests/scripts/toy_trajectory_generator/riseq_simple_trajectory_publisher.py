@@ -51,8 +51,8 @@ class Trajectory_Generator2():
         #point_list = [p1,p2,p3]
         #self.waypoints = self.get_waypoint_list(point_list)
         #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
-        self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
-        #self.waypoints = trajGen3D.get_poly_waypoints(1, 2, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        self.waypoints = trajGen3D.get_poly_waypoints(5, 2, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
         print("Waypoints: ")
         print(self.waypoints)
         (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
