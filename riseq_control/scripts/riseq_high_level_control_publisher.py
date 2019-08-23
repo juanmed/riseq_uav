@@ -135,10 +135,12 @@ class uav_High_Level_Controller():
         self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
         self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.wait_mavros_connection()
-        self.send_setpoints()
-
-        self.status_timer = rospy.Timer(rospy.Duration(0.3), self.mavros_status_cb)
         self.last_mavros_request = rospy.Time.now()
+        
+        self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
+        if(self.enable_sim):
+            self.send_setpoints()
+            self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
         
 
     def euler_angle_controller(self, state, trajectory):
@@ -280,7 +282,6 @@ class uav_High_Level_Controller():
 
     def mavros_status_cb(self, timer):
 
-        """
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = "OFFBOARD"
         arm_cmd = CommandBool()
@@ -313,8 +314,9 @@ class uav_High_Level_Controller():
         else:
             self.status_timer.shutdown()
             #pass
-        """
+        
 
+        """
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = "OFFBOARD"
         arm_cmd = CommandBool()
@@ -343,6 +345,7 @@ class uav_High_Level_Controller():
         else:
             self.status_timer.shutdown()
             #pass
+        """
 
     def send_setpoints(self):
         """
