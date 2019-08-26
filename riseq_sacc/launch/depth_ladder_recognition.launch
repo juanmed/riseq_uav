@@ -1,0 +1,4 @@
+<launch>
+	<include file="$(find zed_wrapper)/launch/zedm.launch"/>
+	<node name="riseq_sacc" pkg="riseq_sacc" type="riseq_sacc_helix"/>
+</launch>
