@@ -81,7 +81,7 @@ class Trajectory_Generator2():
         self.mavros_state = state_msg
 
     def compute_reference_traj(self, time):
-        vel = 0.25    #max vel = 3
+        vel = 1.0    #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
