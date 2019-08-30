@@ -99,10 +99,18 @@ def optimization(waypoint, time):
     # set initial guess
     d, dP = initial_guess(d, dF, dP, RFP, invRPP)
 
+<<<<<<< HEAD
     # set parameter for collision cost function
     dt = 1
     threshold = 2
     obstacle = [0, 0, 1]
+=======
+    #print d[0]
+    #print M * matrix(d[0])
+    #print dF
+    #print dP
+    plot_traj3D(solution, 9, 5, None)
+>>>>>>> master
 
     # set parameter for gradient descent
     wd = 0.01
@@ -113,7 +121,15 @@ def optimization(waypoint, time):
 
     # cost value
     J = np.zeros(3)
+<<<<<<< HEAD
     last_J = np.zeros(3)
+=======
+    wd = 0.00001
+    wc = 100
+    dt = 1
+    e = 3
+    obstacle = [2, 2, 2]
+>>>>>>> master
 
     # gradient
     djd_ddp = np.zeros((free_constraints, 3))
@@ -135,23 +151,95 @@ def optimization(waypoint, time):
     for i in range(3):
         J[i] = wd * Jd[i] + wc * Jc[i]
 
+<<<<<<< HEAD
     for h in range(max_iteration):
+=======
+    solution = np.zeros((3, 10 * m))
+    for h in range(5):
+>>>>>>> master
         # iteration h for gradient descent
 
         djd_ddp, djc_ddp = gradient(RFP, RPP, L, Lpp, d, dF, dP, m, djd_ddp, djc_ddp, obstacle, threshold, dt)
 
         # update next dP
         for i in range(3):
+<<<<<<< HEAD
             dP[:, i] = dP[:, i] - rate * (wd * djd_ddp[:, i] + wc * djc_ddp[:, i])
 
         # stack dF and new dP
+=======
+            # First cost function Jd
+            d[i] = np.hstack((dF[i], dP[i]))
+            p = invA * M * matrix(d[i])
+            solution[i][:] = np.array(p.T)
+            Jd[i] = (p.T * P * p)[0]
+            djd_ddp[i] = 2 * matrix(-dF[i]).T * RFP + 2 * matrix(dP[i]).T * RPP
+
+        for k in range(3):
+            # Second cost function Jc
+            summation_cost = 0
+            summation = np.zeros(5 * m - 5)
+            for i in range(m + 1):
+                if i == m:
+                    P_vector = np.zeros(m * 10)
+                    V_vector = np.zeros(m * 10)
+                    P_vector[(m - 1) * 10:] = get_vector(0, 1)
+                    V_vector[(m - 1) * 10:] = get_vector(1, 1)
+                else:
+                    P_vector = np.zeros(m * 10)
+                    V_vector = np.zeros(m * 10)
+                    P_vector[i * 10: i * 10 + 10] = get_vector(0, 0)
+                    V_vector[i * 10: i * 10 + 10] = get_vector(1, 0)
+
+                vk = np.zeros(3)
+                fk = np.zeros(3)
+                for j in range(3):
+                    vk[j] = (matrix(V_vector).T * L * matrix(d[j]))[0]
+                    fk[j] = (matrix(P_vector).T * L * matrix(d[j]))[0]
+                norm_velocity = np.linalg.norm((vk[0], vk[1], vk[2]))
+                distance = np.linalg.norm((fk[0] - obstacle[0], fk[1] - obstacle[1], fk[2] - obstacle[2]))
+                # print distance
+                if distance <= e:
+                    dc_dd = 1.0 / e * (distance - e)
+                    dd_df = 1.0 / 2 * np.power(
+                        ((fk[0] - obstacle[0]) ** 2 + (fk[1] - obstacle[1]) ** 2 + (fk[2] - obstacle[2]) ** 2),
+                        -0.5) * 2 * (fk[k] - obstacle[k])
+                    c_f = 1.0 / (2 * e) * (distance - e) ** 2
+                else:
+                    dc_dd = 0
+                    dd_df = 0
+                    c_f = 0
+                VL = matrix(V_vector).T * Lpp
+                PL = matrix(P_vector).T * Lpp
+                sum1 = PL * norm_velocity * dc_dd * dd_df * dt
+                if norm_velocity == 0 or norm_velocity == 0.0:
+                    sum2 = VL * c_f * vk[k] / 0.001 * dt
+                else:
+                    sum2 = VL * c_f * vk[k] / norm_velocity * dt
+
+                summation = sum1 + sum2 + summation
+                summation_cost = c_f * norm_velocity * dt + summation_cost
+
+            djc_ddp[k] = summation
+            Jc[k] = summation_cost
+
+        for k in range(3):
+            J[k] = wd * Jd[k] + wc * Jc[k]
+
+        # update dP
+>>>>>>> master
         for i in range(3):
             d[:, i] = np.vstack((dF[:, i], dP[:, i]))
 
+<<<<<<< HEAD
         Jd, Jc = cost_value(P, invA, M, L, d, m, obstacle, threshold, dt)
 
         for i in range(3):
             J[i] = wd * Jd[i] + wc * Jc[i]
+=======
+        #print dP[0]
+        print J
+>>>>>>> master
 
         if abs(last_J[0] - J[0]) < tolerance or abs(last_J[1] - J[1]) < tolerance or abs(last_J[2] - J[2]) < tolerance:
             break

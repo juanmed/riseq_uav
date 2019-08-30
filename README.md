@@ -45,7 +45,7 @@ Otherwise, install by yourself the following required python packages:
 * slycot
 * cvxopt
 
-
+You will also need the [ZED Camera ROS Wrapper](https://www.stereolabs.com/docs/ros/#installation) so follow the installation instructions in that link.
 
 
 

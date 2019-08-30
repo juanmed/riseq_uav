@@ -62,8 +62,7 @@ class uav_High_Level_Controller():
             pass
 
         # reference trajectory subscriber
-        #self.reftraj_sub = message_filters.Subscriber('riseq/trajectory/uav_reference_trajectory', riseq_uav_trajectory)
-        self.reftraj_sub = message_filters.Subscriber('riseq/trajectory/uav_trajectory', riseq_uav_trajectory)
+        self.reftraj_sub = rospy.Subscriber('riseq/trajectory/uav_trajectory', riseq_uav_trajectory, self.traj_cb)
 
         # select controller's state input soure: true state, estimated state
         try:
@@ -75,42 +74,21 @@ class uav_High_Level_Controller():
             self.state_input = 'true_state'
 
         if(self.state_input == 'estimated_state'):
-            self.state_sub = message_filters.Subscriber('riseq/estimator/uav_estimated_state', riseq_uav_state)
+            self.state_sub = rospy.Subscriber('riseq/estimator/uav_estimated_state', riseq_uav_state, self.state_cb)
 
         elif(self.state_input == 'true_state'):
-            self.state_sub = message_filters.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state)
+            self.state_sub = rospy.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state, self.state_cb)
 
         elif(self.state_input == 'fg_true_state'):
             # for flight googles simulator
-            self.state_sub = message_filters.Subscriber('/mavros/local_position/odom', Odometry)
+            self.state_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.state_cb)
             #self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
             print(' The only possible controller input states  are: true_state, estimated_state')
-            self.state_sub = message_filters.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state)
+            self.state_sub = rospy.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state)
 
-        # filter messages based on time
-        ts = message_filters.ApproximateTimeSynchronizer([self.state_sub, self.reftraj_sub], 10, 0.01) # queue = 10, delay = 0.005s
-        
         # select controller's controller type: euler angle based controller, geometric controller
-        try:
-            self.controller_type = rospy.get_param('riseq/controller_type')
-        except:
-            print(' riseq/controller_type parameter unavailable')
-            print(' Setting controller type to: geometric')
-            print(' The only possible controller types are: euler_angle_controller, geometric_controller')
-            self.controller_type = 'geometric_controller'
-
-        if( self.controller_type == 'euler_angle_controller'):
-            ts.registerCallback(self.euler_angle_controller)
-
-        elif( self.controller_type == 'geometric_controller'):
-            ts.registerCallback(self.geometric_controller)
-
-        else:
-            print('riseq/controller_type parameter not recognized. Defaulting to geometric_controller')
-            print(' The only possible types are: euler_angle_controller, geometric_controller')
-            ts.registerCallback(self.euler_angle_controller)
 
         # --------------------------------- #
         # Initialize controller parameters  #
@@ -125,7 +103,25 @@ class uav_High_Level_Controller():
         self.min_thrust = 0.0
         self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
         self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
-        
+        self.state = Odometry()
+        self.state.pose.pose.orientation.x = 0.0
+        self.state.pose.pose.orientation.y = 0.0
+        self.state.pose.pose.orientation.z = 0.0
+        self.state.pose.pose.orientation.w = 1.0
+        self.traj = riseq_uav_trajectory()
+        self.traj.rot = [1,0,0,0,1,0,0,0,1]
+
+        self.controller_type = rospy.get_param('riseq/controller_type','euler_angle_controller')
+
+        if( self.controller_type == 'euler_angle_controller'):
+            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
+
+        elif( self.controller_type == 'geometric_controller'):
+            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.geometric_controller)
+        else:
+            print('riseq/controller_type parameter not recognized. Defaulting to geometric_controller')
+            print(' The only possible types are: euler_angle_controller, geometric_controller')
+            self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
         
         # PX4 SITL 
         self.mavros_state = State()
@@ -136,20 +132,23 @@ class uav_High_Level_Controller():
         self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
         self.wait_mavros_connection()
         self.last_mavros_request = rospy.Time.now()
-        
+
         self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
         if(self.enable_sim):
             self.send_setpoints()
             self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
-        
 
-    def euler_angle_controller(self, state, trajectory):
+
+    def euler_angle_controller(self, timer):
         """
         @description This controller uses an euler angle representation of orientation
         in order to control it.
         @state quadrotor state
         @trajectory reference trajectory
         """
+
+        state = self.state
+        trajectory = self.traj
 
         # Extract orientation reference
         ori_quat_ref = [trajectory.pose.orientation.x, trajectory.pose.orientation.y, trajectory.pose.orientation.z, trajectory.pose.orientation.w]
@@ -179,8 +178,8 @@ class uav_High_Level_Controller():
         state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]
         ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
-        #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
-        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+        self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
+        #self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
 
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
@@ -221,7 +220,6 @@ class uav_High_Level_Controller():
         px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
         self.px4_pub.publish(px4_msg)
         
-
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
         """
         Calculation of desired angular velocity. See:
@@ -372,6 +370,12 @@ class uav_High_Level_Controller():
             rate.sleep()
             i  = i + 1
         print(">> {} CONNECTED TO MAVROS! <<".format(i))
+
+    def state_cb(self, state):
+        self.state = state
+
+    def traj_cb(self, trajectory):
+        self.traj = trajectory
 
 if __name__ == '__main__':
     try:
