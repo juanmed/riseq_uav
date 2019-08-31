@@ -44,6 +44,7 @@ import numpy as np
 #from rpg_controllers import attitude_controller, reinit_attitude_controller
 from feedback_linearization_controller import Feedback_Linearization_Controller
 from geometric_controller import Geometric_Controller
+from geometric_controller_torch import GPU_Geometric_Controller
 
 class uav_High_Level_Controller():
 
@@ -105,6 +106,7 @@ class uav_High_Level_Controller():
         self.min_thrust = 0.0
         self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
         self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
+        self.ggc = GPU_Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
         self.state = Odometry()
         self.state.pose.pose.orientation.x = 0.0
         self.state.pose.pose.orientation.y = 0.0
@@ -170,6 +172,7 @@ class uav_High_Level_Controller():
         p_ref = np.array([[trajectory.pose.position.x], [trajectory.pose.position.y], [trajectory.pose.position.z]])
         v_ref = np.array([[trajectory.twist.linear.x], [trajectory.twist.linear.y], [trajectory.twist.linear.z]])
         a_ref = np.array([trajectory.acc.x, trajectory.acc.y, trajectory.acc.z]).reshape(3,1)
+        j_ref = np.array([trajectory.jerk.x, trajectory.jerk.y, trajectory.jerk.z]).reshape(3,1)
         euler_dot_ref = np.array([[trajectory.uc.x], [trajectory.uc.y],[trajectory.uc.z]])
 
         # extract real values
@@ -177,12 +180,12 @@ class uav_High_Level_Controller():
         v = np.array([[state.twist.twist.linear.x], [state.twist.twist.linear.y], [state.twist.twist.linear.z]])
         #v = np.dot(Rbw, v)
 
-        state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]  # p, v, a, j, s, orientation
-        ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
+        state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]
+        ref_state = [p_ref, v_ref, a_ref, j_ref, np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
         #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
         self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
-
+        #T2 = self.ggc.position_controller(state_, ref_state)
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
         # Fill out message
@@ -216,10 +219,10 @@ class uav_High_Level_Controller():
         px4_msg.orientation.y = q[1]
         px4_msg.orientation.z = q[2]
         px4_msg.orientation.w = q[3]
-        px4_msg.body_rate.x = 20*w_des[0][0]
-        px4_msg.body_rate.y = 20*w_des[1][0]
-        px4_msg.body_rate.z = 20*w_des[2][0]
-        px4_msg.thrust =  np.min([1.0, 0.06*self.T])   #0.05715
+        px4_msg.body_rate.x = self.T #0.01*w_des[0][0]
+        px4_msg.body_rate.y = 0.01*w_des[1][0]
+        px4_msg.body_rate.z = 0.01*w_des[2][0]
+        px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
         self.px4_pub.publish(px4_msg)
         
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
