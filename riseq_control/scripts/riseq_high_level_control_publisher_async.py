@@ -41,10 +41,12 @@ from geometry_msgs.msg import PoseStamped, TwistStamped
 
 import riseq_common.dyn_utils as utils
 import numpy as np
+import time
 #from rpg_controllers import attitude_controller, reinit_attitude_controller
 from feedback_linearization_controller import Feedback_Linearization_Controller
 from geometric_controller import Geometric_Controller
 from geometric_controller_gpu import GPU_Geometric_Controller
+import torch
 
 class uav_High_Level_Controller():
 
@@ -52,7 +54,7 @@ class uav_High_Level_Controller():
         # --------------------------------- #
         # Initialize controller parameters  #
         # --------------------------------- #
-        
+        self.times = []
         self.g = rospy.get_param("riseq/gravity")
         self.mass = rospy.get_param("riseq/mass")
         self.thrust_coeff = rospy.get_param("riseq/thrust_coeff")
@@ -151,7 +153,6 @@ class uav_High_Level_Controller():
             self.send_setpoints()
             self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
 
-
     def euler_angle_controller(self, timer):
         """
         @description This controller uses an euler angle representation of orientation
@@ -193,15 +194,28 @@ class uav_High_Level_Controller():
         ref_state = [p_ref, v_ref, a_ref, j_ref, np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
         #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
-        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
-        T2 = self.ggc.position_controller(state_, ref_state)
+        #start = time.time()
+        #self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+        #end = time.time()
+        #self.times.append(end - start)
+
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+
+        start.record()
+        self.T, self.Rbw_des, w_des = self.ggc.position_controller(state_, ref_state)
+        end.record()
+        torch.cuda.synchronize()
+        self.times.append(start.elapsed_time(end))
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
+        """
         # Fill out message
         hlc_msg = riseq_high_level_control()
         hlc_msg.header.stamp = rospy.Time.now()
         hlc_msg.header.frame_id = 'riseq/uav'
 
+        
         #hlc_msg.thrust.x = self.Traw2 #np.linalg.norm(self.a_e)     #for debugging purposes
         #hlc_msg.thrust.y = self.Traw #np.linalg.norm(self.a_e2)    #for debugging purposes
         hlc_msg.thrust.z = self.T
@@ -215,9 +229,9 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
-        #self.hlc_pub.publish(hlc_msg)
+        self.hlc_pub.publish(hlc_msg)
         #rospy.loginfo(hlc_msg)
-
+        """
         
         px4_msg = AttitudeTarget()
         px4_msg.header.stamp = rospy.Time.now()
@@ -229,7 +243,7 @@ class uav_High_Level_Controller():
         px4_msg.orientation.z = q[2]
         px4_msg.orientation.w = q[3]
         px4_msg.body_rate.x = self.T #0.01*w_des[0][0]
-        px4_msg.body_rate.y = T2 #0.01*w_des[1][0]
+        px4_msg.body_rate.y = 0.01*w_des[1][0]
         px4_msg.body_rate.z = 0.01*w_des[2][0]
         px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
         self.px4_pub.publish(px4_msg)
@@ -431,7 +445,7 @@ if __name__ == '__main__':
                 rospy.loginfo("Starting Controller in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
         
 
-        high_level_controller = uav_High_Level_Controller()
+        hlc = uav_High_Level_Controller()
 
         # if simulator is flightgoggles, this step MUST be done
         #if(rospy.get_param("riseq/environment") == "simulator"):
@@ -442,6 +456,7 @@ if __name__ == '__main__':
 
         rospy.loginfo(' High Level Controller Started! ')
         rospy.spin()
+        print("Times: points: {}, mean: {}, std: {}, max: {}, min: {}".format(len(hlc.times), np.mean(hlc.times), np.std(hlc.times), np.max(hlc.times), np.min(hlc.times)))
         rospy.loginfo(' High Level Controller Terminated ')    
 
 
