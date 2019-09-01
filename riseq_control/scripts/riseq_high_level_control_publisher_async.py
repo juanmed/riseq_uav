@@ -44,11 +44,44 @@ import numpy as np
 #from rpg_controllers import attitude_controller, reinit_attitude_controller
 from feedback_linearization_controller import Feedback_Linearization_Controller
 from geometric_controller import Geometric_Controller
-from geometric_controller_torch import GPU_Geometric_Controller
+from geometric_controller_gpu import GPU_Geometric_Controller
 
 class uav_High_Level_Controller():
 
     def __init__(self):
+        # --------------------------------- #
+        # Initialize controller parameters  #
+        # --------------------------------- #
+        
+        self.g = rospy.get_param("riseq/gravity")
+        self.mass = rospy.get_param("riseq/mass")
+        self.thrust_coeff = rospy.get_param("riseq/thrust_coeff")
+        self.max_rotor_speed = rospy.get_param("riseq/max_rotor_speed")
+        self.rotor_count = rospy.get_param("riseq/rotor_count")
+        self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
+        self.min_thrust = 0.0
+        self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
+        self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
+        self.ggc = GPU_Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
+        self.state = Odometry()
+        self.state.pose.pose.orientation.x = 0.0
+        self.state.pose.pose.orientation.y = 0.0
+        self.state.pose.pose.orientation.z = 0.0
+        self.state.pose.pose.orientation.w = 1.0
+        self.traj = riseq_uav_trajectory()
+        self.traj.rot = [1,0,0,0,1,0,0,0,1]
+
+        self.controller_type = rospy.get_param('riseq/controller_type','euler_angle_controller')
+
+        """
+        r = rospy.Rate(1)
+        while not self.ggc.ready:
+            # This is simply an stop for the GPU Controller to get ready
+            # before creating the timers that will call the controller callback
+            continue
+            r.sleep()
+        """
+
         # determine environment
         environment = rospy.get_param("riseq/environment")
 
@@ -92,30 +125,6 @@ class uav_High_Level_Controller():
             self.state_sub = rospy.Subscriber('riseq/tests/uav_ot_true_state', riseq_uav_state)
 
         # select controller's controller type: euler angle based controller, geometric controller
-
-        # --------------------------------- #
-        # Initialize controller parameters  #
-        # --------------------------------- #
-        
-        self.g = rospy.get_param("riseq/gravity")
-        self.mass = rospy.get_param("riseq/mass")
-        self.thrust_coeff = rospy.get_param("riseq/thrust_coeff")
-        self.max_rotor_speed = rospy.get_param("riseq/max_rotor_speed")
-        self.rotor_count = rospy.get_param("riseq/rotor_count")
-        self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
-        self.min_thrust = 0.0
-        self.flc = Feedback_Linearization_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
-        self.gc = Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)    
-        self.ggc = GPU_Geometric_Controller(mass = self.mass, max_thrust = self.max_thrust, min_thrust = self.min_thrust)
-        self.state = Odometry()
-        self.state.pose.pose.orientation.x = 0.0
-        self.state.pose.pose.orientation.y = 0.0
-        self.state.pose.pose.orientation.z = 0.0
-        self.state.pose.pose.orientation.w = 1.0
-        self.traj = riseq_uav_trajectory()
-        self.traj.rot = [1,0,0,0,1,0,0,0,1]
-
-        self.controller_type = rospy.get_param('riseq/controller_type','euler_angle_controller')
 
         if( self.controller_type == 'euler_angle_controller'):
             self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
@@ -185,7 +194,7 @@ class uav_High_Level_Controller():
 
         #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
         self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
-        #T2 = self.ggc.position_controller(state_, ref_state)
+        T2 = self.ggc.position_controller(state_, ref_state)
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
         # Fill out message
@@ -220,7 +229,7 @@ class uav_High_Level_Controller():
         px4_msg.orientation.z = q[2]
         px4_msg.orientation.w = q[3]
         px4_msg.body_rate.x = self.T #0.01*w_des[0][0]
-        px4_msg.body_rate.y = 0.01*w_des[1][0]
+        px4_msg.body_rate.y = T2 #0.01*w_des[1][0]
         px4_msg.body_rate.z = 0.01*w_des[2][0]
         px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
         self.px4_pub.publish(px4_msg)

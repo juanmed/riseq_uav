@@ -115,7 +115,7 @@
   <param name="riseq/gate_pose_nn_data" value="$(find riseq_perception)/scripts/ss6p_gate/cfg/gate3.data"/>
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
 
-  <node pkg = "riseq_perception" name ="riseq_mono_waypoint_publisher" type="riseq_mono_waypoint_publisher.py" output = "screen"/>
+  <!--node pkg = "riseq_perception" name ="riseq_mono_waypoint_publisher" type="riseq_mono_waypoint_publisher.py" output = "screen"/-->
   <node name="riseq_high_level_control_publisher_async" pkg="riseq_control" type="riseq_high_level_control_publisher_async.py" output="screen"/>
   <!--<node pkg="riseq_trajectory" name="riseq_MST_publisher" type="MST_publisher.py">
     <remap from="riseq/trajectory/uav_reference_trajectory" to="riseq/uav_trajectory"/>
