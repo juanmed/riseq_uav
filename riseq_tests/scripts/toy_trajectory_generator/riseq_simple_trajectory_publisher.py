@@ -7,6 +7,8 @@ import numpy as np
 from riseq_trajectory.msg import riseq_uav_trajectory
 import riseq_tests.df_flat as df_flat 
 from mavros_msgs.msg import State
+from nav_msgs.msg import Odometry 
+from geometry_msgs.msg import PoseStamped
 
 import trajgen2_helper as trajGen3D
 
@@ -18,59 +20,10 @@ class Trajectory_Generator2():
         # initialize time for trajectory generator
         self.start_time = rospy.get_time()
 
-        # initialize heading
-        environment = rospy.get_param("riseq/environment")
-        if (environment == "simulator"):
-            self.init_pose = rospy.get_param("riseq/init_pose")
-        elif (environment == "embedded_computer"):
-            self.init_pose = rospy.get_param("riseq/init_pose")
-        else:
-            print("riseq/init_pose not available, defaulting to [0,0,0,0,0,0,1]")
-            self.init_pose = [0,0,0,0,0,0,1]
-
-        self.init_pose = [float(a) for a in self.init_pose]
-        # ---------------------------- #
-        # Compute trajectory waypoints #
-        # ---------------------------- #
-        gate = False
-        if(gate):
-            gate_x = rospy.get_param("riseq/gate_x")
-            gate_y = rospy.get_param("riseq/gate_y")
-            gate_z = rospy.get_param("riseq/gate_z")
-            gate_yaw = rospy.get_param("riseq/gate_yaw")
-
-            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
-            p2 = np.array([[0.0],[0.0],[gate_z]])
-            p3 = np.array([[gate_x],[gate_y],[gate_z]])    
-                    
-        else:
-            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
-            p2 = np.array([[0],[0],[1.67]])
-            p3 = np.array([[6],[3],[1.67]])
-
-        #point_list = [p1,p2,p3]
-        #self.waypoints = self.get_waypoint_list(point_list)
-        #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
-        #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
-        self.waypoints = trajGen3D.get_poly_waypoints(5, 2, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
-        print("Waypoints: ")
-        print(self.waypoints)
-        (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
-
-        print("coeff X:")
-        print(self.coeff_x)
-        print("coeff Y:")
-        print(self.coeff_y)
-        print("coeff Z:")
-        print(self.coeff_z)
-        init_quat =[self.init_pose[3],self.init_pose[4],self.init_pose[5],self.init_pose[6]]
-        yaw, pitch, roll = tf.transformations.euler_from_quaternion(init_quat, axes = "rzyx")
-        print("Init Roll: {}, Pitch: {}, Yaw: {}".format(roll, pitch, yaw))
-        trajGen3D.yaw = yaw
-        trajGen3D.current_heading = np.array([np.cos(yaw),np.sin(yaw)])
-        #print("Yaw: {}, Heading: {}".format(trajGen3D.yaw,trajGen3D.current_heading))
-
-
+        # mavros state subscriber
+        self.received_init_pose = False
+        self.init_pose = [0,0,0,0,0,0,1]
+        self.state_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.state_cb)
 
         #PX4
         self.mavros_state = State()
@@ -88,9 +41,11 @@ class Trajectory_Generator2():
         ref_trajectory = df_flat.compute_ref(flatout_trajectory)
         return ref_trajectory
 
-    # read initial position and gate positions
-    # and return an np.array of these positions
     def get_gate_waypoints(self):
+        """
+        read initial position and gate positions
+        and return an np.array of these positions
+        """
 
         # Then continue with the gates
         gate_names = rospy.get_param("/uav/gate_names")
@@ -147,6 +102,64 @@ class Trajectory_Generator2():
 
         return waypoints  
 
+    def state_cb(self, state):
+        if not self.received_init_pose:
+
+            self.init_pose[0] = state.pose.position.x
+            self.init_pose[1] = state.pose.position.y
+            self.init_pose[2] = state.pose.position.z
+
+            self.init_pose[3] = state.pose.orientation.x
+            self.init_pose[4] = state.pose.orientation.y
+            self.init_pose[5] = state.pose.orientation.z
+            self.init_pose[6] = state.pose.orientation.w
+
+            self.received_init_pose = True
+            #print("\n\n >>Init pose: \n {} \n\n".format(self.init_pose))
+
+        #self.state = state
+
+    def compute_waypoints(self):
+
+        gate = False
+        if(gate):
+            gate_x = rospy.get_param("riseq/gate_x")
+            gate_y = rospy.get_param("riseq/gate_y")
+            gate_z = rospy.get_param("riseq/gate_z")
+            gate_yaw = rospy.get_param("riseq/gate_yaw")
+
+            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+            p2 = np.array([[0.0],[0.0],[gate_z]])
+            p3 = np.array([[gate_x],[gate_y],[gate_z]])    
+                    
+        else:
+            p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
+            p2 = np.array([[0],[0],[1.67]])
+            p3 = np.array([[6],[3],[1.67]])
+
+        point_list = [p1,p3]
+        #self.waypoints = self.get_waypoint_list(point_list)
+        #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
+        #self.waypoints = trajGen3D.get_leminiscata_waypoints(20*np.pi, 180, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        self.waypoints = trajGen3D.get_helix_waypoints(20*np.pi, 180, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        #self.waypoints = trajGen3D.get_poly_waypoints(5, 2, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        #print("Waypoints: ")
+        #print(self.waypoints)
+        (self.coeff_x, self.coeff_y, self.coeff_z) = trajGen3D.get_MST_coefficients(self.waypoints)
+
+        print("coeff X:")
+        print(self.coeff_x)
+        print("coeff Y:")
+        print(self.coeff_y)
+        print("coeff Z:")
+        print(self.coeff_z)
+        init_quat = [self.init_pose[3],self.init_pose[4],self.init_pose[5],self.init_pose[6]]
+        yaw, pitch, roll = tf.transformations.euler_from_quaternion(init_quat, axes = "rzyx")
+        print("Init Roll: {}, Pitch: {}, Yaw: {}".format(roll, pitch, yaw))
+        trajGen3D.yaw = yaw
+        trajGen3D.current_heading = np.array([np.cos(yaw),np.sin(yaw)])
+        #print("Yaw: {}, Heading: {}".format(trajGen3D.yaw,trajGen3D.current_heading))   
+
 def pub_traj():
 
     # init node
@@ -163,23 +176,27 @@ def pub_traj():
             continue
     
 
-
     # create a trajectory generator
-    #traj_gen = Trajectory_Generator()
     traj_gen = Trajectory_Generator2()
-    # traj_gen = Trajectory_Generator_Test()
-
+    
     # IMPORTANT WAIT TIME! DO NOT DELETE!
     #rospy.sleep(0.1)
     # If this is not here, the "start_time" in the trajectory generator is 
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    # publish at 10Hz
+    while (not traj_gen.received_init_pose):
+        continue
+    
+    print("\n\n >>Init pose: \n {} \n\n".format(traj_gen.init_pose))
 
+    traj_gen.compute_waypoints()
+
+    # publish at 10Hz
     while ((traj_gen.mavros_state.armed != True) or (traj_gen.mavros_state.mode != 'OFFBOARD')):
         #print(" >> Trajectory generator waiting for Drone ARMing")
         continue
+
 
     traj_gen.start_time = rospy.get_time()
 

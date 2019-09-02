@@ -1,4 +1,5 @@
 <launch>
 	<include file="$(find zed_wrapper)/launch/zedm.launch"/>
-	<node name="riseq_sacc" pkg="riseq_sacc" type="riseq_sacc_helix"/>
+	<!--node name="riseq_sacc" pkg="riseq_sacc" type="riseq_sacc_helix" output="screen"/-->
+	<node name="riseq_depth" pkg="riseq_sacc" type="riseq_depth_publisher.py" output="screen"/>
 </launch>

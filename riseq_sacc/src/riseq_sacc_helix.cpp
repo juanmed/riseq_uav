@@ -11,6 +11,56 @@
 
 float lat, lon, alt, heading;
 
+
+float getAverageDistance(const sensor_msgs::Image::ConstPtr& msg, int& left, int& top, int& width, int& height ){
+    
+    
+    float avgdist = 0;
+    float count = 0;
+    /**
+    for(int row = 0; row < srcimg.rows; row++) { 
+        for(int col = 0; col < srcimg.cols; col++) { 
+            //uchar pixel = imgMask.at<uchar>(row, col); 
+            if( (col > left) && (col < (left + width)) && (row >= top) && (row <= (row + height)) ) { 
+                //imgSrc.at<uchar>(row, col) = pixel; 
+                avgdist = avgdist + (float)srcimg.at<uchar>(row, col);
+                count = count + 1 ;
+            } 
+        } 
+    }
+    avgdist = avgdist /count;
+    
+    return avgdist;
+
+    */
+
+    // Get a pointer to the depth values casting the data
+    // pointer to floating point
+    float* depths = (float*)(&msg->data[0]);
+
+    // Image coordinates of the center pixel
+    int u = msg->width / 2;
+    int v = msg->height / 2;
+
+    // Linear index of the center pixel
+    int centerIdx = u + msg->width * v;
+
+    // Output the measure
+    ROS_INFO("Center distance : %g m", depths[centerIdx]);
+
+
+    for (int row = top; row <= top + height; row++){
+        for (int col = left; col <= left + width; col++){
+            int index = col + msg->width * row;
+            avgdist = avgdist + depths[index];
+            count = count + 1.;
+        }
+    }
+
+    //avgdist = avgdist / count;
+    ROS_INFO_STREAM("Avg Dist:" << avgdist);;
+}
+
 void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
    cv_bridge::CvImagePtr cv_ptr;
    cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1);
@@ -49,6 +99,10 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
       int top = stats.at<int>(i_max,cv::CC_STAT_TOP);
       int width = stats.at<int>(i_max,cv::CC_STAT_WIDTH);
       int height = stats.at<int>(i_max,cv::CC_STAT_HEIGHT);
+
+      float avgdist = getAverageDistance(msg, left, top, width, height);
+      //ROS_INFO_STREAM("Avg Dist:" << avgdist);
+
       cv::rectangle(thr_img, cv::Point(left,top), cv::Point(left+width,top+height),cv::Scalar(66,255,5),3);
    }
 

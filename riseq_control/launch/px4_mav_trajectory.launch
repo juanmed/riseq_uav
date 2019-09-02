@@ -34,6 +34,7 @@
   <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py" output="screen">
     <remap from="riseq/tests/uav_simple_trajectory" to="riseq/trajectory/uav_trajectory" />
   </node>
+  <node pkg = "riseq_tests" name ="mavros_state_error_publisher" type="mavros_state_error_publisher.py"/>  
 
   <include file="$(find mavros)/launch/node.launch">
       <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
@@ -52,6 +53,6 @@
   <!--node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/-->  
 
   <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose"/>
+        args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose /mavros/local_position/velocity_local riseq/state_error_publisher /mavros/setpoint_raw/attitude"/>
 
 </launch>
