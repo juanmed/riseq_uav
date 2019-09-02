@@ -10,6 +10,7 @@ project(riseq_sacc)
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
+  mavros_msgs
   roscpp
   rospy
   sensor_msgs
