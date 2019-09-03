@@ -47,6 +47,9 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
       }
   } 
 
+  float count = 0;
+  float sum_dist = 0.0;
+  float avgdist; 
   /* if found ladder*/
   if(i_max != -1){
     center_x = centroids.at<double>(i_max,0);
@@ -57,11 +60,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     height = stats.at<int>(i_max,cv::CC_STAT_HEIGHT);
     cv::rectangle(display_img, cv::Point(left,top), cv::Point(left+width,top+height),100,3);
     
-    /* calculate average depth */   
-    float count = 0;
-    float sum_dist = 0.0;
-    float avgdist; 
-
+    /* calculate average depth */  
     for(int y = top; y <= top + height; y++){
       float* row_pointer = depth_img.ptr<float>(y);
       for(int x = left; x <= left + width; x++){
