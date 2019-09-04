@@ -30,12 +30,12 @@ class depth_processing():
 
         depth_array = np.array(depth_image, dtype=np.float32)
 
-        print('Image size: {width}x{height}'.format(width=depth_data.width,height=depth_data.height))
+        #print('Image size: {width}x{height}'.format(width=depth_data.width,height=depth_data.height))
 
         u = depth_data.width/2
         v = depth_data.height/2
 
-        print('Center depth: {dist} m'.format(dist=depth_array[u,v]))
+        #print('Center depth: {dist} m'.format(dist=depth_array[u,v]))
         self.depth_pub.publish(depth_array[u,v])
 
 

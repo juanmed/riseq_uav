@@ -1,0 +1,84 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="pipe">
+      <static>1</static>
+
+      <material name="blue">
+        <color rgba="0 0 0.8 1"/>
+      </material>  
+      
+      <link name="pipe">
+        <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>1.0</ixx>
+            <ixy>000000</ixy>
+            <ixz>0.000000</ixz>
+            <iyy>1.0</iyy>
+            <iyz>0.000000</iyz>
+            <izz>1.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://pipe/meshes/pipe.dae</uri>
+                <scale>0.01 0.01 0.01</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://pipe/meshes/pipe.dae</uri>
+                <scale>0.01 0.01 0.01</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+
+      <link name="front">
+        <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>1.0</ixx>
+            <ixy>000000</ixy>
+            <ixz>0.000000</ixz>
+            <iyy>1.0</iyy>
+            <iyz>0.000000</iyz>
+            <izz>1.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://pipe/meshes/pipefront.dae</uri>
+                <scale>0.01 0.01 0.01</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://pipe/meshes/pipefront.dae</uri>
+                <scale>0.01 0.01 0.01</scale>
+            </mesh>
+          </geometry>
+          <material name="blue"/>
+        </visual>
+      </link>
+
+      <joint name="pipe_to_front" type="fixed">
+        <parent link="pipe"/>
+        <child link="front"/>
+        <origin xyz = "12 0 0"/>
+      </joint>
+
+    </model>
+</sdf>

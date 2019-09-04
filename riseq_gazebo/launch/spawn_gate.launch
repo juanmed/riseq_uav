@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+	<include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+		<arg name="robot_name" default=""/>
+		<arg name="x" default="7.0"/>
+		<arg name="y" default="0.0"/>
+		<arg name="z" default="1.67"/>
+		<arg name="roll" default="0.0"/>
+		<arg name="pitch" default="0.0"/>
+		<arg name="yaw" default="-1.5707"/>
+		<arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/drl_gate/drl_gate.sdf"/>
+	</include>
+</launch>
+

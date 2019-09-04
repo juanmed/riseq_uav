@@ -1,0 +1,75 @@
+<launch>
+
+  <!-- PX4 args -->
+  <arg name="mav_name" default="iris"/>
+  <arg name="fcu_url" default="udp://:14540@127.0.0.1:14557"/>
+  <arg name="gcs_url" default="" />
+  <arg name="tgt_system" default="1" />
+  <arg name="tgt_component" default="1" />
+  <arg name="command_input" default="2" />
+  <arg name="gazebo_simulation" default="true" />
+  <arg name="visualization" default="true"/>
+  <arg name="log_output" default="screen" />
+  <arg name="fcu_protocol" default="v2.0" />
+  <arg name="respawn_mavros" default="false" />
+  <arg name="rosbag_name" default="test1"/>
+
+  <!-- RISEQ args -->
+  <arg name="gate_x" default="6"/>
+  <arg name="gate_y" default="6"/>
+  <arg name="gate_z" default="5.5"/>
+  <arg name="gate_roll" default = "0.0"/>
+  <arg name="gate_pitch" default = "0.0"/>
+  <arg name="gate_yaw" default = "-1.5707"/>
+
+
+
+  <!-- PX4 SITL, MAVROS, GAZEBO >
+  <include file="$(find mavros)/launch/px4.launch">
+    <arg name="fcu_url" value="$(arg fcu_url)"/>
+  </include-->
+
+
+  <include file="$(find mavros)/launch/node.launch">
+      <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
+      <arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
+
+      <arg name="fcu_url" value="$(arg fcu_url)" />
+      <arg name="gcs_url" value="$(arg gcs_url)" />
+      <arg name="tgt_system" value="$(arg tgt_system)" />
+      <arg name="tgt_component" value="$(arg tgt_component)" />
+      <arg name="log_output" value="$(arg log_output)" />
+      <arg name="fcu_protocol" value="$(arg fcu_protocol)" />
+      <arg name="respawn_mavros" default="$(arg respawn_mavros)" />
+  </include>  
+
+  <include file="$(find px4)/launch/posix_sitl.launch">
+      <arg name="vehicle" value="$(arg mav_name)"/>
+  </include>
+
+  <!-- Speed up mavros topic publishing rate-->
+   <!--node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/-->
+
+  <!-- DRL GATE and any other objects -->
+  <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+    <arg name="robot_name" default="drl_gate"/>
+    <arg name="x" value="$(arg gate_x)"/>
+    <arg name="y" value="$(arg gate_y)"/>
+    <arg name="z" value="$(arg gate_z)"/>
+    <arg name="roll" value="$(arg gate_roll)"/>
+    <arg name="pitch" value="$(arg gate_pitch)"/>
+    <arg name="yaw" value="$(arg gate_yaw)"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/drl_gate/drl_gate.sdf"/>
+  </include>
+
+  <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
+  <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
+
+  <include file="$(find zed_wrapper)/launch/zedm.launch"/>
+  <node name="riseq_depth" pkg="riseq_sacc" type="riseq_depth_publisher.py" output="screen"/>
+  <node pkg ='riseq_sacc' name='helix_mission' type='riseq_helix_trajectory.py' output='screen'/>
+
+  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"
+        args="/mavros/local_position/pose/pose/position riseq/sacc/ladder_depth/data"/>
+
+</launch>
