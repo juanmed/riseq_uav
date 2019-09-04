@@ -45,6 +45,7 @@ class GPU_Geometric_Controller():
             min_thrust (float): minimum value of collective thrust
             inertia (3x3 np.array): inertia tensor of the quadrotor
         """
+        """
         r = rospy.Rate(1)
         self.ready = False
         while not self.ready:
@@ -55,8 +56,9 @@ class GPU_Geometric_Controller():
             except:
                 print(" >> GPU Controller not ready")
             r.sleep()
-
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
+        """
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print("Found {} device".format(self.device)) 
 
         self.mass = mass #torch.tensor(mass).to(self.device)
         self.Traw = torch.tensor(0.0).to(self.device)

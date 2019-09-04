@@ -42,6 +42,8 @@ from geometry_msgs.msg import PoseStamped, TwistStamped
 import riseq_common.dyn_utils as utils
 import numpy as np
 import time
+import pandas as pd
+
 #from rpg_controllers import attitude_controller, reinit_attitude_controller
 from feedback_linearization_controller import Feedback_Linearization_Controller
 from geometric_controller import Geometric_Controller
@@ -199,6 +201,11 @@ class uav_High_Level_Controller():
         #end = time.time()
         #self.times.append(end - start)
 
+        #with torch.autograd.profiler.profile(use_cuda=True) as prof:
+        #    self.T, self.Rbw_des, w_des = self.ggc.position_controller(state_, ref_state)
+        #print(prof)
+
+        
         start = torch.cuda.Event(enable_timing=True)
         end = torch.cuda.Event(enable_timing=True)
 
@@ -207,6 +214,7 @@ class uav_High_Level_Controller():
         end.record()
         torch.cuda.synchronize()
         self.times.append(start.elapsed_time(end))
+        
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
         """
@@ -457,6 +465,8 @@ if __name__ == '__main__':
         rospy.loginfo(' High Level Controller Started! ')
         rospy.spin()
         print("Times: points: {}, mean: {}, std: {}, max: {}, min: {}".format(len(hlc.times), np.mean(hlc.times), np.std(hlc.times), np.max(hlc.times), np.min(hlc.times)))
+        df = pd.DataFrame(hlc.times)
+        df.to_csv("~/Documents/gputimes2.csv", index = None, sep = ",")
         rospy.loginfo(' High Level Controller Terminated ')    
 
 

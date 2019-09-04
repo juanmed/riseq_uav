@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 from geometric_controller import Geometric_Controller as gc
-from geometric_controller_torch import GPU_Geometric_Controller as ggc
+from geometric_controller_gpu import GPU_Geometric_Controller as ggc
 
 def gen_helix_trajectory2(t):
     """
@@ -63,19 +64,72 @@ def gen_helix_trajectory2(t):
 
     return [pos,vel,acc,jerk,snap, psi, psi_rate, psi_dd, psi_ddd, psi_dddd]
 
+def Rx(roll):
+    Rx = np.array([[1.0,0.0,0.0],
+                   [0.0,np.cos(roll), np.sin(roll)],
+                   [0.0,-np.sin(roll), np.cos(roll)]])
+    return Rx
+
+def Ry(pitch):
+    Ry = np.array([[np.cos(pitch),0.0,-np.sin(pitch)],
+                   [0.0,1.0,0.0],
+                   [np.sin(pitch),0.0,np.cos(pitch)]])    
+    return Ry
+
+def Rz(yaw):
+    Rz = np.array([[np.cos(yaw), np.sin(yaw),0.0],
+                   [-np.sin(yaw), np.cos(yaw),0.0],
+                   [0.0,0.0,1.0]])
+    return Rz
+
 def main():
+
+    #warm up
+    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #q = np.random.rand(1000,1000)
+    #t = np.random.rand(1000,1000)
+    #np.dot(q,t)
+    #q = torch.from_numpy(q).to(device)
+    #t = torch.from_numpy(t).to(device)
+    #torch.mm(q,t)
 
     tmax = 10
     step = 0.01
     sim_time = np.arange(0, tmax, step)
 
-    c = gc()
-    ct = ggc()
+    #c = gc(max_thrust = 20.)
+    c = ggc(max_thrust = 20.)
 
+    Ts = []
     for t in sim_time:
     	traj = gen_helix_trajectory2(t)
-    	
 
+        # extract ref trajectory
+        pr = traj[0]
+        vr = traj[1]
+        ar = traj[2]
+        jr = traj[3]
+        sr = traj[4]
+        yr = traj[5]
+        ydr = traj[6]
+        yddr = traj[7]
+        Rr = np.dot(Rx(0.0),np.dot(Ry(0.0),Rz(yr)))
+        ref_state = [pr, vr, ar, jr, sr, Rr, yr, ydr, yddr, 0.0]
+
+        # create state
+        s = 0.95
+        R = np.dot(Rx(0.0),np.dot(Ry(0.0),Rz(yr*s))) 
+        state = [pr*s, vr*s, ar*s, jr*s, sr*s, R, yr*s, ydr*s, yddr*s, 0.0]
+
+        # compute control inputs
+        T, Rd, wd = c.position_controller(state, ref_state)
+        #Ts.append(T)
+        #print(Ts)
+
+    #fig = plt.figure()
+    #ax = fig.add_subplot(1,1,1)
+    #ax.plot(Ts)
+    #plt.show()
 
 if __name__ == '__main__':
 	main()
