@@ -14,7 +14,6 @@ current_state = State()
 def state_cb(msg):
     global current_state
     current_state = msg
-    print "callback"
 
 
 if __name__ == "__main__":
@@ -55,6 +54,8 @@ if __name__ == "__main__":
     last_request = rospy.Time.now()
     start_time = rospy.Time.now()
 
+    index = 0
+
     while not rospy.is_shutdown():
         # print(current_state)
         if (current_state.mode != "OFFBOARD" and (rospy.Time.now() - last_request > rospy.Duration(5.0))):
@@ -72,12 +73,18 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
 
+        if current_state.mode == "OFFBOARD" and current_state.armed and rospy.Time.now() - last_request > rospy.Duration(
+                5.0):
+            print "go foward"
+            index = index + 0.1
+            if index > 8:
+                break
+            pose.pose.position.x = index
+
         #if rospy.Time.now() - start_time > rospy.Duration(20.0):
         #    break
 
     print("Return")
-    pose.pose.position.x = 0
-    pose.pose.position.y = 0
     pose.pose.position.z = 0.1
     for i in range(100):
         local_pos_pub.publish(pose)
@@ -92,4 +99,3 @@ if __name__ == "__main__":
     print("disarming")
     arm_cmd.value = False
     arm_client_1 = arming_client(arm_cmd.value)
-

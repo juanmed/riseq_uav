@@ -1,0 +1,17 @@
+<launch>
+    <!-- launch px4 -->
+    <include file="$(find mavros)/launch/px4.launch" />
+
+    <!-- launch sitl in gazebo -->
+    <include file="$(find px4)/launch/posix_sitl.launch" />
+
+    <!-- spawn pole in gazebo -->
+    <include file="$(find riseq_gazebo)/launch/spawn_pole.launch" />
+
+    <!-- launch octomap -->
+    <include file="$(find octomap_server)/launch/octomap_tracking_server.launch" />
+
+    <!-- connect tf-->
+    <node pkg="riseq_gazebo" type="tf_connection.py" name="tf_connection" />
+
+</launch>
