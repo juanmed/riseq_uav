@@ -6,12 +6,11 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/Float64.h>
-#include <sensor_msgs/NavSatFix.h>
-#include <mavros_msgs/GlobalPositionTarget.h>
 #include <math.h>
+#include <riseq_sacc/RiseSaccHelix.h>
 
-ros::Publisher helix_point_pub;
-mavros_msgs::GlobalPositionTarget point;
+ros::Publisher ladder_info_pub;
+riseq_sacc::RiseSaccHelix ladder_info;
 
 float lat, lon, alt, heading;
 int center_x, center_y, left, top, width, height;
@@ -77,33 +76,26 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     avgdist = -1;
   }
 
-  // Output the measure 
-  ROS_INFO_STREAM("Avg Dist:" << avgdist);
+  ladder_info.x = left;
+  ladder_info.y = top;
+  ladder_info.width = width;
+  ladder_info.height = height;
+  ladder_info.depth = avgdist;
+  ladder_info_pub.publish(ladder_info);
 
+  // Output the measure 
   cv::imshow("depth", display_img);
   cv::waitKey(1);
 
 }
 
-void gpsCallback(const sensor_msgs::NavSatFix::ConstPtr& msg){
-  lat = msg->latitude;
-  lon = msg->longitude;
-  alt = msg->altitude;
-}
-
-void headingCallback(const std_msgs::Float64::ConstPtr& msg){
-  heading = msg->data;
-}
-
 int main(int argc, char **argv){
-  ros::init(argc, argv, "rise_sacc_helix");
-  ros::NodeHandle n1, n2, n3, n4;
+  ros::init(argc, argv, "riseq_sacc_helix");
+  ros::NodeHandle n1, n2;
   image_transport::ImageTransport it(n1);
 
   image_transport::Subscriber Depth  = it.subscribe("/zed/zed_node/depth/depth_registered", 1, DepthCallback);
-  ros::Subscriber gps_sub = n2.subscribe("/mavros/global_position/global",1, gpsCallback);
-  ros::Subscriber heading_sub = n3.subscribe("/mavros/global_position/compass_hdg",1, headingCallback);
-  helix_point_pub = n4.advertise<mavros_msgs::GlobalPositionTarget>("/setpoint_helix",1);
+  ladder_info_pub = n2.advertise<riseq_sacc::RiseSaccHelix>("/riseq/sacc/ladder_info",1);
 
   if (!ros::ok()){
       cv::destroyAllWindows();
