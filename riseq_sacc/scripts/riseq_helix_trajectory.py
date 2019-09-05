@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-
+import tf.transformations as tt
 import rospy
 import sys
 import numpy as np
@@ -15,6 +15,7 @@ from std_msgs.msg import String, Float64
 
 
 from helix_trajectory import Helix_Trajectory_Control as htc
+from SISO2 import SISO2_Controller as sc2
 
 
 class State_Machine():
@@ -24,11 +25,13 @@ class State_Machine():
 
         self.lds = rospy.Subscriber("riseq/sacc/ladder_depth", Float64, self.lds_cb)
         self.ladder_depth = 0.0
+        self.ladder_height = 30
 
         # PX4 related
         self.state = Odometry()
         self.setup_mavros()
         self.command_pose = PoseStamped()
+        self.command_pose.pose.orientation.w = 1.0
         self.home_pose = PoseStamped()
         self.home_pose_set = False
 
@@ -41,21 +44,40 @@ class State_Machine():
                 self.take_off(1.0)
                 self.step = 2
             elif self.step == 2:
-                self.do_helix_trajectory()
+                self.yaw_rotate(130)
                 self.step = 3
-            elif(self.step == 3):
-                self.return_land_disarm()
+            elif self.step == 3:
+                self.do_helix_trajectory()
                 self.step = 4
             elif(self.step == 4):
+                self.return_land_disarm()
+                self.step = 5
+            elif(self.step == 5):
                 break
             else:
                 raise
         sys.exit(0)
 
+    def yaw_rotate(self, angle):
+        yaw = angle*np.pi/180.
+        print("YAW90")
+        start = rospy.get_time()
+        q90 = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
+        self.command_pose.pose.orientation.x = q90[0]
+        self.command_pose.pose.orientation.y = q90[1]
+        self.command_pose.pose.orientation.z = q90[2]
+        self.command_pose.pose.orientation.w = q90[3]
+        rate = rospy.Rate(20)
+        while( (rospy.get_time() - start) < 5):
+            self.command_pose.header.stamp = rospy.Time.now()
+            self.local_pos_pub.publish(self.command_pose)
+            rate.sleep()            
+
     def take_off(self, height):
         self.command_pose.pose.position.z = height
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(20)
         while not (self.state.pose.pose.position.z >= height*0.95 ):
+            self.command_pose.header.stamp = rospy.Time.now()
             self.local_pos_pub.publish(self.command_pose)
             rate.sleep()
 
@@ -164,36 +186,81 @@ class State_Machine():
         init_x = self.state.pose.pose.position.x
         init_y = self.state.pose.pose.position.y
         init_z = self.state.pose.pose.position.z
-        self.helix_controller = htc(vrate = 0.05, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time())
+        self.helix_controller = htc(vrate = 0.05, radius = 1.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5)
+        self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
+        q = self.state.pose.pose.orientation
+        q = [q.x, q.y, q.z, q.w]
+        yaw, pitch, roll = tt.euler_from_quaternion(q, axes = 'rzyx')
+        self.helix_controller.phase = yaw + np.pi  # yaw angle + 180 degrees because its center perspective
+        print("Phase: ",self.helix_controller.phase)
 
-        rate = rospy.Rate(30)
+        rate = rospy.Rate(20)
         # do helix trajectory for 30 seconds
         print("Doing helix trajectory")
-        while( (rospy.get_time() - self.helix_controller.t_init) < 120.):
-
+        #while( (rospy.get_time() - self.helix_controller.t_init) < 120.):
+        while(self.state.pose.pose.position.z < (self.ladder_height + 2)):
             # state for x and y position
             xs = np.array([[self.state.pose.pose.position.x],[self.state.twist.twist.linear.x],[0.0]])
             ys = np.array([[self.state.pose.pose.position.y],[self.state.twist.twist.linear.y],[0.0]])
             states = [xs, ys]
+
+            ladder_position = self.get_ladder_location()
+            ladder_position = [1.5,2.5]
+            self.helix_controller.set_helix_center(ladder_position)
+            
             ux, uy, uz = self.helix_controller.compute_command(states, rospy.get_time())
+            q = self.compute_yaw(ladder_position)
 
-            ct = rospy.get_time() - self.helix_controller.t_init 
-            self.helix_controller.set_helix_center((self.ladder_depth*np.cos(0.0),self.ladder_depth*np.sin(1.0)))
-
+            self.command_pose.header.stamp = rospy.Time.now()
             self.command_pose.pose.position.x = ux
             self.command_pose.pose.position.y = uy
             self.command_pose.pose.position.z = uz
+
+            self.command_pose.pose.orientation.x = q[0]
+            self.command_pose.pose.orientation.y = q[1]
+            self.command_pose.pose.orientation.z = q[2]
+            self.command_pose.pose.orientation.w = q[3]
+
             self.local_pos_pub.publish(self.command_pose)
             rate.sleep()
+
+    def compute_yaw(self, ladder_position):
+        drone_position = np.array([self.state.pose.pose.position.x,self.state.pose.pose.position.y])
+        drone_to_ladder = ladder_position - drone_position
+        yaw_ref = np.arctan2(drone_to_ladder[1],drone_to_ladder[0])
+
+        q = self.state.pose.pose.orientation
+        q = [q.x, q.y, q.z, q.w]
+        yaw, pitch, roll = tt.euler_from_quaternion(q, axes = 'rzyx') 
+
+        state = np.array([[yaw],[0.0],[0.0]])
+        ref = np.array([[yaw_ref],[0.0],[0.0]])
+        u_yaw = self.yaw_controller.compute_input(state,ref)
+        print("U yaw: {}, Yaw: {}, Yaw_ref: {}".format(u_yaw,yaw, yaw_ref))
+
+        q_ref = tt.quaternion_from_euler(yaw_ref,0,0.0, axes = 'rzyx')
+
+        return q_ref    
+
+    def get_ladder_location(self):
+
+        drone_position = np.array([self.state.pose.pose.position.x,self.state.pose.pose.position.y])
+        q = self.state.pose.pose.orientation
+        q = [q.x, q.y, q.z, q.w]
+        yaw, pitch, roll = tt.euler_from_quaternion(q, axes = 'rzyx')
+        ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
+        ladder_position = ladder_drone_position #+ drone_position 
+        return ladder_position
 
     def return_land_disarm(self):
         
         # Return home
         print("Return home.")
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(20)
         start_time = rospy.get_time()
         while ((rospy.get_time() - start_time) < 20.0):  # give 20s to go back home
             self.command_pose = self.home_pose
+            self.command_pose.header.stamp = rospy.Time.now()            
             self.local_pos_pub.publish(self.command_pose)
             rate.sleep()
 
@@ -253,3 +320,4 @@ if __name__ == '__main__':
     except rospy.ROSInterruptException:
         rospy.loginfo('ROS Terminated')
         pass
+

@@ -19,9 +19,9 @@ t = np.arange(0.0,t_max,dt)
 refx =  np.ones_like(t)
 
 # px4 xpos dynamics
-ts = 5	# settling time
-tr = 2.5 	# rise time
-mp = 0.99	# overshoot
+ts = 2	# settling time
+tr = 18.875-17.9375 	# rise time
+mp = 0.999	# overshoot
 
 sigma = 4.6/ts
 wn = 1.8/tr
@@ -97,6 +97,26 @@ Translation dynamics PP K:
 [[0.        ]
  [1.92901235]]
 
+yaw dynamics
+
+        3.686
+--------------------
+s^2 + 2.88 s + 3.686
+
+ State Space: 
+A = [[-2.88   -3.6864]
+ [ 1.      0.    ]]
+
+B = [[-1.]
+ [ 0.]]
+
+C = [[ 0.     -3.6864]]
+
+D = [[0.]]
+
+
+Translation dynamics PP K: [[ 3.12   14.3136]], Nu: [[1.]], Nx: [[-3.85494106e-17]
+ [ 2.71267361e-01]]
 
 
 """
