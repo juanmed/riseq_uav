@@ -9,6 +9,8 @@
 *.mp4
 *.png
 *.csv
+.torch_test/*
+zed-ros-wrapper/*
 # Created by https://www.gitignore.io/api/pycharm
 # Edit at https://www.gitignore.io/?templates=pycharm
 
