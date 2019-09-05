@@ -70,6 +70,6 @@
   <node pkg ='riseq_sacc' name='helix_mission' type='riseq_helix_trajectory.py' output='screen'/>
 
   <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position riseq/sacc/ladder_depth/data mavros/setpoint_position/local/pose/position"/>
+        args="/mavros/local_position/pose/pose/position riseq/sacc/ladder_depth/data riseq/sacc/trajectory/pose/position"/>
 
 </launch>

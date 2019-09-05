@@ -24,6 +24,7 @@ class State_Machine():
         self.step = 0
 
         self.lds = rospy.Subscriber("riseq/sacc/ladder_depth", Float64, self.lds_cb)
+        self.ref_pub = rospy.Publisher("riseq/sacc/trajectory", PoseStamped, queue_size = 10)
         self.ladder_depth = 0.0
         self.ladder_height = 30
 
@@ -205,10 +206,10 @@ class State_Machine():
             states = [xs, ys]
 
             ladder_position = self.get_ladder_location()
-            ladder_position = [1.5,2.5]
+            ladder_position = [0.0,1.0]
             self.helix_controller.set_helix_center(ladder_position)
             
-            ux, uy, uz = self.helix_controller.compute_command(states, rospy.get_time())
+            ux, uy, uz, ref = self.helix_controller.compute_command(states, rospy.get_time())
             q = self.compute_yaw(ladder_position)
 
             self.command_pose.header.stamp = rospy.Time.now()
@@ -222,6 +223,14 @@ class State_Machine():
             self.command_pose.pose.orientation.w = q[3]
 
             self.local_pos_pub.publish(self.command_pose)
+
+            refmsg = PoseStamped()
+            refmsg.header.stamp = rospy.Time.now()
+            refmsg.pose.position.x = ref[0][0][0]
+            refmsg.pose.position.y = ref[1][0][0]
+            refmsg.pose.position.z = uz
+            self.ref_pub.publish(refmsg)
+
             rate.sleep()
 
     def compute_yaw(self, ladder_position):
@@ -236,9 +245,9 @@ class State_Machine():
         state = np.array([[yaw],[0.0],[0.0]])
         ref = np.array([[yaw_ref],[0.0],[0.0]])
         u_yaw = self.yaw_controller.compute_input(state,ref)
-        print("U yaw: {}, Yaw: {}, Yaw_ref: {}".format(u_yaw,yaw, yaw_ref))
+        #print("U yaw: {}, Yaw: {}, Yaw_ref: {}".format(u_yaw,yaw, yaw_ref))
 
-        q_ref = tt.quaternion_from_euler(yaw_ref,0,0.0, axes = 'rzyx')
+        q_ref = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
 
         return q_ref    
 
