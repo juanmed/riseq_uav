@@ -32,7 +32,7 @@ class Helix_Trajectory_Control():
 
         ux = self.xc.compute_input(state[0], xr)
         uy = self.yc.compute_input(state[1], yr)
-        uz = self.z0 + self.vrate*t
+        uz = self.z0 + self.vrate*(t-self.t_init)
         return ux, uy, uz, (xr, yr)
 
 
