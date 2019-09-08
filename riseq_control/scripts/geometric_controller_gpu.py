@@ -100,7 +100,90 @@ class GPU_Geometric_Controller():
         self.max_thrust = max_thrust #torch.tensor(max_thrust).to(self.device)
         self.min_thrust = min_thrust #torch.tensor(min_thrust).to(self.device)
 
-    def position_controller(self, state, ref):
+    def position_controller(self, data):
+        """
+        Calculate required thrust, body orientation, and body rate in order to converge
+        the state into the reference state:
+
+        The order of elements for both the state and reference state is as follows:
+        element 0: position (3x1 np.array)
+        element 1: velocity (3x1 np.array)
+        element 2: acceleration (3x1 np.array)
+        element 3: jerk (3x1 np.array)
+        element 4: snap (3x1 np.array)
+        element 5: orientation rotation matrix (3x3 np.array)
+        element 6: yaw angle (float)
+        element 7: yaw angle rate (float)
+        element 8: yaw angle acceleration (float)
+        element 9: body rate in euler representation (3x1 np.array)
+
+        Args:
+            state (list): current state vector of the quadrotor
+            ref (list): reference state vector of the quadrotor
+
+        Returns:
+            Required collective thrust (float), orientation (3x3 rotation matrix, np.array)
+            and body rate (3x1 np.array)
+
+        """
+        data = data.to(self.device)
+        p = data[0]
+        v = data[1]
+        Rbw = data[5:8]
+
+        p_ref = data[8]
+        v_ref = data[9]
+        a_ref = data[10]
+        j_ref = data[11]
+        #s_ref = ref[4]
+        Rbw_ref = data[13:16]
+        yawdot_ref = data[16,1]
+
+        # Calculate  PID control law for acceleration error: 
+        self.pos_error_integral = self.pos_error_integral + torch.add(p, -1.0, p_ref)#.type(torch.cuda.FloatTensor)
+        self.a_e = torch.zeros(3).to(self.device)
+        #print(" >> \n{},\n{},\n{}".format(self.a_e.dtype, self.Kp_gains.dtype,torch.add(p,-1.0,p_ref).dtype))
+        self.a_e = torch.addcmul(self.a_e, -1.0, self.Kp_gains, torch.add(p,-1.0,p_ref))#.type(torch.cuda.FloatTensor))
+        self.a_e = torch.addcmul(self.a_e, -1.0, self.Kd_gains, torch.add(v,-1.0,v_ref))#.type(torch.cuda.FloatTensor))
+        self.a_e = torch.addcmul(self.a_e, -1.0, self.Ki_gains, self.pos_error_integral)
+
+        # Desired acceleration and thrust
+        #print(" >> \n{},\n{},\n{}".format(self.a_e, a_ref,torch.mul(params.e3,params.g)))
+        a_des = self.a_e + a_ref + torch.mul(params.e3,params.g)#.type(torch.cuda.FloatTensor)
+        #a_des2 = self.a_e + a_ref + params.g*params.e3
+        wzb = torch.mm(Rbw, params.e3.view(3,-1)).squeeze(1)          # body z-axis expressed in world frame
+        #print(wzb,a_des)
+        self.Traw = self.mass*torch.dot(wzb,a_des)           
+        #self.Traw2 = self.mass*np.dot(wzb.T,a_des2)[0][0]          # debugging only
+        T = torch.clamp(self.Traw, self.min_thrust, self.max_thrust)    # Maximum possible thrust
+        
+        # Desired attitude
+        zb_des = a_des / torch.norm(a_des)
+        Rbw_des, psi_ref = self.desired_attitude(zb_des, Rbw_ref, Rbw)
+
+        # Desired body rate
+        a_real = torch.mul(params.e3, -params.g) + (T/self.mass)*wzb
+        Fd_dot = torch.zeros(3).to(self.device)
+        #print(" >> \n{},\n{},\n{}".format(self.a_e.dtype, self.Kp_gains.dtype,torch.add(p,-1.0,p_ref).dtype))
+        Fd_dot = torch.addcmul(Fd_dot, -1.0, self.Kp_gains, torch.add(v,-1.0,v_ref))#.type(torch.cuda.FloatTensor))
+        Fd_dot = torch.addcmul(Fd_dot, -1.0, self.Kd_gains, torch.add(a_real,-1.0,a_ref))#.type(torch.cuda.FloatTensor))
+        Fd_dot = torch.addcmul(Fd_dot, -1.0, self.Ki_gains, torch.add(p,-1.0,p_ref))#.type(torch.cuda.FloatTensor))        
+        Fd_dot = torch.add(Fd_dot, 1.0, j_ref)
+
+
+        #Fd_dot = -1.0*np.dot(self.Kp,v-v_ref) -1.0*np.dot(self.Kd, a_real - a_ref) -1.0*np.dot(self.Ki, p - p_ref) + j_ref
+
+        yc_des = df_flat.get_yc(psi_ref)   #transform to np.array 'cause comes as np.matrix
+        xc_des = df_flat.get_xc(psi_ref)
+        xb_des = torch.cross(yc_des, zb_des)
+        xb_des = xb_des/torch.norm(xb_des)
+
+        Rbw_des_dot = self.desired_body_rate(a_real, Fd_dot, xc_des, yc_des, xb_des, zb_des, yawdot_ref )
+        w_des = utils.vex2(torch.mm(torch.t(Rbw_des), Rbw_des_dot))
+
+        return T.item(), Rbw_des.cpu().numpy(), w_des.cpu().numpy()
+
+    def position_controller2(self, state, ref):
         """
         Calculate required thrust, body orientation, and body rate in order to converge
         the state into the reference state:
