@@ -17,7 +17,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
    cv::Mat img = cv_ptr->image;
    cv::Mat thr_img;
 
-   cv::threshold(img, thr_img, 0.8, 255, cv::THRESH_BINARY_INV);
+   cv::threshold(img, thr_img, 100, 255, cv::THRESH_BINARY_INV);
 
    thr_img.convertTo(thr_img, CV_8UC1);
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv){
     image_transport::ImageTransport it(n1);
     cv::namedWindow("depth", cv::WINDOW_AUTOSIZE);
 
-    image_transport::Subscriber Depth  = it.subscribe("/zed/zed_node/depth/depth_registered", 1, DepthCallback);
+    image_transport::Subscriber Depth  = it.subscribe("/camera/depth/image_raw", 1, DepthCallback);
     ros::Subscriber gps_sub = n2.subscribe("/mavros/global_position/global",1, gpsCallback);
     ros::Subscriber heading_sub = n3.subscribe("/mavros/global_position/compass_hdg",1, headingCallback);
 

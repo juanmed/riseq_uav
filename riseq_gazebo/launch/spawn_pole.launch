@@ -6,7 +6,6 @@
 		<arg name="y" default="-2.0"/>
 		<arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/pole/pole.sdf"/>
 	</include>
-
 	<include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
 		<arg name="robot_name" default=""/>
 		<arg name="x" default="2.0"/>
@@ -34,6 +33,5 @@
 		<arg name="y" default="-2.0"/>
 		<arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/pole/pole.sdf"/>
 	</include>
-
 
 </launch>
