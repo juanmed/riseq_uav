@@ -70,18 +70,23 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
       }
     }
     avgdist = sum_dist / count;
+
+    ladder_info.x = left+width/2;  // bbox x-center
+    ladder_info.y = top+height/2;  // bbox y-center
+    ladder_info.width = depth_img.cols;  //image width
+    ladder_info.height = depth_img.rows;  //image height
+    ladder_info.depth = avgdist;
+    ladder_info_pub.publish(ladder_info);
+
+
+
   }
   /* if not found ladder */ 
   else{
     avgdist = -1;
   }
 
-  ladder_info.x = left;
-  ladder_info.y = top;
-  ladder_info.width = width;
-  ladder_info.height = height;
-  ladder_info.depth = avgdist;
-  ladder_info_pub.publish(ladder_info);
+
 
   // Output the measure 
   cv::imshow("depth", display_img);

@@ -20,8 +20,8 @@ class Helix_Trajectory_Control():
         self.y0 = init[1]
         self.z0 = init[1]
 
-        self.xc = controller(Kp = 8.0, Kv = 1.0)
-        self.yc = controller(Kp = 8.0, Kv = 1.5)
+        self.xc = controller(Kp = 10.5, Kv = 1.0, Ki = 0.0)
+        self.yc = controller(Kp = 8.0, Kv = 1.5, Ki = 0.0, u_sat = 5.0)
 
         self.phase = 0.0
 
@@ -32,8 +32,8 @@ class Helix_Trajectory_Control():
 
         ux = self.xc.compute_input(state[0], xr)
         uy = self.yc.compute_input(state[1], yr)
-        uz = self.z0 + self.vrate*t
-        return ux, uy, uz
+        uz = self.z0 + self.vrate*(t-self.t_init)
+        return ux, uy, uz, (xr, yr)
 
 
     def get_reference_state(self, t):

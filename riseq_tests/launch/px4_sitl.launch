@@ -66,10 +66,10 @@
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
 
   <include file="$(find zed_wrapper)/launch/zedm.launch"/>
-  <node name="riseq_depth" pkg="riseq_sacc" type="riseq_depth_publisher.py" output="screen"/>
+  <node name="riseq_sacc" pkg="riseq_sacc" type="riseq_sacc_helix"/>
   <node pkg ='riseq_sacc' name='helix_mission' type='riseq_helix_trajectory.py' output='screen'/>
 
   <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position riseq/sacc/ladder_depth/data mavros/setpoint_position/local/pose/position"/>
+        args="/mavros/local_position/pose/pose/position riseq/sacc/ladder_depth/data riseq/sacc/trajectory/pose/position"/>
 
 </launch>

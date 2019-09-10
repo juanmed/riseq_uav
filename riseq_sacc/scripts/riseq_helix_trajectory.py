@@ -12,6 +12,7 @@ from mavros_msgs.srv import CommandTOL
 from nav_msgs.msg import Odometry  
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from std_msgs.msg import String, Float64
+from riseq_sacc.msg import RiseSaccHelix
 
 
 from helix_trajectory import Helix_Trajectory_Control as htc
@@ -23,7 +24,8 @@ class State_Machine():
     def __init__(self):
         self.step = 0
 
-        self.lds = rospy.Subscriber("riseq/sacc/ladder_depth", Float64, self.lds_cb)
+        self.lds = rospy.Subscriber("riseq/sacc/ladder_info", RiseSaccHelix, self.lds_cb)
+        self.ref_pub = rospy.Publisher("riseq/sacc/trajectory", PoseStamped, queue_size = 10)
         self.ladder_depth = 0.0
         self.ladder_height = 30
 
@@ -205,11 +207,11 @@ class State_Machine():
             states = [xs, ys]
 
             ladder_position = self.get_ladder_location()
-            ladder_position = [1.5,2.5]
+            ladder_position = [0.0,1.0]
             self.helix_controller.set_helix_center(ladder_position)
             
-            ux, uy, uz = self.helix_controller.compute_command(states, rospy.get_time())
-            q = self.compute_yaw(ladder_position)
+            ux, uy, uz, ref = self.helix_controller.compute_command(states, rospy.get_time())
+            q = self.compute_yaw()
 
             self.command_pose.header.stamp = rospy.Time.now()
             self.command_pose.pose.position.x = ux
@@ -222,9 +224,17 @@ class State_Machine():
             self.command_pose.pose.orientation.w = q[3]
 
             self.local_pos_pub.publish(self.command_pose)
+
+            refmsg = PoseStamped()
+            refmsg.header.stamp = rospy.Time.now()
+            refmsg.pose.position.x = ref[0][0][0]
+            refmsg.pose.position.y = ref[1][0][0]
+            refmsg.pose.position.z = uz
+            self.ref_pub.publish(refmsg)
+
             rate.sleep()
 
-    def compute_yaw(self, ladder_position):
+    def compute_yaw2(self, ladder_position):
         drone_position = np.array([self.state.pose.pose.position.x,self.state.pose.pose.position.y])
         drone_to_ladder = ladder_position - drone_position
         yaw_ref = np.arctan2(drone_to_ladder[1],drone_to_ladder[0])
@@ -236,11 +246,21 @@ class State_Machine():
         state = np.array([[yaw],[0.0],[0.0]])
         ref = np.array([[yaw_ref],[0.0],[0.0]])
         u_yaw = self.yaw_controller.compute_input(state,ref)
-        print("U yaw: {}, Yaw: {}, Yaw_ref: {}".format(u_yaw,yaw, yaw_ref))
+        #print("U yaw: {}, Yaw: {}, Yaw_ref: {}".format(u_yaw,yaw, yaw_ref))
 
-        q_ref = tt.quaternion_from_euler(yaw_ref,0,0.0, axes = 'rzyx')
+        q_ref = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
 
-        return q_ref    
+        return q_ref
+
+    def compute_yaw(self):
+
+        image_center = self.width/2.0
+
+        K = 2.0
+        pe = -K*(self.bbox_x  - image_center)/image_center
+
+        q_ref = tt.quaternion_from_euler(pe,0,0.0, axes = 'rzyx')
+        return q_ref
 
     def get_ladder_location(self):
 
@@ -302,8 +322,13 @@ class State_Machine():
         self.state.twist.twist.angular.y = vel.twist.angular.y
         self.state.twist.twist.angular.z = vel.twist.angular.z
 
-    def lds_cb(self, val):
-        self.ladder_depth = float(val.data)
+    def lds_cb(self, ladder_info):
+        
+        self.ladder_depth = ladder_info.depth
+        self.bbox_x = ladder_info.x
+        self.bbox_y = ladder_info.y 
+        self.width = ladder_info.width
+        self.height = ladder_info.height 
 
 if __name__ == '__main__':
     try:
