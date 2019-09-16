@@ -40,10 +40,10 @@ class MinimumSnapTrajectory:
         self.state = np.zeros((5, 4))
 
         # determine environment
-        environment = rospy.get_param("riseq/environment")
+        environment = rospy.get_param("riseq/environment", "simulator")
         if environment == "simulator":
             # select mode (easy, medium, hard, scorer)
-            mode = rospy.get_param("riseq/challenge_name", -1)
+            mode = rospy.get_param("riseq/challenge_name", "medium")
             if mode == -1:
                 rospy.logerr("mode is not specified!")
                 rospy.signal_shutdown("[challenge_name] could not be read")
@@ -54,7 +54,7 @@ class MinimumSnapTrajectory:
             if mode == "easy":
                 time_scaling = [40]
             elif mode == "medium":
-                time_scaling = [2, 2]
+                time_scaling = [2, 5]
             elif mode == "hard":
                 time_scaling = [20, 20, 2, 5]
             else:
@@ -68,7 +68,7 @@ class MinimumSnapTrajectory:
         # rospy.Service('make_trajectory', MakeTrajectory, self.make_trajectory)
 
         # Create subscriber and publisher
-        rospy.Subscriber("riseq/planning/uav_waypoint", Path, self.path_cb)
+        rospy.Subscriber("riseq/planning/uav_global_waypoint", Path, self.path_cb)
         self.traj_pub = rospy.Publisher('riseq/trajectory/uav_trajectory', riseq_uav_trajectory, queue_size=10)
 
         # Wait until callback function receive way point and compute trajectory solution
