@@ -140,11 +140,11 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 
 add_executable(riseq_sacc_obstacle_avoidance src/riseq_sacc_obstacle_avoidance.cpp)
-add_executable(riseq_sacc_helix src/riseq_sacc_helix.cpp)
+add_executable(riseq_sacc_ladder_info src/riseq_sacc_ladder_info.cpp)
 
 add_dependencies(riseq_sacc_obstacle_avoidance ${riseq_sacc_obstacle_avoidance_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_dependencies(riseq_sacc_helix ${test_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(riseq_sacc_ladder_info ${test_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -163,7 +163,7 @@ target_link_libraries(riseq_sacc_obstacle_avoidance
   ${OpenCV_LIBRARIES}
 )
 
-target_link_libraries(riseq_sacc_helix
+target_link_libraries(riseq_sacc_ladder_info
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
 )
