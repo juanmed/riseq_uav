@@ -54,7 +54,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   cv::Mat img = cv_ptr->image;
   cv::Mat thr_img;
 
-  cv::threshold(img, thr_img, 5, 255, cv::THRESH_BINARY_INV);
+  cv::threshold(img, thr_img, 8, 255, cv::THRESH_BINARY_INV);
 
   thr_img.convertTo(thr_img, CV_8UC1);
 

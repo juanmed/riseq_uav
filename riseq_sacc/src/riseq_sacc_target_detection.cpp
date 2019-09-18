@@ -184,8 +184,6 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
   cv::erode(filtered_img, filtered_img, kernel, cv::Point(-1,-1), 1);
   cv::dilate(filtered_img, filtered_img, kernel, cv::Point(-1,-1), 5);
 
-  cv::imshow("after", filtered_img);
-
   cv::Mat labels, stats, centroids;
   int n = cv::connectedComponentsWithStats(filtered_img, labels, stats, centroids, 8);
 

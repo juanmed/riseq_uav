@@ -29,12 +29,12 @@ from std_msgs.msg import Int32
 
 
 # Nodes to run
-package = 'rise_sacc'
-exe_target = 'rise_sacc_target_detection'
-exe_avoidance = 'rise_sacc_obstacle_avoidance'
-exe_helical1 = 'rise_sacc_number'
-exe_helical2 = 'rise_sacc_ladder_info'
-exe_helical3 = 'rise_sacc_helix'
+package = 'riseq_sacc'
+exe_target = 'riseq_sacc_target_detection'
+exe_avoidance = 'riseq_sacc_obstacle_avoidance'
+exe_helical1 = 'riseq_sacc_number'
+exe_helical2 = 'riseq_sacc_ladder_info'
+exe_helical3 = 'riseq_helix_trajectory'
 
 # roslaunch node api
 node_target = roslaunch.core.Node(package, exe_target)

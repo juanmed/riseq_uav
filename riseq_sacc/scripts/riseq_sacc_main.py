@@ -86,10 +86,17 @@ process = Int32()
 
 
 def homeCb(msg):
+    home.geo.latitude = msg.geo.latitude
+    home.geo.longitude = msg.geo.longitude
     home.geo.altitude = msg.geo.altitude
+
+    wp0.latitude = msg.geo.latitude
+    wp0.longitude = msg.geo.longitude
+
 
 def stateCb(msg):
     current_state.mode = msg.mode
+
 
 def positionCb(msg):
     current_position.latitude = msg.latitude
@@ -103,11 +110,13 @@ def targetCb(msg):
     wp_target.altitude = msg.altitude
     wp_target.yaw = msg.yaw
 
+
 def avoidanceCb(msg):
     wp_avoidance.latitude = msg.latitude
     wp_avoidance.longitude = msg.longitude
     wp_avoidance.altitude = msg.altitude
     wp_avoidance.yaw = msg.yaw
+
 
 def helicalCb(msg):
     wp_helical.latitude = msg.latitude
@@ -117,8 +126,11 @@ def helicalCb(msg):
 
 
 def getDistance():
+    """
+    Call before changing altitude into AMSL
+    """
     h = geopy.distance.vincenty((wp.latitude, wp.longitude), (current_position.latitude, current_position.longitude)).m
-    v = wp.altitude - current_position.altitude
+    v = (wp.altitude + home.geo.altitude) - current_position.altitude
     print("Distance to next waypoint: %.1f, %.1f" %(h, v))
     return h, v
 
@@ -158,11 +170,6 @@ if __name__ == "__main__":
             print(">>>>>Set home position<<<<<\n")
             break
     rospy.sleep(3.0)
-    wp0.altitude = wp0.altitude + home.geo.altitude
-    wp1.altitude = wp1.altitude + home.geo.altitude
-    wp2.altitude = wp2.altitude + home.geo.altitude
-    wp3.altitude = wp3.altitude + home.geo.altitude
-    wp4.altitude = wp4.altitude + home.geo.altitude
     print(">>>>>Updated altitude<<<<\n")
     print(">>>>>Arm<<<<<\n")
 
@@ -198,7 +205,7 @@ if __name__ == "__main__":
         elif step == 3:
             process_publisher.publish(process)
             wp = wp_target
-            if (geopy.distance.vincenty((wp3.latitude, wp3.longitude), (current_position.latitude, current_position.longitude)).m <= 2.0) and (abs(wp3.altitude - current_position.altitude) <= 2.0):
+            if (geopy.distance.vincenty((wp3.latitude, wp3.longitude), (current_position.latitude, current_position.longitude)).m <= 2.0) and (abs(wp3.altitude - (current_position.altitude - home.geo.altitude)) <= 2.0):
                 step += 1
                 process.data = 2
             waypoint.data = 3
@@ -206,16 +213,18 @@ if __name__ == "__main__":
         # Fix orientation
         elif step == 4:
             wp = wp_avoidance
-            for i in range(0, 150):
+            wp.altitude = wp_avoidance.altitude + home.geo.altitude
+            for i in range(0, rate*3):
                 wp.header.stamp = rospy.Time.now()
                 position_publisher.publish(wp)
                 r.sleep()
             step += 1
+            wp.altitude = wp_avoidance.altitude
         # wp3 -> wp4, Obstacle avoidance
         elif step == 5:
             process_publisher.publish(process)
             wp = wp_avoidance
-            if (geopy.distance.vincenty((wp4.latitude, wp4.longitude), (current_position.latitude, current_position.longitude)).m <= 2.0) and (abs(wp4.altitude - current_position.altitude) <= 2.0):
+            if (geopy.distance.vincenty((wp4.latitude, wp4.longitude), (current_position.latitude, current_position.longitude)).m <= 2.0) and (abs(wp4.altitude - (current_position.altitude - home.geo.altitude)) <= 2.0):
                 step += 1
                 process.data = 3
             waypoint.data = 4
@@ -224,14 +233,15 @@ if __name__ == "__main__":
         elif step == 6:
             process_publisher.publish(process)
             wp = wp_helical
-            if (current_position.altitude >= (home.geo.altitude + 32.5)):
+            if (current_position.altitude >= (home.geo.altitude + 35.0)):
                 step += 1
+                process.data = 4
             waypoint.data = 0
 
         # Return home
         elif step == 7:
             wp = wp0
-            wp.altitude = home.geo.altitude + 35.0
+            wp.altitude = 35.0
             err_h, err_v = getDistance()
             if (err_h <= 2.0) and (abs(err_v) <= 2.0):
                 step += 1
@@ -240,16 +250,25 @@ if __name__ == "__main__":
         # Land
         elif step == 8:
             wp = wp0
-            wp.altitude = home.geo.altitude + 2.0
-            if (err_h <= 1.0) and (abs(err_v) <= 1.0) and (current_state.mode != "AUTO.LAND"):
+            wp.altitude = 2.0
+            err_h, err_v = getDistance()
+            if (err_h <= 1.0) and (abs(err_v) <= 0.5):
+                step += 1
+            waypoint.data = 0
+        elif step == 9:
+            wp = wp0
+            wp.altitude = 2.0
+            err_h, err_v = getDistance()
+            if (err_h <= 1.0) and (abs(err_v) <= 0.5) and (current_state.mode != "AUTO.LAND"):
                 print(">>>>>Landing<<<<<\n")
                 land_home = landing_client(0.0, 0.0, 0.0, 0.0, 0.0)
             waypoint.data = 0
 
 
-        # Publish position and waypoint
+        # Publish position and heading waypoint
         wp.header.stamp = rospy.Time.now()
-        position_publisher.publish(wp0)
+        wp.altitude = wp.altitude + home.geo.altitude    # Change relative altitude into GPS altitude(AMSL)
+        position_publisher.publish(wp)
         waypoint_publisher.publish(waypoint)
         
         r.sleep()
