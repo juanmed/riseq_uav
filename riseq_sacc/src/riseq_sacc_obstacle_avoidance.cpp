@@ -101,9 +101,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     if((left_obstacle || right_obstacle || front_obstacle) == true){      
       // stop, right
       ROS_INFO("stop");
-      std::cout<<pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2)<<std::endl;
       if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
-        ROS_INFO("move right");
         past_lon = target_lon;
         past_lat = target_lat;
         target_lat = past_lat - (8.155*2.5/1000000);
@@ -116,6 +114,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     }
     else if((left_obstacle || right_obstacle || front_obstacle) == false){
       //go
+      ROS_INFO("go");
       if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
         past_lon = target_lon;
         past_lat = target_lat;
@@ -138,15 +137,16 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     }
   } 
 
-  if(sw == true){  
-    point.header.stamp = ros::Time::now();
-    point.longitude = target_lon;
-    point.latitude = target_lat;
-    point.altitude = 25.065700531;
-    point.yaw = 0;
-    avoidance_point_pub.publish(point);
-  }
-  std::cout<<front_count<<std::endl;
+
+  point.header.stamp = ros::Time::now();
+  point.longitude = target_lon;
+  point.latitude = target_lat;
+  point.altitude = 25.065700531;
+  point.yaw = 0.534942408493;
+  avoidance_point_pub.publish(point);
+
+  ROS_INFO("frond_count: %d", front_count);
+
   cv::line(display_img, cv::Point(0,height_13),cv::Point(width, height_13), cv::Scalar(0,0,255),1);
   cv::line(display_img, cv::Point(0,height_23),cv::Point(width, height_23), cv::Scalar(0,0,255),1);
   cv::line(display_img, cv::Point(width_13,height_13),cv::Point(width_13,height_23), cv::Scalar(0,0,255),1);

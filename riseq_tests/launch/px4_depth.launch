@@ -16,20 +16,23 @@
     </include>
 
     <!-- Launch local planner -->
-    <node name="local_planner_node" pkg="local_planner" type="local_planner_node">
+    <!--<node name="local_planner_node" pkg="local_planner" type="local_planner_node">
         <param name="goal_x_param" value="17" />
         <param name="goal_y_param" value="15"/>
         <param name="goal_z_param" value="3" />
         <param name="world_name" value="$(find avoidance)/sim/worlds/$(arg world_file_name).yaml" />
         <rosparam param="pointcloud_topics" subst_value="True">$(arg pointcloud_topics)</rosparam>
-    </node>
+    </node>-->
 
     <!-- Run Rviz and Gazebo -->
     <node name="rviz" pkg="rviz" type="rviz"/>
     <!-- node name="gazebo_node" pkg="gazebo_ros" type="gazebo" / -->
 
     <!-- Spawn obstacle -->
-    <include file="$(find riseq_gazebo)/launch/spawn_ladder.launch" />
+    <include file="$(find riseq_gazebo)/launch/spawn_ladder.launch" >
+        <arg name="x_location" value="11.0"/>
+		<arg name="y_location" value="6.0"/>
+    </include>
 
     <!-- Run avoidance node -->
     <node name="obstacle_avoidance" pkg="riseq_sacc" type="riseq_sacc_obstacle_avoidance" output="screen">
