@@ -7,12 +7,14 @@ import numpy as np
 
 from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
-from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandTOL
+from mavros_msgs.msg import State
+from mavros_msgs.msg import GlobalPositionTarget
 from nav_msgs.msg import Odometry  
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from std_msgs.msg import String, Float64
 from riseq_sacc.msg import RiseSaccHelix
+from sensor_msgs.msg import NavSatFix
 
 
 from helix_trajectory import Helix_Trajectory_Control as htc
@@ -25,7 +27,8 @@ class State_Machine():
         self.step = 0
 
         self.lds = rospy.Subscriber("riseq/sacc/ladder_info", RiseSaccHelix, self.lds_cb)
-        self.ref_pub = rospy.Publisher("riseq/sacc/trajectory", PoseStamped, queue_size = 10)
+        self.ref_pub_local = rospy.Publisher("riseq/sacc/setpoint_helix_local", PoseStamped, queue_size = 10)
+        self.ref_pub_global = rospy.Publisher("riseq/sacc/setpoint_helix_global", GlobalPositionTarget, queue_size = 10)
         self.ladder_depth = 0.0
         self.ladder_height = 30
 
@@ -36,6 +39,10 @@ class State_Machine():
         self.command_pose.pose.orientation.w = 1.0
         self.home_pose = PoseStamped()
         self.home_pose_set = False
+
+        self.global_home = GlobalPositionTarget()
+        self.global_state = GlobalPositionTarget()
+        self.global_home_pose_set = False
 
     def run(self):
         while not rospy.is_shutdown():
@@ -93,11 +100,12 @@ class State_Machine():
         self.landing_client = rospy.ServiceProxy('mavros/cmd/land', CommandTOL)
      
         self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        
+
         self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)        
         self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
         self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
-        
+        self.global_pos_sub = rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.global_position_cb)
+
         self.state.pose.pose.orientation.x = 0.0
         self.state.pose.pose.orientation.y = 0.0
         self.state.pose.pose.orientation.z = 0.0
@@ -222,17 +230,44 @@ class State_Machine():
             self.command_pose.pose.orientation.y = q[1]
             self.command_pose.pose.orientation.z = q[2]
             self.command_pose.pose.orientation.w = q[3]
-
             self.local_pos_pub.publish(self.command_pose)
 
+            # publish reference trajectory in local frame
             refmsg = PoseStamped()
             refmsg.header.stamp = rospy.Time.now()
             refmsg.pose.position.x = ref[0][0][0]
             refmsg.pose.position.y = ref[1][0][0]
             refmsg.pose.position.z = uz
-            self.ref_pub.publish(refmsg)
+            self.ref_pub_local.publish(refmsg)
+
+            # publish reference trajectory in global frame
+            lat,lon = self.get_global_coordinates(ux, uy)
+            global_refmsg = GlobalPositionTarget()
+            global_refmsg.header.stamp = rospy.Time.now()
+            global_refmsg.header.frame_id = self.global_state.header.frame_id
+            global_refmsg.latitude = lat
+            global_refmsg.longitude = lon
+            global_refmsg.altitude = uz
+            self.ref_pub_global.publish(global_refmsg)
 
             rate.sleep()
+
+    def get_global_coordinates(self, x, y):
+
+        # get pose change in local frame
+        delta_x = x - self.home_pose.pose.position.x
+        delta_y = y - self.home_pose.pose.position.y
+
+        # convert equivalent change in  latitude and longitude
+        # see https://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
+        delta_lat = delta_y / 111111.0
+        delta_lon = delta_x / (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
+
+        # compute absolute latitude and longitude
+        lat = delta_lat + self.global_home.latitude
+        lon = delta_lon + self.global_home.longitude
+        return lat, lon
+
 
     def compute_yaw2(self, ladder_position):
         drone_position = np.array([self.state.pose.pose.position.x,self.state.pose.pose.position.y])
@@ -329,6 +364,23 @@ class State_Machine():
         self.bbox_y = ladder_info.y 
         self.width = ladder_info.width
         self.height = ladder_info.height 
+
+    def global_position_cb(self, gbl_msg):
+
+        if not self.global_home_pose_set:
+            self.global_home.header.stamp = gbl_msg.header.stamp
+            self.global_home.header.frame_id = gbl_msg.header.frame_id
+            self.global_home.latitude = gbl_msg.latitude
+            self.global_home.longitude = gbl_msg.longitude
+            self.global_home.altitude = gbl_msg.altitude
+            self.global_home_pose_set = True
+
+        self.global_state.header.stamp = gbl_msg.header.stamp
+        self.global_state.header.frame_id = gbl_msg.header.frame_id
+        self.global_state.latitude = gbl_msg.latitude
+        self.global_state.longitude = gbl_msg.longitude
+        self.global_state.altitude = gbl_msg.altitude
+
 
 if __name__ == '__main__':
     try:
