@@ -55,8 +55,12 @@ void position_publish(float target_lat, float target_lon, float target_alt, floa
     target_contol_pub.publish(target_pub);  
 }
 
+int sw = 0;
+ros::Time time_init;
+ros::Duration five_seconds(5.0);
+
 void setPoint(float cur_lat, float cur_lon, float cur_alt){
-  float yaw_rate = 0.003573; //{2.86 deg/s} / 14Hz
+  float yaw_rate = 0.003573 * 2.68; //{2.86 deg/s} / 14Hz
   float rel_alt = cur_alt - home_alt;
   /*step 0*/
   if(step == 0){
@@ -80,22 +84,29 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
             lower_color.val[0] = lower_H; 
             upper_color.val[0] = upper_H;
             lower_color.val[1] = lower_color.val[1] - 5;
-            lower_color.val[2] = lower_color.val[2] - 7;
+            lower_color.val[2] = lower_color.val[2] - 5;
           }
         }
       }
-      if((lower_color.val[1] == 110) && (color_count == 4)){
-        step = 1;
+      if((lower_color.val[1] <= 110) && (color_count == 4)){
+        if(sw == 0){
+          sw = 1;
+          time_init = ros::Time::now();
+        }
+        ros::Time time_fin = ros::Time::now();
+        if((time_fin - time_init) > five_seconds){
+          step = 1;
+        }
       }
     }
     
-    else{
-      position_publish(target_lat, target_lon, target_alt, target_yaw);
-    }  
+    position_publish(target_lat, target_lon, target_alt, target_yaw);
   }
 
   /*step 1*/
   if(step == 1){
+    target_yaw += yaw_direction * yaw_rate;
+
     if((tilt_end == 0) && (pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
       target_lat = 37.565350;
       target_lon = 126.626778;
@@ -109,7 +120,7 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
       target_alt = rel_alt;
     }
 
-    else if(rel_alt == 20){
+    else if((target_detection == 0) && (rel_alt == 20)){
       step = 2;
       target_lat = 37.565350;
       target_lon = 126.626778;
@@ -138,7 +149,6 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     target_lat = 37.564700;
     target_lon = 126.627628;
     target_alt = 2;
-    target_yaw = 0.534942408493;
 
     position_publish(target_lat, target_lon, target_alt, target_yaw);
   }
@@ -285,6 +295,9 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
+  cv::namedWindow("img");
+  cv::moveWindow("img", 20,20);
+
   ros::init(argc, argv, "riseq_sacc_target_detection");
   ros::NodeHandle n1, n2, n3, n4, n5;
   

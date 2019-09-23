@@ -33,11 +33,17 @@ from mavros_msgs.srv import CommandHome, CommandBool, SetMode, CommandTOL
 current_state = State()
 current_position = NavSatFix()
 home = HomePosition()
+
 wp0 = GlobalPositionTarget()
 wp1 = GlobalPositionTarget()
 wp2 = GlobalPositionTarget()
 wp3 = GlobalPositionTarget()
 wp4 = GlobalPositionTarget()
+
+wp = GlobalPositionTarget()
+wp_target = GlobalPositionTarget()
+wp_avoidance = GlobalPositionTarget()
+wp_helical = GlobalPositionTarget()
 
 wp0.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_INT
 wp0.type_mask = GlobalPositionTarget().IGNORE_VX + GlobalPositionTarget().IGNORE_VY + GlobalPositionTarget().IGNORE_VZ + GlobalPositionTarget().IGNORE_AFX + GlobalPositionTarget().IGNORE_AFY + GlobalPositionTarget().IGNORE_AFZ + GlobalPositionTarget().FORCE + GlobalPositionTarget().IGNORE_YAW_RATE
@@ -46,40 +52,61 @@ wp0.longitude = 126.628919
 wp0.altitude  = 5.0
 wp0.yaw       = np.pi/180.0 * 117.0
 
-wp1.coordinate_frame = wp1.coordinate_frame
-wp1.type_mask = wp1.type_mask
+wp1.coordinate_frame = wp0.coordinate_frame
+wp1.type_mask = wp0.type_mask
 wp1.latitude  = 37.566025
 wp1.longitude = 126.628206
 wp1.altitude  = 100.0
 wp1.yaw       = np.pi/180.0 * 117.0
 
-wp2.coordinate_frame = wp1.coordinate_frame
-wp2.type_mask = wp1.type_mask
+wp2.coordinate_frame = wp0.coordinate_frame
+wp2.type_mask = wp0.type_mask
 wp2.latitude  = 37.565350
 wp2.longitude = 126.626778
 wp2.altitude  = 100.0
 wp2.yaw       = np.pi/180.0 * 210.0
 
-wp3.coordinate_frame = wp1.coordinate_frame
-wp3.type_mask = wp1.type_mask
+wp3.coordinate_frame = wp0.coordinate_frame
+wp3.type_mask = wp0.type_mask
 wp3.latitude  = 37.564700
 wp3.longitude = 126.627628
 wp3.altitude  = 2.0
 wp3.yaw       = np.pi/180.0 * 313.0
 
-wp4.coordinate_frame = wp1.coordinate_frame
-wp4.type_mask = wp1.type_mask
+wp4.coordinate_frame = wp0.coordinate_frame
+wp4.type_mask = wp0.type_mask
 wp4.latitude  = 37.565111
 wp4.longitude = 126.628503
 wp4.altitude  = 2.0
 wp4.yaw       = np.pi/180.0 * 28.0
 
-wp = wp0
-wp_target = wp2
+
+wp.coordinate_frame = wp0.coordinate_frame
+wp.type_mask = wp0.type_mask
+wp.latitude = wp0.latitude
+wp.longitude = wp0.longitude
+wp.altitude = wp0.altitude
+
+wp_target.coordinate_frame = wp2.coordinate_frame
+wp_target.type_mask = wp2.type_mask
+wp_target.latitude = wp2.latitude
+wp_target.longitude = wp2.longitude
+wp_target.altitude = wp2.altitude
 wp_target.yaw = wp3.yaw
-wp_avoidance = wp3
+
+wp_avoidance.coordinate_frame = wp3.coordinate_frame
+wp_avoidance.type_mask = wp3.type_mask
+wp_avoidance.latitude = wp3.latitude
+wp_avoidance.longitude = wp3.longitude
+wp_avoidance.altitude = wp3.altitude
 wp_avoidance.yaw = wp4.yaw
-wp_helical = wp4
+
+wp_helical.coordinate_frame = wp4.coordinate_frame
+wp_helical.type_mask = wp4.type_mask
+wp_helical.latitude = wp4.latitude
+wp_helical.longitude = wp4.longitude
+wp_helical.altitude = wp4.altitude
+wp_helical.yaw = wp4.yaw
 
 waypoint = Int32()
 process = Int32()
@@ -147,6 +174,9 @@ if __name__ == "__main__":
     rospy.Subscriber('/mavros/state', State, stateCb)
     rospy.Subscriber('/mavros/home_position/home', HomePosition, homeCb)
     rospy.Subscriber('/mavros/global_position/global', NavSatFix, positionCb)
+    rospy.Subscriber('/setpoint_target', GlobalPositionTarget, targetCb)
+    rospy.Subscriber('/setpoint_avoidance', GlobalPositionTarget, avoidanceCb)
+    #rospy.Subscriber('/setpoint_helix', GlobalPositionTarget, helicalCb)
     
     # Publisher
     position_publisher = rospy.Publisher('/mavros/setpoint_position/global', GlobalPositionTarget, queue_size=10)
@@ -179,7 +209,10 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         # Takeoff
         if step == 0:
-            wp = wp0
+            wp.latitude = wp0.latitude
+            wp.longitude = wp0.longitude
+            wp.altitude = wp0.altitude
+            wp.yaw = wp0.yaw
             err_h, err_v = getDistance()
             if (err_h <= 2.0) and (abs(err_v) <= 2.0):
                 step += 1
@@ -187,7 +220,10 @@ if __name__ == "__main__":
 
         # wp0 -> wp1
         elif step == 1:
-            wp = wp1
+            wp.latitude = wp1.latitude
+            wp.longitude = wp1.longitude
+            wp.altitude = wp1.altitude
+            wp.yaw = wp1.yaw
             err_h, err_v = getDistance()
             if (err_h <= 2.0) and (abs(err_v) <= 2.0):
                 step += 1
@@ -195,16 +231,23 @@ if __name__ == "__main__":
 
         # wp1 -> wp2
         elif step == 2:
-            wp = wp2
+            wp.latitude = wp2.latitude
+            wp.longitude = wp2.longitude
+            wp.altitude = wp2.altitude
+            wp.yaw = wp2.yaw
             err_h, err_v = getDistance()
             if (err_h <= 2.0) and (abs(err_v) <= 2.0):
                 step += 1
+                process.data = 1
             waypoint.data = 2
 
         # wp2 -> wp3, Track target
         elif step == 3:
             process_publisher.publish(process)
-            wp = wp_target
+            wp.latitude = wp_target.latitude
+            wp.longitude = wp_target.longitude
+            wp.altitude = wp_target.altitude
+            wp.yaw = wp_target.yaw
             if (geopy.distance.vincenty((wp3.latitude, wp3.longitude), (current_position.latitude, current_position.longitude)).m <= 2.0) and (abs(wp3.altitude - (current_position.altitude - home.geo.altitude)) <= 2.0):
                 step += 1
                 process.data = 2
@@ -212,8 +255,10 @@ if __name__ == "__main__":
 
         # Fix orientation
         elif step == 4:
-            wp = wp_avoidance
+            wp.latitude = wp_avoidance.latitude
+            wp.longitude = wp_avoidance.longitude
             wp.altitude = wp_avoidance.altitude + home.geo.altitude
+            wp.yaw = wp_avoidance.yaw
             for i in range(0, rate*3):
                 wp.header.stamp = rospy.Time.now()
                 position_publisher.publish(wp)
@@ -223,7 +268,10 @@ if __name__ == "__main__":
         # wp3 -> wp4, Obstacle avoidance
         elif step == 5:
             process_publisher.publish(process)
-            wp = wp_avoidance
+            wp.latitude = wp_avoidance.latitude
+            wp.longitude = wp_avoidance.longitude
+            wp.altitude = wp_avoidance.altitude
+            wp.yaw = wp_avoidance.yaw
             if (geopy.distance.vincenty((wp4.latitude, wp4.longitude), (current_position.latitude, current_position.longitude)).m <= 2.0) and (abs(wp4.altitude - (current_position.altitude - home.geo.altitude)) <= 2.0):
                 step += 1
                 process.data = 3
@@ -232,7 +280,10 @@ if __name__ == "__main__":
         # Helical trajectory, Number segmentation
         elif step == 6:
             process_publisher.publish(process)
-            wp = wp_helical
+            wp.latitude = wp_helical.latitude
+            wp.longitude = wp_helical.longitude
+            wp.altitude = wp_helical.altitude
+            wp.yaw = wp_helical.yaw
             if (current_position.altitude >= (home.geo.altitude + 35.0)):
                 step += 1
                 process.data = 4
@@ -240,8 +291,10 @@ if __name__ == "__main__":
 
         # Return home
         elif step == 7:
-            wp = wp0
+            wp.latitude = wp0.latitude
+            wp.longitude = wp0.longitude
             wp.altitude = 35.0
+            wp.yaw = wp0.yaw
             err_h, err_v = getDistance()
             if (err_h <= 2.0) and (abs(err_v) <= 2.0):
                 step += 1
@@ -249,15 +302,19 @@ if __name__ == "__main__":
 
         # Land
         elif step == 8:
-            wp = wp0
+            wp.latitude = wp0.latitude
+            wp.longitude = wp0.longitude
             wp.altitude = 2.0
+            wp.yaw = wp0.yaw
             err_h, err_v = getDistance()
             if (err_h <= 1.0) and (abs(err_v) <= 0.5):
                 step += 1
             waypoint.data = 0
         elif step == 9:
-            wp = wp0
+            wp.latitude = wp0.latitude
+            wp.longitude = wp0.longitude
             wp.altitude = 2.0
+            wp.yaw = wp0.yaw
             err_h, err_v = getDistance()
             if (err_h <= 1.0) and (abs(err_v) <= 0.5) and (current_state.mode != "AUTO.LAND"):
                 print(">>>>>Landing<<<<<\n")

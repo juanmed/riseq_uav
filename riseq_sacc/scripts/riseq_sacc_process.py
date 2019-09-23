@@ -27,17 +27,20 @@ import rospy
 import numpy as np
 from std_msgs.msg import Int32
 
+now = Int32()
 
 # Nodes to run
 package = 'riseq_sacc'
-exe_target = 'riseq_sacc_target_detection'
+exe_target1 = 'riseq_sacc_target_detection'
+exe_target2 = 'riseq_sacc_gimbal_control.py'
 exe_avoidance = 'riseq_sacc_obstacle_avoidance'
 exe_helical1 = 'riseq_sacc_number'
 exe_helical2 = 'riseq_sacc_ladder_info'
-exe_helical3 = 'riseq_helix_trajectory'
+exe_helical3 = 'riseq_helix_trajectory.py'
 
 # roslaunch node api
-node_target = roslaunch.core.Node(package, exe_target)
+node_target1 = roslaunch.core.Node(package, exe_target1)
+node_target2 = roslaunch.core.Node(package, exe_target2)
 node_avoidance = roslaunch.core.Node(package, exe_avoidance)
 node_helical1 = roslaunch.core.Node(package, exe_helical1)
 node_helical2 = roslaunch.core.Node(package, exe_helical2)
@@ -56,40 +59,7 @@ check3 = True
 
 
 def processCb(msg):
-    global check1
-    global check2
-    global check3
-
-    if msg.data == 1:
-        if check1 is True:
-            process_target = launch_node.launch(node_target)
-            check1 = False
-
-    elif msg.data == 2:
-        if process_target.is_alive():
-            process_target.stop()
-        if check2 is True:
-            process_avoidance = launch_node.launch(node_avoidance)
-            check2 = False
-
-    elif msg.data == 3:
-        if process_avoidance.is_alive():
-            process_avoidance.stop()
-        if check3 is True:
-            process_helical1 = launch_node.launch(node_helical1)
-            process_helical2 = launch_node.launch(node_helical2)
-            process_helical3 = launch_node.launch(node_helical3)
-            launch_darknet.start()
-            check3 = False
-
-    elif msg.data == 4:
-        if process_helical1.is_alive():
-            process_helical1.stop()
-        if process_helical2.is_alive():
-            process_helical2.stop()
-        if process_helical3.is_alive():
-            process_helical3.stop()
-        launch_darknet.shutdown()
+    now.data = msg.data
 
 
 if __name__ == "__main__":
@@ -105,5 +75,39 @@ if __name__ == "__main__":
     rospy.Subscriber('/process', Int32, processCb)
 
     # Main loop publishing setpoint
-    while not rospy.is_shutdown():        
+    while not rospy.is_shutdown():
+        if now.data == 1:
+            if check1 is True:
+                process_target1 = launch_node.launch(node_target1)
+                process_target2 = launch_node.launch(node_target2)
+                check1 = False
+
+        elif now.data == 2:
+            if process_target1.is_alive():
+                process_target1.stop()
+            if process_target2.is_alive():
+                process_target2.stop()
+            if check2 is True:
+                process_avoidance = launch_node.launch(node_avoidance)
+                check2 = False
+
+        elif now.data == 3:
+            if process_avoidance.is_alive():
+                process_avoidance.stop()
+            if check3 is True:
+                process_helical1 = launch_node.launch(node_helical1)
+                process_helical2 = launch_node.launch(node_helical2)
+                process_helical3 = launch_node.launch(node_helical3)
+                launch_darknet.start()
+                check3 = False
+
+        elif now.data == 4:
+            if process_helical1.is_alive():
+                process_helical1.stop()
+            if process_helical2.is_alive():
+                process_helical2.stop()
+            if process_helical3.is_alive():
+                process_helical3.stop()
+            launch_darknet.shutdown()
+
         r.sleep()

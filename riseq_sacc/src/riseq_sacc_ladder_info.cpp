@@ -86,11 +86,9 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     avgdist = -1;
   }
 
-
-
   // Output the measure 
-  cv::imshow("depth", display_img);
-  cv::waitKey(1);
+  //cv::imshow("depth", display_img);
+  //cv::waitKey(1);
 
 }
 
