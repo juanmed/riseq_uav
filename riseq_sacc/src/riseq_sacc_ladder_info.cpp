@@ -6,14 +6,23 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/Float64.h>
-#include <math.h>
 #include <riseq_sacc/RiseSaccHelix.h>
+#include <mavros_msgs/HomePosition.h>
+#include <sensor_msgs/NavSatFix.h>
 
 ros::Publisher ladder_info_pub;
 riseq_sacc::RiseSaccHelix ladder_info;
 
-float lat, lon, alt, heading;
+float abs_alt, home_alt ,rel_alt;
 int center_x, center_y, left, top, width, height;
+
+void HomePositionCallback(const mavros_msgs::HomePosition::ConstPtr& msg){
+  home_alt = msg->geo.altitude;
+}
+
+void gpsCallback(const sensor_msgs::NavSatFix::ConstPtr& msg){
+  abs_alt = msg->altitude;
+}
 
 void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   /*convert opencv Mat*/
@@ -22,10 +31,19 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   cv::Mat depth_img = cv_ptr->image;
   
   /*create threshold image (grayscale)*/
-  float threshold_meter = 0.8; 
+  float threshold_meter = 8; 
   cv::Mat thr_img;
   cv::threshold(depth_img, thr_img, threshold_meter, 255, cv::THRESH_BINARY_INV);
   thr_img.convertTo(thr_img, CV_8UC1);
+
+  /*delete ground*/
+  rel_alt = abs_alt - home_alt;
+
+  cv::Rect rect(0,360,1280,360);
+
+  if(rel_alt <= 10){
+    thr_img(rect) = 0;
+  }
 
   /*create display image*/
   cv::Mat display_img = thr_img;
@@ -86,8 +104,6 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     avgdist = -1;
   }
 
-
-
   // Output the measure 
   cv::imshow("depth", display_img);
   cv::waitKey(1);
@@ -96,11 +112,14 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
 
 int main(int argc, char **argv){
   ros::init(argc, argv, "riseq_sacc_helix");
-  ros::NodeHandle n1, n2;
-  image_transport::ImageTransport it(n1);
+  ros::NodeHandle n1, n2, n3, n4;
 
+  image_transport::ImageTransport it(n1);
   image_transport::Subscriber Depth  = it.subscribe("/zed/zed_node/depth/depth_registered", 1, DepthCallback);
-  ladder_info_pub = n2.advertise<riseq_sacc::RiseSaccHelix>("/riseq/sacc/ladder_info",1);
+  ros::Subscriber HomePosition_sub = n2.subscribe("/mavros/home_position/home",1, HomePositionCallback);
+  ros::Subscriber gps_sub = n3.subscribe("/mavros/global_position/global",1, gpsCallback);
+
+  ladder_info_pub = n4.advertise<riseq_sacc::RiseSaccHelix>("/riseq/sacc/ladder_info",1);
 
   if (!ros::ok()){
       cv::destroyAllWindows();
