@@ -36,7 +36,7 @@ exe_target2 = 'riseq_sacc_gimbal_control.py'
 exe_avoidance = 'riseq_sacc_obstacle_avoidance'
 exe_helical1 = 'riseq_sacc_number'
 exe_helical2 = 'riseq_sacc_ladder_info'
-exe_helical3 = 'riseq_helix_trajectory.py'
+exe_helical3 = 'riseq_helix_trajectory_publisher.py'
 
 # roslaunch node api
 node_target1 = roslaunch.core.Node(package, exe_target1)
