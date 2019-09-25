@@ -176,7 +176,7 @@ if __name__ == "__main__":
     rospy.Subscriber('/mavros/global_position/global', NavSatFix, positionCb)
     rospy.Subscriber('/setpoint_target', GlobalPositionTarget, targetCb)
     rospy.Subscriber('/setpoint_avoidance', GlobalPositionTarget, avoidanceCb)
-    #rospy.Subscriber('/setpoint_helix', GlobalPositionTarget, helicalCb)
+    rospy.Subscriber('/riseq/sacc/setpoint_helix_global', GlobalPositionTarget, helicalCb)
     
     # Publisher
     position_publisher = rospy.Publisher('/mavros/setpoint_position/global', GlobalPositionTarget, queue_size=10)
@@ -277,20 +277,32 @@ if __name__ == "__main__":
                 process.data = 3
             waypoint.data = 4
 
-        # Helical trajectory, Number segmentation
+        # Wait YOLOv3 and depth estimator running
         elif step == 6:
+            process_publisher.publish(process)
+            wp.latitude = wp4.latitude
+            wp.longitude = wp4.longitude
+            wp.altitude = wp4.altitude + home.geo.altitude
+            wp.yaw = wp4.yaw
+            for i in range(0, rate*10):
+                wp.header.stamp = rospy.Time.now()
+                position_publisher.publish(wp)
+                r.sleep()
+            step += 1
+        # Helical trajectory, Number segmentation
+        elif step == 7:
             process_publisher.publish(process)
             wp.latitude = wp_helical.latitude
             wp.longitude = wp_helical.longitude
-            wp.altitude = wp_helical.altitude
+            wp.altitude = wp_helical.altitude + home.geo.altitude
             wp.yaw = wp_helical.yaw
-            if (current_position.altitude >= (home.geo.altitude + 35.0)):
+            if (current_position.altitude >= (35.0 + home.geo.altitude)):
                 step += 1
                 process.data = 4
             waypoint.data = 0
 
         # Return home
-        elif step == 7:
+        elif step == 8:
             wp.latitude = wp0.latitude
             wp.longitude = wp0.longitude
             wp.altitude = 35.0
@@ -301,7 +313,7 @@ if __name__ == "__main__":
             waypoint.data = 0
 
         # Land
-        elif step == 8:
+        elif step == 9:
             wp.latitude = wp0.latitude
             wp.longitude = wp0.longitude
             wp.altitude = 2.0
@@ -310,7 +322,7 @@ if __name__ == "__main__":
             if (err_h <= 1.0) and (abs(err_v) <= 0.5):
                 step += 1
             waypoint.data = 0
-        elif step == 9:
+        elif step == 10:
             wp.latitude = wp0.latitude
             wp.longitude = wp0.longitude
             wp.altitude = 2.0

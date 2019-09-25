@@ -58,7 +58,8 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
       if (i < 1) continue;
       int height = stats.at<int>(i, cv::CC_STAT_HEIGHT);
       //float ratio = stats.at<int>(i, cv::CC_STAT_HEIGHT) / stats.at<int>(i, cv::CC_STAT_WIDTH);
-      if (height_max < height && height >= 180){
+      int min_height = (rel_alt <= 10) ? 90 : 180;
+      if (height_max < height && height >= min_height){
           height_max = height;
           i_max = i;
       }
@@ -105,8 +106,8 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   }
 
   // Output the measure 
-  cv::imshow("depth", display_img);
-  cv::waitKey(1);
+  //cv::imshow("depth", display_img);
+  //cv::waitKey(1);
 
 }
 
