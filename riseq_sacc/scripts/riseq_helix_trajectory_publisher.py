@@ -291,6 +291,11 @@ class HelixPublisher():
     def global_position_cb(self, gbl_msg):
 
         if not self.global_home_pose_set:
+            print("\n\n       **********       **********        **********\n"+
+                  "                  SET GLOBAL HOME POSITION                "+
+                  " Latitude:  {}\n".format(gbl_msg.latitude)+
+                  " Longitude: {}\n".format(gbl_msg.longitude)+
+                  "           **********       **********        **********\n\n")
             self.global_home.header.stamp = gbl_msg.header.stamp
             self.global_home.header.frame_id = gbl_msg.header.frame_id
             self.global_home.latitude = gbl_msg.latitude
