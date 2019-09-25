@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
         gps_sat = []
         gps_data_string = ''
-
+        gps_time = []
         while not rospy.is_shutdown():
             if (current_state.mode == "OFFBOARD"):
                 gps_mode = 1
@@ -55,11 +55,15 @@ if __name__ == '__main__':
 
             data = GPS.readline().strip().split(',')
 
+
             if data[0] == '$GPGSA':
                 if data[3] != '':
                     gps_sat = data[3:15]
+            if data[0] == '$GPGGA':
+                if data[2] != '':
+                    gps_time = (int(data[1][:2])*3600+int(data[1][2:4])*60+int(data[1][4:6]))
 
-                gps_data_string = str(gps_mode) + '	' + str(waypoint.data) + '	' + str(format(position.latitude,"10.6f"))  + '	' + str(format(position.longitude, "10.6f")) + '	' + str(format(position.altitude, "5.1f")) + '	' + ', '.join(gps_sat) + '\n'
+                gps_data_string = str(gps_mode) + '	' + str(waypoint.data) + '	' +str(gps_time) +'	' +str(format(position.latitude,"10.6f"))  + '	' + str(format(position.longitude, "10.6f")) + '	' + str(format(position.altitude, "5.1f")) + '	' + ', '.join(gps_sat) + '\n'
 
 
                 print(gps_data_string)
