@@ -279,34 +279,36 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
   /*camera control*/
   // mininum 4096 * 5% = 204.8
   // maximum 4096 * 10% = 409.6
-  float P_tilt = 0.005;
+  if(target_detection == 1){
+    float P_tilt = 0.005;
 
-  /* tilt calculation */
-  float d_tilt = P_tilt * (360 - center_y);
+    /* tilt calculation */
+    float d_tilt = P_tilt * (360 - center_y);
 
-  if((360 - center_y) > 54 || (360 - center_y) < -54){
-    tilt = tilt + d_tilt;
-  }
-
-  if(tilt <= 210){
-    tilt = 210;
-  }
-
-  if(tilt >= 303){
-    tilt = 303;
-    if(step == 1){
-      tilt_count++;
+    if((360 - center_y) > 54 || (360 - center_y) < -54){
+      tilt = tilt + d_tilt;
     }
-    if(tilt_count >= 30){
-      tilt_end = 1;
+
+    if(tilt <= 210){
+      tilt = 210;
     }
-  }
 
-  else{
-    tilt_count = 0;
-  }
+    if(tilt >= 303){
+      tilt = 303;
+      if(step == 1){
+        tilt_count++;
+      }
+      if(tilt_count >= 30){
+        tilt_end = 1;
+      }
+    }
 
-  std::cout<<"tilt_end: "<<tilt_end<<std::endl;
+    else{
+      tilt_count = 0;
+    }
+
+    std::cout<<"tilt_end: "<<tilt_end<<std::endl;
+  }
    
   /* yaw direction and rotation */
   if((target_detection == 1) && ((640 - center_x) > 96)){
