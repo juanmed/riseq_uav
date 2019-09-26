@@ -77,7 +77,7 @@ void setGimbal(float tilt){
 }
 
 void setPoint(float cur_lat, float cur_lon, float cur_alt){
-  float yaw_rate = 0.003573 * 2.76; //{2.86 deg/s} / 14Hz
+  float yaw_rate = 0.003573 * 2.0; //{2.86 deg/s} / 14Hz
   float rel_alt = cur_alt - home_alt;
   /*step 0*/
   if(step == 0){
@@ -116,7 +116,7 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
             time_init3 = ros::Time::now();             
           }
           ros::Time time_fin3 = ros::Time::now();
-          if((time_fin3 - time_init3) > ros::Duration(0.5)){
+          if((time_fin3 - time_init3) > ros::Duration(0.2)){
             sw5 = 1;
           }
           else{
@@ -132,10 +132,16 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
               upper_color.val[0] = upper_H;
               lower_color.val[1] = lower_color.val[1] - 5;
               lower_color.val[2] = lower_color.val[2] - 5;
+              if(lower_color.val[1] < 0){
+                lower_color.val[1] = 0;
+              }
+              if(lower_color.val[2] < 0){
+                lower_color.val[2] = 0;
+              }
             }
           }
         }
-        if(color_count == 29){
+        if(color_count == 39){
           sw3 = 1;
           if(sw2 == 0){
             sw2 = 1;
@@ -163,7 +169,7 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     }
 
     if(target_detection == 0){
-      tilt = 240 + 63/80*(100 - rel_alt);
+      tilt = 240.0 + 63.0/80.0*(100.0 - rel_alt);
       setGimbal(tilt);
     }
 

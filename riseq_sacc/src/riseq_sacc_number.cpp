@@ -48,7 +48,7 @@ void boundingCallback(const darknet_ros_msgs::BoundingBoxes::ConstPtr& msg){
       }
  
       detection_number[Class_int]++;
-      if(detection_number[Class_int] >= 20){
+      if(detection_number[Class_int] >= 10){
         detection_number[Class_int] = -1;
         order_number[j] = Class[i];
         j++;

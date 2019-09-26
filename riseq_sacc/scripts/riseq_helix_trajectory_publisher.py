@@ -53,7 +53,7 @@ class HelixPublisher():
         self.ladder_depth = None
         self.ladder_height = 30
         self.ladder_safety_margin = 5
-        self.ladder_default_global_position = [37.565019, 126.628278] # lat, lon
+        self.ladder_default_global_position = [37.5651339, 126.6285494] # lat, lon
         self.width = 1280  # depth image width
         self.height = 720  # depth image height
         self.bbox_x = self.width//2  # assume object is perfectly aligned at start
@@ -101,9 +101,9 @@ class HelixPublisher():
 
     def do_helix_trajectory(self):
 
-	    while (not self.home_pose_set) and (not self.global_home_pose_set):
-            # wait for node initialization to finish
-            continue
+        while (not self.home_pose_set) and (not self.global_home_pose_set):
+            # do nothing, wait for node initialization to finish
+            a = 1
 
         init_x = self.home_pose.pose.position.x #self.state.pose.pose.position.x
         init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
@@ -158,7 +158,7 @@ class HelixPublisher():
             global_refmsg.header.frame_id = self.global_state.header.frame_id
             global_refmsg.latitude = lat
             global_refmsg.longitude = lon
-            global_refmsg.altitude = (uz - init_z) + self.global_home.altitude
+            global_refmsg.altitude = uz #(uz - init_z) + self.global_home.altitude
             self.ref_pub_global.publish(global_refmsg)
 
             rate.sleep()
