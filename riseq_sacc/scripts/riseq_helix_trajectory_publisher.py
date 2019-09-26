@@ -89,7 +89,6 @@ class HelixPublisher():
      
         self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
-        self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)        
         self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
         self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
         self.global_pos_sub = rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.global_position_cb)
@@ -99,43 +98,6 @@ class HelixPublisher():
         self.state.pose.pose.orientation.z = 0.0
         self.state.pose.pose.orientation.w = 1.0
 
-    def mavros_state_cb(self, state_msg):
-        self.mavros_state = state_msg 
-
-    def mavros_status_cb(self, timer):
-
-        offb_set_mode = SetMode()
-        offb_set_mode.custom_mode = "OFFBOARD"
-        arm_cmd = CommandBool()
-        arm_cmd.value = True
-
-        if(self.mavros_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_mavros_request > rospy.Duration(5.0))):
-            resp1 = self.set_mode_client(0,offb_set_mode.custom_mode)
-            if resp1.mode_sent:
-                #rospy.loginfo("Requested OFFBOARD")
-                pass
-            self.last_mavros_request = rospy.Time.now()
-        elif (not self.mavros_state.armed and (rospy.Time.now() - self.last_mavros_request > rospy.Duration(5.0))):
-            arm_client_1 = self.arming_client(arm_cmd.value)
-            if arm_client_1.success:
-                #rospy.loginfo("Requested Vehicle ARM")
-                pass
-            self.last_mavros_request = rospy.Time.now() 
-        
-        armed = self.mavros_state.armed
-        mode = self.mavros_state.mode
-        rospy.loginfo("Vehicle armed: {}".format(armed))
-        rospy.loginfo("Vehicle mode: {}".format(mode))
-
-        if( (not armed ) or (mode != 'OFFBOARD')):
-            pose = PoseStamped()
-            pose.header.stamp = rospy.Time.now()
-            pose.pose.position.x = 0
-            pose.pose.position.y = 0
-            pose.pose.position.z = 0            
-            self.local_pos_pub.publish(pose)
-        else:
-            self.status_timer.shutdown()
 
     def do_helix_trajectory(self):
 
@@ -153,7 +115,6 @@ class HelixPublisher():
 
         rate = rospy.Rate(20)
         print("Doing helix trajectory")
-        #while( (rospy.get_time() - self.helix_controller.t_init) < 120.):
         while(self.state.pose.pose.position.z < (init_z + self.ladder_height + self.ladder_safety_margin)):
             # state for x and y position
             xs = np.array([[self.state.pose.pose.position.x],[self.state.twist.twist.linear.x],[0.0]])
@@ -337,7 +298,7 @@ if __name__ == '__main__':
 
         rospy.loginfo(' Helix Trajectory Publisher Started!')
         rospy.spin()
-        rospy.loginfo(' HHelix Trajectory Publisher Terminated')    
+        rospy.loginfo(' Helix Trajectory Publisher Terminated')    
 
 
     except rospy.ROSInterruptException:
