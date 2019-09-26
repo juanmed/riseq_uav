@@ -53,7 +53,7 @@ class HelixPublisher():
         self.ladder_depth = None
         self.ladder_height = 30
         self.ladder_safety_margin = 5
-        self.ladder_default_global_position = [37.5651339, 126.6285494] # lat, lon
+        self.ladder_default_global_position = [37.565111+5*4.579/1000000.0, 126.628503+5*9.812/1000000.0] # lat, lon
         self.width = 1280  # depth image width
         self.height = 720  # depth image height
         self.bbox_x = self.width//2  # assume object is perfectly aligned at start
@@ -109,7 +109,7 @@ class HelixPublisher():
         init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
         init_z = self.home_pose.pose.position.z #self.state.pose.pose.position.z
         print("Initial helix position: \n x: {}, y: {}, z: {}\nTime: {}\n".format( init_x, init_y, init_z, rospy.Time.now().to_sec()))
-        self.helix_controller = htc(vrate = 0.25, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5) # init with any parameters
+        self.helix_controller = htc(vrate = 0.1, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5) # init with any parameters
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]

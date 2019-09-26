@@ -90,6 +90,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     }
     avgdist = sum_dist / count;
 
+    ladder_info.header.stamp = ros::Time::now();
     ladder_info.x = left+width/2;  // bbox x-center
     ladder_info.y = top+height/2;  // bbox y-center
     ladder_info.width = depth_img.cols;  //image width
