@@ -53,7 +53,7 @@ class HelixPublisher():
         self.ladder_depth = None
         self.ladder_height = 30
         self.ladder_safety_margin = 5
-        self.ladder_default_global_position = [31.565019, 126.628218] # lat, lon
+        self.ladder_default_global_position = [37.565019, 126.628278] # lat, lon
         self.width = 1280  # depth image width
         self.height = 720  # depth image height
         self.bbox_x = self.width//2  # assume object is perfectly aligned at start
@@ -101,7 +101,7 @@ class HelixPublisher():
 
     def do_helix_trajectory(self):
 
-	while (not self.home_pose_set) and (not self.global_home_pose_set):
+	    while (not self.home_pose_set) and (not self.global_home_pose_set):
             # wait for node initialization to finish
             continue
 
@@ -218,8 +218,8 @@ class HelixPublisher():
             ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
         else:
             # use default ladder position
-            delta_x = (self.ladder_default_global_position[0] - self.global_state.latitude)*111111.0
-            delta_y = (self.ladder_default_global_position[1] - self.global_state.longitude)* (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
+            delta_y = (self.ladder_default_global_position[0] - self.global_state.latitude)*111111.0
+            delta_x = (self.ladder_default_global_position[1] - self.global_state.longitude)* (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
             ladder_drone_position = np.array([delta_x, delta_y])
         ladder_position = ladder_drone_position + drone_position 
         return ladder_position
