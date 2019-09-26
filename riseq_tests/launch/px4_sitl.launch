@@ -22,7 +22,13 @@
   <arg name="gate_pitch" default = "0.0"/>
   <arg name="gate_yaw" default = "-1.5707"/>
 
-
+  <!-- Pipe args -->
+  <arg name="pipe_x" default="10"/>
+  <arg name="pipe_y" default="-6"/>
+  <arg name="pipe_z" default="1.5"/>
+  <arg name="pipe_roll" default = "0.0"/>
+  <arg name="pipe_pitch" default = "0.0"/>
+  <arg name="pipe_yaw" default = "3.141692"/> 
 
   <!-- PX4 SITL, MAVROS, GAZEBO >
   <include file="$(find mavros)/launch/px4.launch">
@@ -60,6 +66,18 @@
     <arg name="pitch" value="$(arg gate_pitch)"/>
     <arg name="yaw" value="$(arg gate_yaw)"/>
     <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/drl_gate/drl_gate.sdf"/>
+  </include>
+
+  <!-- Pipe  -->
+  <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+    <arg name="robot_name" default="pipe"/>
+    <arg name="x" value="$(arg pipe_x)"/>
+    <arg name="y" value="$(arg pipe_y)"/>
+    <arg name="z" value="$(arg pipe_z)"/>
+    <arg name="roll" value="$(arg pipe_roll)"/>
+    <arg name="pitch" value="$(arg pipe_pitch)"/>
+    <arg name="yaw" value="$(arg pipe_yaw)"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/pipe/pipe.sdf"/>
   </include>
 
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
