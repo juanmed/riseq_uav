@@ -139,10 +139,14 @@ class HelixPublisher():
 
     def do_helix_trajectory(self):
 
+	while (not self.home_pose_set) and (not self.global_home_pose_set):
+            # wait for node initialization to finish
+            continue
+
         init_x = self.home_pose.pose.position.x #self.state.pose.pose.position.x
         init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
         init_z = self.home_pose.pose.position.z #self.state.pose.pose.position.z
-	    print("Initial helix position: \n x: {}, y: {}, z: {}\nTime: {}\n".format( init_x, init_y, init_z, rospy.Time.now().to_sec()))
+        print("Initial helix position: \n x: {}, y: {}, z: {}\nTime: {}\n".format( init_x, init_y, init_z, rospy.Time.now().to_sec()))
         self.helix_controller = htc(vrate = 0.25, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5) # init with any parameters
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
@@ -268,7 +272,7 @@ class HelixPublisher():
                   "                  SET LOCAL HOME POSITION                \n"+
                   " Latitude:  {}\n".format(pos.pose.position.x)+
                   " Longitude: {}\n".format(pos.pose.position.y)+
-		          " Altitude: {}\n".format(pos.pose.position.z)+
+                  " Altitude: {}\n".format(pos.pose.position.z)+
                   " Time: {}\n".format(rospy.Time.now().to_sec())+
                   "           **********       **********        **********\n\n")
 
@@ -311,7 +315,7 @@ class HelixPublisher():
                   "                  SET GLOBAL HOME POSITION                \n"+
                   " Latitude:  {}\n".format(gbl_msg.latitude)+
                   " Longitude: {}\n".format(gbl_msg.longitude)+
-		          " Altitude: {}\n".format(gbl_msg.altitude)+
+                  " Altitude: {}\n".format(gbl_msg.altitude)+
                   " Time: {}\n".format(rospy.Time.now().to_sec())+
                   "           **********       **********        **********\n\n")
             self.global_home.header.stamp = gbl_msg.header.stamp
