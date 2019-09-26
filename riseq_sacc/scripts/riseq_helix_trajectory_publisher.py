@@ -139,9 +139,10 @@ class HelixPublisher():
 
     def do_helix_trajectory(self):
 
-        init_x = self.state.pose.pose.position.x
-        init_y = self.state.pose.pose.position.y
-        init_z = self.state.pose.pose.position.z
+        init_x = self.home_pose.pose.position.x #self.state.pose.pose.position.x
+        init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
+        init_z = self.home_pose.pose.position.z #self.state.pose.pose.position.z
+	print("Initial helix position: ", init_x, init_y, init_z)
         self.helix_controller = htc(vrate = 0.25, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5) # init with any parameters
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
@@ -154,7 +155,7 @@ class HelixPublisher():
         # do helix trajectory for 30 seconds
         print("Doing helix trajectory")
         #while( (rospy.get_time() - self.helix_controller.t_init) < 120.):
-        while(self.state.pose.pose.position.z < (self.ladder_height + self.ladder_safety_margin)):
+        while(self.state.pose.pose.position.z < (init_z + self.ladder_height + self.ladder_safety_margin)):
             # state for x and y position
             xs = np.array([[self.state.pose.pose.position.x],[self.state.twist.twist.linear.x],[0.0]])
             ys = np.array([[self.state.pose.pose.position.y],[self.state.twist.twist.linear.y],[0.0]])
@@ -249,12 +250,12 @@ class HelixPublisher():
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]
         yaw, pitch, roll = tt.euler_from_quaternion(q, axes = 'rzyx')
-        if self.ladder_depth not None: 
+        if self.ladder_depth is not None: 
             ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
         else:
             # use default ladder position
-            delta_x = (self.ladder_default_global_position(0) - self.global_state.latitude)*111111.0
-            delta_y = (self.ladder_default_global_position(1) - self.global_state.longitude)* (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
+            delta_x = (self.ladder_default_global_position[0] - self.global_state.latitude)*111111.0
+            delta_y = (self.ladder_default_global_position[1] - self.global_state.longitude)* (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
             ladder_drone_position = np.array([delta_x, delta_y])
         ladder_position = ladder_drone_position + drone_position 
         return ladder_position
@@ -263,6 +264,14 @@ class HelixPublisher():
     def position_cb(self, pos):
 
         if not self.home_pose_set:
+
+            print("\n\n       **********       **********        **********\n"+
+                  "                  SET LOCAL HOME POSITION                \n"+
+                  " Latitude:  {}\n".format(pos.pose.position.x)+
+                  " Longitude: {}\n".format(pos.pose.position.y)+
+		  " Altitude: {}\n".format(pos.pose.position.z)+
+                  "           **********       **********        **********\n\n")
+
             self.home_pose.pose.position.x = pos.pose.position.x
             self.home_pose.pose.position.y = pos.pose.position.y
             self.home_pose.pose.position.z = pos.pose.position.z
@@ -302,6 +311,7 @@ class HelixPublisher():
                   "                  SET GLOBAL HOME POSITION                \n"+
                   " Latitude:  {}\n".format(gbl_msg.latitude)+
                   " Longitude: {}\n".format(gbl_msg.longitude)+
+		  " Altitude: {}\n".format(gbl_msg.altitude)+
                   "           **********       **********        **********\n\n")
             self.global_home.header.stamp = gbl_msg.header.stamp
             self.global_home.header.frame_id = gbl_msg.header.frame_id
