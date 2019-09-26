@@ -6,6 +6,6 @@
   <node pkg="riseq_sacc" type="riseq_sacc_main.py" name="riseq_sacc_main" />
 
   <!--Node running mission nodes-->
-  <node pkg="riseq_sacc" type="riseq_sacc_process.py" name="riseq_sacc_process" />
+  <node pkg="riseq_sacc" type="riseq_sacc_process.py" name="riseq_sacc_process" output="screen" />
 
 </launch>

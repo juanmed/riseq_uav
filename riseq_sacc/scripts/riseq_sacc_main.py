@@ -284,7 +284,7 @@ if __name__ == "__main__":
             wp.longitude = wp4.longitude
             wp.altitude = wp4.altitude + home.geo.altitude
             wp.yaw = wp4.yaw
-            for i in range(0, rate*10):
+            for i in range(0, rate*16):
                 wp.header.stamp = rospy.Time.now()
                 position_publisher.publish(wp)
                 r.sleep()

@@ -25,7 +25,7 @@ def waypointCb(msg):
     waypoint.data = msg.data
 
 if __name__ == '__main__':
-    f = open("/home/nvidia/Desktop/gps.asc",'w')
+    f = open("/home/nvidia/Desktop/rise_sacc_gps_log.asc",'w')
 
     rospy.init_node('gps_serial_reader')
 

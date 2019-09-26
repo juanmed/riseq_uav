@@ -61,6 +61,21 @@ int sw1 = 0, sw2 = 0, sw3 = 0, sw4 = 0, sw5 = 1;
 ros::Time time_init1, time_init2, time_init3;
 ros::Duration delay(10.0);
 
+void setGimbal(float tilt){
+  if(step == 0){
+    gimbal.data = 240;
+    gimbal_pub.publish(gimbal);
+  }
+  else if(step == 3){
+    gimbal.data = 303;
+    gimbal_pub.publish(gimbal);
+  }
+  else{
+    gimbal.data = tilt;
+    gimbal_pub.publish(gimbal);
+  }
+}
+
 void setPoint(float cur_lat, float cur_lon, float cur_alt){
   float yaw_rate = 0.003573 * 2.76; //{2.86 deg/s} / 14Hz
   float rel_alt = cur_alt - home_alt;
@@ -147,6 +162,11 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
       target_yaw = 0.534942 + 2*PI;
     }
 
+    if(target_detection == 0){
+      tilt = 240 + 63/80*(100 - rel_alt);
+      setGimbal(tilt);
+    }
+
     if((tilt_end == 0) && (pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
       target_lat = 37.565350;
       target_lon = 126.626778;
@@ -208,21 +228,6 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
   std::cout<<"HSV: "<<lower_color<<"\n"<<upper_color<<std::endl;
   std::cout<<"rotation: "<<yaw_stability<<std::endl;
   std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<std::endl;
-}
-
-void setGimbal(float tilt){
-  if(step == 0){
-    gimbal.data = 240;
-    gimbal_pub.publish(gimbal);
-  }
-  else if(step == 3){
-    gimbal.data = 303;
-    gimbal_pub.publish(gimbal);
-  }
-  else{
-    gimbal.data = tilt;
-    gimbal_pub.publish(gimbal);
-  }
 }
 
 void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
