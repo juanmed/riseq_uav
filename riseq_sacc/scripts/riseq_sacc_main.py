@@ -294,7 +294,7 @@ if __name__ == "__main__":
             process_publisher.publish(process)
             wp.latitude = wp_helical.latitude
             wp.longitude = wp_helical.longitude
-            wp.altitude = wp_helical.altitude + home.geo.altitude
+            wp.altitude = wp_helical.altitude #+ home.geo.altitude
             wp.yaw = wp_helical.yaw
             if (current_position.altitude >= (35.0 + home.geo.altitude)):
                 step += 1
