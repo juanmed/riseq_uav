@@ -362,14 +362,6 @@ int main(int argc, char **argv){
   ros::init(argc, argv, "riseq_sacc_target_detection");
   ros::NodeHandle n1, n2, n3, n4, n5;
   
-  /*first position*/
-  target_lat = 37.565350;
-  target_lon = 126.626778;
-  target_alt = 100;
-  target_yaw = 5.85367;  
-  position_publish(target_lat, target_lon, target_alt, target_yaw);
-  ros::Duration(2).sleep();
-
   gimbal_pub = n1.advertise<std_msgs::Float64>("/gimbal_control", 1);
   target_contol_pub = n2.advertise<mavros_msgs::GlobalPositionTarget>("/setpoint_target",1);
 
@@ -378,6 +370,15 @@ int main(int argc, char **argv){
 
   image_transport::ImageTransport it(n5);    
   image_transport::Subscriber target_zed_image_sub = it.subscribe("/zed/zed_node/rgb/image_rect_color", 1, TargetCallback);
+
+  /*first position*/
+  target_lat = 37.565350;
+  target_lon = 126.626778;
+  target_alt = 100;
+  target_yaw = 5.85367;  
+  position_publish(target_lat, target_lon, target_alt, target_yaw);
+  ros::Duration(2).sleep();
+
 
   if (!ros::ok()){
       std_msgs::Float64 gimbal;
