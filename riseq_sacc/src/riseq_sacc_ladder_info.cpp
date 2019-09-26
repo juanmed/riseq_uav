@@ -22,7 +22,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   cv::Mat depth_img = cv_ptr->image;
 
   /*create threshold image (grayscale)*/
-  float threshold_meter = 0.8;
+  float threshold_meter = 8;
   cv::Mat thr_img;
   cv::threshold(depth_img, thr_img, threshold_meter, 255, cv::THRESH_BINARY_INV);
   thr_img.convertTo(thr_img, CV_8UC1);

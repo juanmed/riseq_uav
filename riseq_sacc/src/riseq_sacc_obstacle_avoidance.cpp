@@ -35,9 +35,11 @@ int width_13 = 213;
 int width_23 = 427;
 int height_13 = 120;
 int height_23 = 240;
+
 int front_count = 0;
 int right_count = 0;
 
+<<<<<<< HEAD
 
 
 mavros_msgs::State current_state;
@@ -45,6 +47,8 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
 
+=======
+>>>>>>> b5f87cbf810c4a32fd539f71ab9114d400aae90e
 cv::Rect left_box(0, height_13, width_13, 120);
 cv::Rect right_box(width_23, height_13, 640 - width_23 , 120);
 cv::Rect up_box(0, 0, width, 120);
@@ -65,7 +69,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   cv::Mat img = cv_ptr->image;
   cv::Mat thr_img;
 
-  cv::threshold(img, thr_img, 5, 255, cv::THRESH_BINARY_INV);
+  cv::threshold(img, thr_img, 8, 255, cv::THRESH_BINARY_INV);
 
   thr_img.convertTo(thr_img, CV_8UC1);
 
@@ -110,7 +114,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
         sw = true;
         right_count++;
       }
-      cv::circle(display_img, cv::Point(int(width/2), int(height/2)), 10, cv::Scalar(0,0,255),-1);
+      cv::arrowedLine(display_img, cv::Point(width_13, int(height/2)),cv::Point(width_23,int(height/2)), cv::Scalar(0,0,255), 3);
     }
     else if((left_obstacle || right_obstacle || front_obstacle) == false){
       //go
@@ -158,7 +162,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
-    ros::init(argc, argv, "rise_sacc_obstacle_avoidance");
+    ros::init(argc, argv, "riseq_sacc_obstacle_avoidance");
     ros::NodeHandle n1, n2, n3;
     image_transport::ImageTransport it(n2);
 
