@@ -50,9 +50,10 @@ class HelixPublisher():
         self.lds = rospy.Subscriber("riseq/sacc/ladder_info", RiseSaccHelix, self.lds_cb)
         self.ref_pub_local = rospy.Publisher("riseq/sacc/setpoint_helix_local", PoseStamped, queue_size = 10)
         self.ref_pub_global = rospy.Publisher("riseq/sacc/setpoint_helix_global", GlobalPositionTarget, queue_size = 10)
-        self.ladder_depth = 0.0
+        self.ladder_depth = None
         self.ladder_height = 30
         self.ladder_safety_margin = 5
+        self.ladder_default_global_position = [31.565019, 126.628218] # lat, lon
         self.width = 1280  # depth image width
         self.height = 720  # depth image height
         self.bbox_x = self.width//2  # assume object is perfectly aligned at start
@@ -141,7 +142,7 @@ class HelixPublisher():
         init_x = self.state.pose.pose.position.x
         init_y = self.state.pose.pose.position.y
         init_z = self.state.pose.pose.position.z
-        self.helix_controller = htc(vrate = 0.05, radius = 1.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5)
+        self.helix_controller = htc(vrate = 0.25, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5) # init with any parameters
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]
@@ -160,7 +161,7 @@ class HelixPublisher():
             states = [xs, ys]
 
             ladder_position = self.get_ladder_location()
-            ladder_position = [0.0,1.0]
+            #ladder_position = [0.0,1.0]
             self.helix_controller.set_helix_center(ladder_position)
             
             ux, uy, uz, ref = self.helix_controller.compute_command(states, rospy.get_time())
@@ -248,8 +249,14 @@ class HelixPublisher():
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]
         yaw, pitch, roll = tt.euler_from_quaternion(q, axes = 'rzyx')
-        ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
-        ladder_position = ladder_drone_position #+ drone_position 
+        if self.ladder_depth not None: 
+            ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
+        else:
+            # use default ladder position
+            delta_x = (self.ladder_default_global_position(0) - self.global_state.latitude)*111111.0
+            delta_y = (self.ladder_default_global_position(1) - self.global_state.longitude)* (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
+            ladder_drone_position = np.array([delta_x, delta_y])
+        ladder_position = ladder_drone_position + drone_position 
         return ladder_position
 
 
@@ -292,7 +299,7 @@ class HelixPublisher():
 
         if not self.global_home_pose_set:
             print("\n\n       **********       **********        **********\n"+
-                  "                  SET GLOBAL HOME POSITION                "+
+                  "                  SET GLOBAL HOME POSITION                \n"+
                   " Latitude:  {}\n".format(gbl_msg.latitude)+
                   " Longitude: {}\n".format(gbl_msg.longitude)+
                   "           **********       **********        **********\n\n")
