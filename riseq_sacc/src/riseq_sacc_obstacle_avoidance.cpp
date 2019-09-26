@@ -25,7 +25,7 @@ double target_lat = 37.564700, target_lon=126.627628;
 //double target_lat = 37.17357, target_lon=126.58394;
 double past_lat, past_lon;
 
-float side_thr = 255/5;
+float side_thr = 255/2;
 float updown_thr = 255/2;
 float front_thr = 255/15;
 

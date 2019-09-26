@@ -10,6 +10,8 @@
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/HomePosition.h>
 
+#define PI 3.141592
+
 ros::Publisher target_contol_pub;
 ros::Publisher gimbal_pub;
 
@@ -55,8 +57,27 @@ void position_publish(float target_lat, float target_lon, float target_alt, floa
     target_contol_pub.publish(target_pub);  
 }
 
+int sw1 = 0, sw2 = 0, sw3 = 0, sw4 = 0, sw5 = 1;
+ros::Time time_init1, time_init2, time_init3;
+ros::Duration delay(10.0);
+
+void setGimbal(float tilt){
+  if(step == 0){
+    gimbal.data = 240;
+    gimbal_pub.publish(gimbal);
+  }
+  else if(step == 3){
+    gimbal.data = 303;
+    gimbal_pub.publish(gimbal);
+  }
+  else{
+    gimbal.data = tilt;
+    gimbal_pub.publish(gimbal);
+  }
+}
+
 void setPoint(float cur_lat, float cur_lon, float cur_alt){
-  float yaw_rate = 0.003573; //{2.86 deg/s} / 14Hz
+  float yaw_rate = 0.003573 * 2.76; //{2.86 deg/s} / 14Hz
   float rel_alt = cur_alt - home_alt;
   /*step 0*/
   if(step == 0){
@@ -66,36 +87,86 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     target_alt = 100;
     target_yaw += yaw_direction * yaw_rate;
 
+    if(target_yaw < 5.66963){
+      target_yaw = 5.66963;
+    }
+    else if(target_yaw > 0.534942 + 2*PI){
+      target_yaw = 0.534942 + 2*PI;
+    }
+
     if((pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
       if(yaw_stability == 1){
         step = 1;
       }
+      else if(target_detection == 1){
+        if(sw1 == 0){
+          sw1 = 1;
+          time_init1 = ros::Time::now();           
+        }
+        ros::Time time_fin1 = ros::Time::now();
+        if((time_fin1 - time_init1) > delay){
+          step = 1;
+        }
+      }
       else{
-        if(target_detection == 0){
-          lower_color.val[0]--; 
-          upper_color.val[0]++;
-          color_count++;
-          if(color_count == 5){
-            color_count = 0;
-            lower_color.val[0] = lower_H; 
-            upper_color.val[0] = upper_H;
-            lower_color.val[1] = lower_color.val[1] - 5;
-            lower_color.val[2] = lower_color.val[2] - 7;
+        sw1 = 0;
+        if(sw3 == 0){
+          if(sw4 == 1){
+            sw4 = 0;
+            time_init3 = ros::Time::now();             
+          }
+          ros::Time time_fin3 = ros::Time::now();
+          if((time_fin3 - time_init3) > ros::Duration(0.5)){
+            sw5 = 1;
+          }
+          else{
+            sw5 = 0;
+          }
+          if((target_detection == 0) && (sw5 == 1)){
+            sw4 = 1;
+            lower_color.val[0]--; 
+            upper_color.val[0]++;
+            color_count++;
+            if(color_count % 6 == 0){
+              lower_color.val[0] = lower_H; 
+              upper_color.val[0] = upper_H;
+              lower_color.val[1] = lower_color.val[1] - 5;
+              lower_color.val[2] = lower_color.val[2] - 5;
+            }
+          }
+        }
+        if(color_count == 29){
+          sw3 = 1;
+          if(sw2 == 0){
+            sw2 = 1;
+            time_init2 = ros::Time::now();
+          }
+          ros::Time time_fin2 = ros::Time::now();
+          if((time_fin2 - time_init2) > delay){
+            step = 1;
           }
         }
       }
-      if((lower_color.val[1] == 110) && (color_count == 4)){
-        step = 1;
-      }
-    }
-    
-    else{
-      position_publish(target_lat, target_lon, target_alt, target_yaw);
-    }  
+    }   
+    position_publish(target_lat, target_lon, target_alt, target_yaw);
   }
 
   /*step 1*/
   if(step == 1){
+    target_yaw += yaw_direction * yaw_rate;
+
+    if(target_yaw < 5.66963){
+      target_yaw = 5.66963;
+    }
+    else if(target_yaw > 0.534942 + 2*PI){
+      target_yaw = 0.534942 + 2*PI;
+    }
+
+    if(target_detection == 0){
+      tilt = 240 + 63/80*(100 - rel_alt);
+      setGimbal(tilt);
+    }
+
     if((tilt_end == 0) && (pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
       target_lat = 37.565350;
       target_lon = 126.626778;
@@ -109,7 +180,7 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
       target_alt = rel_alt;
     }
 
-    else if(rel_alt == 20){
+    else if((target_detection == 0) && (rel_alt <= 20)){
       step = 2;
       target_lat = 37.565350;
       target_lon = 126.626778;
@@ -125,6 +196,14 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     target_lat = 37.564700;
     target_lon = 126.627628;
     target_yaw += yaw_direction * yaw_rate;
+
+    if(target_yaw < 5.66963){
+      target_yaw = 5.66963;
+    }
+    else if(target_yaw > 0.534942 + 2*PI){
+      target_yaw = 0.534942 + 2*PI;
+    }
+
     if((pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
       step = 3;
     }
@@ -138,7 +217,6 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     target_lat = 37.564700;
     target_lon = 126.627628;
     target_alt = 2;
-    target_yaw = 0.534942408493;
 
     position_publish(target_lat, target_lon, target_alt, target_yaw);
   }
@@ -150,21 +228,6 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
   std::cout<<"HSV: "<<lower_color<<"\n"<<upper_color<<std::endl;
   std::cout<<"rotation: "<<yaw_stability<<std::endl;
   std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<std::endl;
-}
-
-void setGimbal(float tilt){
-  if(step == 0){
-    gimbal.data = 240;
-    gimbal_pub.publish(gimbal);
-  }
-  else if(step == 3){
-    gimbal.data = 303;
-    gimbal_pub.publish(gimbal);
-  }
-  else{
-    gimbal.data = tilt;
-    gimbal_pub.publish(gimbal);
-  }
 }
 
 void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
@@ -216,34 +279,36 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
   /*camera control*/
   // mininum 4096 * 5% = 204.8
   // maximum 4096 * 10% = 409.6
-  float P_tilt = 0.005;
+  if(target_detection == 1){
+    float P_tilt = 0.005;
 
-  /* tilt calculation */
-  float d_tilt = P_tilt * (360 - center_y);
+    /* tilt calculation */
+    float d_tilt = P_tilt * (360 - center_y);
 
-  if((360 - center_y) > 54 || (360 - center_y) < -54){
-    tilt = tilt + d_tilt;
-  }
-
-  if(tilt <= 210){
-    tilt = 210;
-  }
-
-  if(tilt >= 303){
-    tilt = 303;
-    if(step == 1){
-      tilt_count++;
+    if((360 - center_y) > 54 || (360 - center_y) < -54){
+      tilt = tilt + d_tilt;
     }
-    if(tilt_count >= 30){
-      tilt_end = 1;
+
+    if(tilt <= 210){
+      tilt = 210;
     }
-  }
 
-  else{
-    tilt_count = 0;
-  }
+    if(tilt >= 303){
+      tilt = 303;
+      if(step == 1){
+        tilt_count++;
+      }
+      if(tilt_count >= 30){
+        tilt_end = 1;
+      }
+    }
 
-  std::cout<<"tilt_end: "<<tilt_end<<std::endl;
+    else{
+      tilt_count = 0;
+    }
+
+    std::cout<<"tilt_end: "<<tilt_end<<std::endl;
+  }
    
   /* yaw direction and rotation */
   if((target_detection == 1) && ((640 - center_x) > 96)){
@@ -285,6 +350,9 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
+  cv::namedWindow("img");
+  cv::moveWindow("img", 20,20);
+
   ros::init(argc, argv, "riseq_sacc_target_detection");
   ros::NodeHandle n1, n2, n3, n4, n5;
   
@@ -294,6 +362,7 @@ int main(int argc, char **argv){
   target_alt = 100;
   target_yaw = 5.85367;  
   position_publish(target_lat, target_lon, target_alt, target_yaw);
+  ros::Duration(2).sleep();
 
   gimbal_pub = n1.advertise<std_msgs::Float64>("/gimbal_control", 1);
   target_contol_pub = n2.advertise<mavros_msgs::GlobalPositionTarget>("/setpoint_target",1);

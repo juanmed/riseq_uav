@@ -1,5 +1,26 @@
 #!/usr/bin/env python
+"""
+author:  Juan Medrano
+version: 0.0.1
+brief: Publish global and local coordinates for a reference helix trajectory
 
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the ""Software""), to deal in the 
+Software without restriction, including without limitation the rights to use, copy, 
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
+and to permit persons to whom the Software is furnished to do so, subject to the 
+following conditions:
+The above copyright notice and this permission notice shall be included in all copies 
+or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
 import tf.transformations as tt
 import rospy
 import sys
@@ -21,7 +42,7 @@ from helix_trajectory import Helix_Trajectory_Control as htc
 from SISO2 import SISO2_Controller as sc2
 
 
-class State_Machine():
+class HelixPublisher():
 
     def __init__(self):
         self.step = 0
@@ -29,8 +50,15 @@ class State_Machine():
         self.lds = rospy.Subscriber("riseq/sacc/ladder_info", RiseSaccHelix, self.lds_cb)
         self.ref_pub_local = rospy.Publisher("riseq/sacc/setpoint_helix_local", PoseStamped, queue_size = 10)
         self.ref_pub_global = rospy.Publisher("riseq/sacc/setpoint_helix_global", GlobalPositionTarget, queue_size = 10)
-        self.ladder_depth = 0.0
+        self.ladder_depth = None
         self.ladder_height = 30
+        self.ladder_safety_margin = 5
+        self.ladder_default_global_position = [37.565019, 126.628278] # lat, lon
+        self.width = 1280  # depth image width
+        self.height = 720  # depth image height
+        self.bbox_x = self.width//2  # assume object is perfectly aligned at start
+        self.bbox_y = self.height//2  
+
 
         # PX4 related
         self.state = Odometry()
@@ -45,50 +73,10 @@ class State_Machine():
         self.global_home_pose_set = False
 
     def run(self):
-        while not rospy.is_shutdown():
-            if self.step == 0:
-                self.connect_arm_offboard()
-                self.step = 1
-            elif self.step == 1:
-                self.take_off(1.0)
-                self.step = 2
-            elif self.step == 2:
-                self.yaw_rotate(130)
-                self.step = 3
-            elif self.step == 3:
-                self.do_helix_trajectory()
-                self.step = 4
-            elif(self.step == 4):
-                self.return_land_disarm()
-                self.step = 5
-            elif(self.step == 5):
-                break
-            else:
-                raise
+
+        self.do_helix_trajectory()
         sys.exit(0)
 
-    def yaw_rotate(self, angle):
-        yaw = angle*np.pi/180.
-        print("YAW90")
-        start = rospy.get_time()
-        q90 = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
-        self.command_pose.pose.orientation.x = q90[0]
-        self.command_pose.pose.orientation.y = q90[1]
-        self.command_pose.pose.orientation.z = q90[2]
-        self.command_pose.pose.orientation.w = q90[3]
-        rate = rospy.Rate(20)
-        while( (rospy.get_time() - start) < 5):
-            self.command_pose.header.stamp = rospy.Time.now()
-            self.local_pos_pub.publish(self.command_pose)
-            rate.sleep()            
-
-    def take_off(self, height):
-        self.command_pose.pose.position.z = height
-        rate = rospy.Rate(20)
-        while not (self.state.pose.pose.position.z >= height*0.95 ):
-            self.command_pose.header.stamp = rospy.Time.now()
-            self.local_pos_pub.publish(self.command_pose)
-            rate.sleep()
 
     def setup_mavros(self):
 
@@ -101,7 +89,6 @@ class State_Machine():
      
         self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
-        self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)        
         self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
         self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
         self.global_pos_sub = rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.global_position_cb)
@@ -111,92 +98,18 @@ class State_Machine():
         self.state.pose.pose.orientation.z = 0.0
         self.state.pose.pose.orientation.w = 1.0
 
-    def mavros_state_cb(self, state_msg):
-        self.mavros_state = state_msg 
-
-    def wait_mavros_connection(self):
-        i = 0
-        rate = rospy.Rate(20)
-        while not self.mavros_state.connected:
-            print (" >> {} NOT CONNECTED TO MAVROS <<".format(i))
-            rate.sleep()
-            i  = i + 1
-        print(">> {} CONNECTED TO MAVROS! <<".format(i))
-
-    def connect_arm_offboard(self):
-        self.wait_mavros_connection()
-        self.last_mavros_request = rospy.Time.now()
-        self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
-        if(self.enable_sim):
-            self.send_setpoints()
-            self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
-
-        armed = self.mavros_state.armed
-        mode = self.mavros_state.mode
-        rate = rospy.Rate(20.0)
-        while( (not armed ) or (mode != 'OFFBOARD')):
-            armed = self.mavros_state.armed
-            mode = self.mavros_state.mode
-            rate.sleep()
-        print("ARMED, OFFBOARD MODE SET")
-
-    def send_setpoints(self):
-        """
-        Publish 100 position setpoints before arming.
-        This is required for successfull arming
-        """
-        pose = PoseStamped()
-        pose.header.stamp = rospy.Time.now()
-        pose.pose.position.x = 0
-        pose.pose.position.y = 0
-        pose.pose.position.z = 0
-
-        rate = rospy.Rate(20.0)
-        for i in range(100):
-            self.local_pos_pub.publish(pose)
-            rate.sleep()
-
-    def mavros_status_cb(self, timer):
-
-        offb_set_mode = SetMode()
-        offb_set_mode.custom_mode = "OFFBOARD"
-        arm_cmd = CommandBool()
-        arm_cmd.value = True
-
-        if(self.mavros_state.mode != "OFFBOARD" and (rospy.Time.now() - self.last_mavros_request > rospy.Duration(5.0))):
-            resp1 = self.set_mode_client(0,offb_set_mode.custom_mode)
-            if resp1.mode_sent:
-                #rospy.loginfo("Requested OFFBOARD")
-                pass
-            self.last_mavros_request = rospy.Time.now()
-        elif (not self.mavros_state.armed and (rospy.Time.now() - self.last_mavros_request > rospy.Duration(5.0))):
-            arm_client_1 = self.arming_client(arm_cmd.value)
-            if arm_client_1.success:
-                #rospy.loginfo("Requested Vehicle ARM")
-                pass
-            self.last_mavros_request = rospy.Time.now() 
-        
-        armed = self.mavros_state.armed
-        mode = self.mavros_state.mode
-        rospy.loginfo("Vehicle armed: {}".format(armed))
-        rospy.loginfo("Vehicle mode: {}".format(mode))
-
-        if( (not armed ) or (mode != 'OFFBOARD')):
-            pose = PoseStamped()
-            pose.header.stamp = rospy.Time.now()
-            pose.pose.position.x = 0
-            pose.pose.position.y = 0
-            pose.pose.position.z = 0            
-            self.local_pos_pub.publish(pose)
-        else:
-            self.status_timer.shutdown()
 
     def do_helix_trajectory(self):
 
-        init_x = self.state.pose.pose.position.x
-        init_y = self.state.pose.pose.position.y
-        init_z = self.state.pose.pose.position.z
-        self.helix_controller = htc(vrate = 0.05, radius = 1.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5)
+	    while (not self.home_pose_set) and (not self.global_home_pose_set):
+            # wait for node initialization to finish
+            continue
+
+        init_x = self.home_pose.pose.position.x #self.state.pose.pose.position.x
+        init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
+        init_z = self.home_pose.pose.position.z #self.state.pose.pose.position.z
+        print("Initial helix position: \n x: {}, y: {}, z: {}\nTime: {}\n".format( init_x, init_y, init_z, rospy.Time.now().to_sec()))
+        self.helix_controller = htc(vrate = 0.25, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.5) # init with any parameters
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]
@@ -205,17 +118,15 @@ class State_Machine():
         print("Phase: ",self.helix_controller.phase)
 
         rate = rospy.Rate(20)
-        # do helix trajectory for 30 seconds
         print("Doing helix trajectory")
-        #while( (rospy.get_time() - self.helix_controller.t_init) < 120.):
-        while(self.state.pose.pose.position.z < (self.ladder_height + 2)):
+        while(self.state.pose.pose.position.z < (init_z + self.ladder_height + self.ladder_safety_margin)):
             # state for x and y position
             xs = np.array([[self.state.pose.pose.position.x],[self.state.twist.twist.linear.x],[0.0]])
             ys = np.array([[self.state.pose.pose.position.y],[self.state.twist.twist.linear.y],[0.0]])
             states = [xs, ys]
 
             ladder_position = self.get_ladder_location()
-            ladder_position = [0.0,1.0]
+            #ladder_position = [0.0,1.0]
             self.helix_controller.set_helix_center(ladder_position)
             
             ux, uy, uz, ref = self.helix_controller.compute_command(states, rospy.get_time())
@@ -230,7 +141,7 @@ class State_Machine():
             self.command_pose.pose.orientation.y = q[1]
             self.command_pose.pose.orientation.z = q[2]
             self.command_pose.pose.orientation.w = q[3]
-            self.local_pos_pub.publish(self.command_pose)
+            #self.local_pos_pub.publish(self.command_pose)
 
             # publish reference trajectory in local frame
             refmsg = PoseStamped()
@@ -247,7 +158,7 @@ class State_Machine():
             global_refmsg.header.frame_id = self.global_state.header.frame_id
             global_refmsg.latitude = lat
             global_refmsg.longitude = lon
-            global_refmsg.altitude = uz
+            global_refmsg.altitude = (uz - init_z) + self.global_home.altitude
             self.ref_pub_global.publish(global_refmsg)
 
             rate.sleep()
@@ -303,36 +214,29 @@ class State_Machine():
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]
         yaw, pitch, roll = tt.euler_from_quaternion(q, axes = 'rzyx')
-        ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
-        ladder_position = ladder_drone_position #+ drone_position 
+        if self.ladder_depth is not None: 
+            ladder_drone_position = self.ladder_depth*np.array([np.cos(yaw),np.sin(yaw)])
+        else:
+            # use default ladder position
+            delta_y = (self.ladder_default_global_position[0] - self.global_state.latitude)*111111.0
+            delta_x = (self.ladder_default_global_position[1] - self.global_state.longitude)* (111111.0*np.cos(self.global_home.latitude*np.pi/180.0))
+            ladder_drone_position = np.array([delta_x, delta_y])
+        ladder_position = ladder_drone_position + drone_position 
         return ladder_position
 
-    def return_land_disarm(self):
-        
-        # Return home
-        print("Return home.")
-        rate = rospy.Rate(20)
-        start_time = rospy.get_time()
-        while ((rospy.get_time() - start_time) < 20.0):  # give 20s to go back home
-            self.command_pose = self.home_pose
-            self.command_pose.header.stamp = rospy.Time.now()            
-            self.local_pos_pub.publish(self.command_pose)
-            rate.sleep()
-
-        # Land
-        print("Landing.")
-        self.landing_client(0.0, 0.0, 0.0, 0.0, 0.0)
-        rospy.sleep(5)        
-
-        # disarm
-        print("Disarm.")
-        arm_cmd = CommandBool()
-        arm_cmd.value = False
-        arm_client_1 = self.arming_client(arm_cmd.value)
 
     def position_cb(self, pos):
 
         if not self.home_pose_set:
+
+            print("\n\n       **********       **********        **********\n"+
+                  "                  SET LOCAL HOME POSITION                \n"+
+                  " Latitude:  {}\n".format(pos.pose.position.x)+
+                  " Longitude: {}\n".format(pos.pose.position.y)+
+                  " Altitude: {}\n".format(pos.pose.position.z)+
+                  " Time: {}\n".format(rospy.Time.now().to_sec())+
+                  "           **********       **********        **********\n\n")
+
             self.home_pose.pose.position.x = pos.pose.position.x
             self.home_pose.pose.position.y = pos.pose.position.y
             self.home_pose.pose.position.z = pos.pose.position.z
@@ -368,6 +272,13 @@ class State_Machine():
     def global_position_cb(self, gbl_msg):
 
         if not self.global_home_pose_set:
+            print("\n\n       **********       **********        **********\n"+
+                  "                  SET GLOBAL HOME POSITION                \n"+
+                  " Latitude:  {}\n".format(gbl_msg.latitude)+
+                  " Longitude: {}\n".format(gbl_msg.longitude)+
+                  " Altitude: {}\n".format(gbl_msg.altitude)+
+                  " Time: {}\n".format(rospy.Time.now().to_sec())+
+                  "           **********       **********        **********\n\n")
             self.global_home.header.stamp = gbl_msg.header.stamp
             self.global_home.header.frame_id = gbl_msg.header.frame_id
             self.global_home.latitude = gbl_msg.latitude
@@ -384,14 +295,14 @@ class State_Machine():
 
 if __name__ == '__main__':
     try:
-        rospy.init_node('riseq_helix_mission', anonymous = True)
+        rospy.init_node('riseq_helix_trajectory_publisher', anonymous = True)
 
-        helix_mission = State_Machine()
+        helix_mission = HelixPublisher()
         helix_mission.run()        
 
-        rospy.loginfo(' Helix Mission Started!')
+        rospy.loginfo(' Helix Trajectory Publisher Started!')
         rospy.spin()
-        rospy.loginfo(' HHelix Mission Terminated')    
+        rospy.loginfo(' Helix Trajectory Publisher Terminated')    
 
 
     except rospy.ROSInterruptException:

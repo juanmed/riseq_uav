@@ -83,6 +83,9 @@ void draw_bound_Callback(const sensor_msgs::Image::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
+  cv::namedWindow("Number");
+  cv::moveWindow("Number", 20,20);
+
   ros::init(argc, argv, "riseq_sacc_number");
   ros::NodeHandle n1, n2, n3;
   image_transport::ImageTransport it(n3);
