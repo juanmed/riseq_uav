@@ -12,6 +12,9 @@
 
 #define PI 3.141592
 
+/* screen capture part */
+cv::VideoWriter writer("/home/nvidia/Desktop/target_tracking.avi", cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 15.0, cv::Size(1280,720));
+
 ros::Publisher target_contol_pub;
 ros::Publisher gimbal_pub;
 
@@ -351,6 +354,10 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
   if(target_detection == 1){ 
     cv::rectangle(img, cv::Point(left,top), cv::Point(left+width,top+height), cv::Scalar(66,255,5),3);
   }
+
+  /* screen capture part */
+  writer.write(img);
+
   cv::imshow("img", img);
   cv::waitKey(1);
 }
@@ -387,6 +394,7 @@ int main(int argc, char **argv){
 
       cv::destroyAllWindows();
       ros::shutdown();
+      writer.release();
   }
   ros::spin();
   return 0;

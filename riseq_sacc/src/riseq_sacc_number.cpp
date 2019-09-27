@@ -20,7 +20,7 @@ int j = 0;
 std::vector<std::string> order_number(10); 
 
 /* screen capture part */
-cv::VideoWriter writer("/home/nvidia/Desktop/number_detection.avi", cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 30.0, cv::Size(640,360));
+cv::VideoWriter writer("/home/nvidia/Desktop/number_detection.avi", cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 15.0, cv::Size(640,360));
 
 void numCallback(const std_msgs::Int8::ConstPtr& msg){
     num = msg->data;  
@@ -83,13 +83,12 @@ void draw_bound_Callback(const sensor_msgs::Image::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
-  cv::namedWindow("Number");
+  cv::namedWindow("Number", CV_WINDOW_AUTOSIZE);
   cv::moveWindow("Number", 20,20);
 
   ros::init(argc, argv, "riseq_sacc_number");
   ros::NodeHandle n1, n2, n3;
   image_transport::ImageTransport it(n3);
-  cv::namedWindow("Number", CV_WINDOW_AUTOSIZE);
   
   ros::Subscriber num_sub = n1.subscribe("/darknet_ros/found_object",1, numCallback);
 
