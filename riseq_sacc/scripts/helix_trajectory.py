@@ -6,7 +6,7 @@ from SISO2 import SISO2_Controller as controller
 
 class Helix_Trajectory_Control():
 
-    def __init__(self, vrate = 1.0, radius = 1.0, center = (0,0,0), init = (0,0,0), t_init = 0.0, w = 1.0):
+    def __init__(self, vrate = 0.1, radius = 1.0, center = (0,0,0), init = (0,0,0), t_init = 0.0, w = 1.0):
 
         self.vrate = vrate
         self.radius = radius

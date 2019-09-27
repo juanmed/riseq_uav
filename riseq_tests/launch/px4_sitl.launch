@@ -12,7 +12,7 @@
   <arg name="log_output" default="screen" />
   <arg name="fcu_protocol" default="v2.0" />
   <arg name="respawn_mavros" default="false" />
-  <arg name="rosbag_name" default="test1"/>
+  <arg name="rosbag_name" default="red1detection"/>
 
   <!-- RISEQ args -->
   <arg name="gate_x" default="6"/>
@@ -33,6 +33,8 @@
   <!-- PX4 SITL, MAVROS, GAZEBO >
   <include file="$(find mavros)/launch/px4.launch">
     <arg name="fcu_url" value="$(arg fcu_url)"/>
+    <env name="PX4_HOME_LAT" value="37.565011"/>
+    <env name="PX4_HOME_LON" value="126.628919"/>
   </include-->
 
 
@@ -96,4 +98,8 @@
   <!--Node running mission nodes-->
   <node pkg="riseq_sacc" type="riseq_sacc_process.py" name="riseq_sacc_process" />
 
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O $(arg rosbag_name) riseq/perception/uav_image_with_detections /mavros/global_position/global /mavros/local_position/pose /mavros/setpoint_position/global /riseq/sacc/setpoint_helix_local /riseq/sacc/setpoint_helix_global riseq/sacc/ladder_info"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/challenge.rviz"/>
 </launch>

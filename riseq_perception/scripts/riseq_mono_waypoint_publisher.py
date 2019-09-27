@@ -31,11 +31,13 @@ import cv2
 #from detector import *
 from window_detector import WindowDetector
 from ellipse_detector import EllipseDetector
+from ladder_detector import LadderDetector 
 from cv_bridge import CvBridge, CvBridgeError
 
 from sensor_msgs.msg import Image 
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
+from riseq_sacc.msg import RiseSaccHelix
 
 
 class MonoWaypointDetector():
@@ -46,11 +48,10 @@ class MonoWaypointDetector():
         """
 
         self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
-        
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
-
+        self.ladder_info_pub = rospy.Publisher("riseq/sacc/ladder_info", RiseSaccHelix, queue_size = 10)
         #self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
-        self.frontCamera_Mono = rospy.Subscriber("/pelican/camera_nadir/image_raw", Image, self.estimate_object_pose)
+        self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
         
         self.bridge = CvBridge()
 
@@ -63,6 +64,7 @@ class MonoWaypointDetector():
         # AI Challenge detectors
         self.wd = WindowDetector(mode="eval")
         self.pd = EllipseDetector(mode = "eval")
+        self.ld = LadderDetector(mode = "eval")
 
         # ADR Gate Detector
         #cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
@@ -98,6 +100,12 @@ class MonoWaypointDetector():
             wp.header.stamp = rospy.Time.now()
             wp.header.frame_id = ""
             
+            ladder_info = RiseSaccHelix()
+            ladder_info.header.stamp = rospy.Time.now()
+            ladder_info.header.frame_id = ""         
+            ladder_info.width = img.shape[1]
+            ladder_info.height = img.shape[0]
+
             if(self.mode == 'window'):
 
                 R, t, R_exp, cnt = self.wd.detect(img.copy(), self.max_size)
@@ -166,15 +174,32 @@ class MonoWaypointDetector():
                 wp.pose.orientation.z = gate_quat[2]
                 wp.pose.orientation.w = gate_quat[3]
 
+            elif(self.mode == 'ladder'):
+                bbox, outimg = self.ld.detect(img.copy(), self.max_size)
+                if bbox is not None:
+                    x,y,w,h = bbox
+                    print("Bounding box:",x,y,w,h)
+
+                    ladder_info.depth = 1.5 + np.random.rand()*0.25
+                    ladder_info.x = int(x + w/2)
+                    ladder_info.y = int(y + h/2)
+
+                    img = cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+                    img = cv2.circle(img, (int(x + w/2),(y + h/2)), 4, (0,255,0), -1)
+
+                else:
+                    img = outimg
             else:
                 rospy.loginfo("Monocular Object Detector mode non-existent.")
                 
-            self.waypoint_pub.publish(path)
+            #self.waypoint_pub.publish(path)
+            self.ladder_info_pub.publish(ladder_info)
             img = self.bridge.cv2_to_imgmsg(img, "rgb8")
             self.img_dect_pub.publish(img)
 
         else:
             # Do nothing
+            print("Monocular mode: {}".format(self.mode))
             pass
 
         #print("Type: {}, Len: {}, Width: {}, Height: {}, Enc: {}".format(type(image_msg.data), len(image_msg.data), image_msg.width, image_msg.height, image_msg.encoding))
