@@ -1,0 +1,13 @@
+<launch>
+  <!--ZED mini ROS wrapper-->
+  <include file="$(find zed_ros_wrapper)/launch/zedm.launch" />
+
+  <!--Main node publish waypoints-->
+  <node pkg="rise_sacc" type="rise_sacc_main.py" name="rise_sacc_main" />
+
+  <!--Node running mission nodes-->
+  <node pkg="rise_sacc" type="rise_sacc_process.py" name="rise_sacc_process" />
+
+  <!--GPS logger-->
+  <node pkg="rise_sacc" type="rise_sacc_gps_pix.py" name="rise_sacc_gps_pix" />
+</launch>
