@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
         gps_sat = []
         gps_data_string = ''
-        gps_time = []
+
         while not rospy.is_shutdown():
             if (current_state.mode == "OFFBOARD"):
                 gps_mode = 1
@@ -55,6 +55,7 @@ if __name__ == '__main__':
 
             data = GPS.readline().strip().split(',')
 
+            gps_time = 0
 
             if data[0] == '$GPGSA':
                 if data[3] != '':

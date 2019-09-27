@@ -71,7 +71,7 @@ void draw_bound_Callback(const sensor_msgs::Image::ConstPtr& msg) {
     }
   }
   for(int i = 0; i < j; i++){
-    cv::putText(img, order_number[i], cv::Point(10 + i*20, 355), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255,255,255), 1);
+    cv::putText(img, order_number[i], cv::Point(10 + i*20, 335), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0,0,255), 2);
   }
 
   /* screen capture part */

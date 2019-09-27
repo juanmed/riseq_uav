@@ -9,6 +9,7 @@
 #include <sensor_msgs/NavSatFix.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/HomePosition.h>
+#include <math.h>
 
 #define PI 3.141592
 
@@ -60,7 +61,7 @@ void position_publish(float target_lat, float target_lon, float target_alt, floa
     target_contol_pub.publish(target_pub);  
 }
 
-int sw1 = 0, sw2 = 0, sw3 = 0, sw4 = 0, sw5 = 1;
+int sw1 = 0, sw2 = 0, sw3 = 0, sw4 = 0, sw5 = 1, sw6 = 0, sw7 = 0;
 ros::Time time_init1, time_init2, time_init3;
 ros::Duration delay(10.0);
 
@@ -170,8 +171,12 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     else if(target_yaw > 0.534942 + 2*PI){
       target_yaw = 0.534942 + 2*PI;
     }
+    
+    if(target_detection == 1){
+      sw6 = 1;
+    }
 
-    if(target_detection == 0){
+    if((target_detection == 0) && (sw6 == 0)){
       tilt = 240.0 + 63.0/80.0*(100.0 - rel_alt);
       setGimbal(tilt);
     }
@@ -211,6 +216,18 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     }
     else if(target_yaw > 0.534942 + 2*PI){
       target_yaw = 0.534942 + 2*PI;
+    }
+
+    if(target_detection == 1){
+      sw7 = 1;
+    }
+
+    if((target_detection == 0) && (sw7 == 0)){
+      float a_square = pow((cur_lat-37.564906)/0.00001129413,2) + pow((cur_lon-126.628065)/0.00000895247,2);
+      float b_square = pow((37.564906-37.564700)/0.00001129413,2) + pow((126.628065-126.627628)/0.00000895247,2);
+      float c_square = pow((cur_lat-37.564700)/0.00001129413,2) + pow((cur_lon-126.627628)/0.00000895247,2);
+
+      target_yaw = 0.534942 + 2*PI - acos((a_square+b_square-c_square)/(2*sqrt(a_square)*sqrt(b_square)));
     }
 
     if((pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
