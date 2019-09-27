@@ -53,7 +53,7 @@ class HelixPublisher():
         self.ladder_depth = None
         self.ladder_height = 30
         self.ladder_safety_margin = 5
-        self.ladder_default_global_position = [37.565111+5*4.579/1000000.0, 126.628503+5*9.812/1000000.0] # lat, lon
+        self.ladder_default_global_position = [37.565111 +5*4.579/1000000.0, 126.628503+5*9.812/1000000.0] # lat, lon
         self.width = 1280  # depth image width
         self.height = 720  # depth image height
         self.bbox_x = self.width//2  # assume object is perfectly aligned at start
@@ -101,15 +101,17 @@ class HelixPublisher():
 
     def do_helix_trajectory(self):
 
-        while (not self.home_pose_set) and (not self.global_home_pose_set):
+        while (not self.home_pose_set) or (not self.global_home_pose_set):
             # do nothing, wait for node initialization to finish
             a = 1
 
+        ladder_position = self.get_ladder_location()
         init_x = self.home_pose.pose.position.x #self.state.pose.pose.position.x
         init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
         init_z = self.home_pose.pose.position.z #self.state.pose.pose.position.z
         print("Initial helix position: \n x: {}, y: {}, z: {}\nTime: {}\n".format( init_x, init_y, init_z, rospy.Time.now().to_sec()))
         self.helix_controller = htc(vrate = 0.1, radius = 4.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.1) # init with any parameters
+        self.helix_controller.set_helix_center(ladder_position)
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
         q = [q.x, q.y, q.z, q.w]
@@ -125,11 +127,12 @@ class HelixPublisher():
             ys = np.array([[self.state.pose.pose.position.y],[self.state.twist.twist.linear.y],[0.0]])
             states = [xs, ys]
 
-            ladder_position = self.get_ladder_location()
+            #ladder_position = self.get_ladder_location()
             #ladder_position = [-29.5,12.5]
-            self.helix_controller.set_helix_center(ladder_position)
+            #self.helix_controller.set_helix_center(ladder_position)
             
             ux, uy, uz, ref = self.helix_controller.compute_command(states, rospy.get_time())
+            ux, uy = (ref[0][0][0], ref[1][0][0])
             q, cyaw = self.compute_yaw2(ladder_position)
 
             self.command_pose.header.stamp = rospy.Time.now()
@@ -222,8 +225,10 @@ class HelixPublisher():
             delta_y = (self.ladder_default_global_position[0] - self.global_state.latitude)*110988.2633
             delta_x = (self.ladder_default_global_position[1] - self.global_state.longitude)* (110988.2633*np.cos(self.global_home.latitude*np.pi/180.0))
             ladder_drone_position = np.array([delta_x, delta_y])
+            print("GPS Delta position: ",delta_y, delta_x)
         ladder_position = ladder_drone_position + drone_position
         print("ladder_position: ",ladder_position) 
+        print("drone position:",drone_position)
         return ladder_position
 
 
