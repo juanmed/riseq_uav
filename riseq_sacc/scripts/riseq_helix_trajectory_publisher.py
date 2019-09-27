@@ -110,7 +110,7 @@ class HelixPublisher():
         init_y = self.home_pose.pose.position.y #self.state.pose.pose.position.y
         init_z = self.home_pose.pose.position.z #self.state.pose.pose.position.z
         print("Initial helix position: \n x: {}, y: {}, z: {}\nTime: {}\n".format( init_x, init_y, init_z, rospy.Time.now().to_sec()))
-        self.helix_controller = htc(vrate = 0.1, radius = 4.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.get_time(), w = 0.1) # init with any parameters
+        self.helix_controller = htc(vrate = 0.1, radius = 2.0, center = (1,0,0), init=(init_x,init_y,init_z), t_init = rospy.Time.now().to_sec(), w = 0.2) # init with any parameters
         self.helix_controller.set_helix_center(ladder_position)
         self.yaw_controller = sc2(Kp = 6., Kv = 0.0)
         q = self.state.pose.pose.orientation
@@ -120,7 +120,6 @@ class HelixPublisher():
         print("Phase: ",self.helix_controller.phase)
 
         rate = rospy.Rate(20)
-        print("Doing helix trajectory")
         while(self.state.pose.pose.position.z < (init_z + self.ladder_height + self.ladder_safety_margin)):
             # state for x and y position
             xs = np.array([[self.state.pose.pose.position.x],[self.state.twist.twist.linear.x],[0.0]])
@@ -131,7 +130,7 @@ class HelixPublisher():
             #ladder_position = [-29.5,12.5]
             #self.helix_controller.set_helix_center(ladder_position)
             
-            ux, uy, uz, ref = self.helix_controller.compute_command(states, rospy.get_time())
+            ux, uy, uz, ref = self.helix_controller.compute_command(states,  rospy.Time.now().to_sec())
             ux, uy = (ref[0][0][0], ref[1][0][0])
             q, cyaw = self.compute_yaw2(ladder_position)
 

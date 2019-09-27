@@ -1,5 +1,5 @@
 
-
+import rospy
 import numpy as np
 from SISO2 import SISO2_Controller as controller
 
@@ -12,13 +12,14 @@ class Helix_Trajectory_Control():
         self.radius = radius
         self.w = w
         self.t_init = t_init
+        #print("Helix Init Time: {}".format(t_init))
 
         self.cx = center[0]
         self.cy = center[1]
 
         self.x0 = init[0]
         self.y0 = init[1]
-        self.z0 = init[1]
+        self.z0 = init[2]
 
         self.xc = controller(Kp = 10.5, Kv = 1.0, Ki = 0.0)
         self.yc = controller(Kp = 8.0, Kv = 1.5, Ki = 0.0, u_sat = 5.0)
@@ -33,6 +34,7 @@ class Helix_Trajectory_Control():
         ux = self.xc.compute_input(state[0], xr)
         uy = self.yc.compute_input(state[1], yr)
         uz = self.z0 + self.vrate*(t-self.t_init)
+        #print("Time Differences: ",t,self.t_init,t-self.t_init, rospy.Time.now().to_sec())
         return ux, uy, uz, (xr, yr)
 
 
