@@ -12,18 +12,18 @@ gpu = 'NVIDIA Tegra X1'
 
 gpu_times = pd.read_csv("~/Documents/jetsongputimes2.csv")
 gpu_times.columns = ['{} time (ms)'.format(gpu)]
-gpu_times['{} time (ms)'.format(gpu)] = gpu_times['{} time (ms)'.format(gpu)]/1000. 
-gpu_times.plot.hist(ax = ax, bins = 400, logx = True, logy=True, title = 'GPU vs CPU Times', color = 'r')
+#gpu_times['{} time (ms)'.format(gpu)] = gpu_times['{} time (ms)'.format(gpu)]/1000. 
+gpu_times.plot.hist(ax = ax, bins = 400, logx = True, logy=False, title = 'GPU vs CPU Times', color = 'r')
 
-cpu_times = pd.read_csv("~/Documents/jetsoncputimes2.csv")
-cpu_times.columns = ['{} time (ms)'.format(cpu)]
+cpu_times = pd.read_csv("~/Documents/jetsongputimes3.csv")
+cpu_times.columns = ['{} time (ms)'.format(gpu)]
 #cpu_times['time (ms)'] = cpu_times['time (ms)'] 
-cpu_times.plot.hist(ax = ax, bins = 400, logx = True, logy=True, color = 'b')
+cpu_times.plot.hist(ax = ax, bins = 400, logx = True, logy=False, color = 'b')
 
-pcpu_times = pd.read_csv("~/Documents/jetsonpytorchcputimes2.csv")
-pcpu_times.columns = ['Pytorch on {} time (ms)'.format(cpu)]
-pcpu_times['Pytorch on {} time (ms)'.format(cpu)] = pcpu_times['Pytorch on {} time (ms)'.format(cpu)]/1000. 
-pcpu_times.plot.hist(ax = ax, bins = 400, logx = True, logy=True,  color = 'g', alpha = 0.5)
+#pcpu_times = pd.read_csv("~/Documents/jetsonpytorchcputimes2.csv")
+#pcpu_times.columns = ['Pytorch on {} time (ms)'.format(cpu)]
+#pcpu_times['Pytorch on {} time (ms)'.format(cpu)] = pcpu_times['Pytorch on {} time (ms)'.format(cpu)]/1000. 
+#pcpu_times.plot.hist(ax = ax, bins = 400, logx = True, logy=True,  color = 'g', alpha = 0.5)
 
 
 plt.show()
