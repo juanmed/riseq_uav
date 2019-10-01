@@ -1,0 +1,11 @@
+<launch>
+  <!--ZED mini ROS wrapper-->
+  <include file="$(find zed_wrapper)/launch/zedm.launch" />
+
+  <!--Main node publish waypoints-->
+  <node pkg="riseq_sacc" type="riseq_sacc_main.py" name="riseq_sacc_main" />
+
+  <!--Node running mission nodes-->
+  <node pkg="riseq_sacc" type="riseq_sacc_process.py" name="riseq_sacc_process" output="screen" />
+
+</launch>

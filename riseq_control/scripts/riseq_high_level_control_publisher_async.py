@@ -37,7 +37,7 @@ from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
 from mavros_msgs.msg import State
 from mavros_msgs.msg import AttitudeTarget
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 
 import riseq_common.dyn_utils as utils
 import numpy as np
@@ -81,7 +81,9 @@ class uav_High_Level_Controller():
 
         elif(self.state_input == 'fg_true_state'):
             # for flight googles simulator
-            self.state_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.state_cb)
+            #self.state_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.state_cb)
+            self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
+            self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
             #self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
@@ -173,13 +175,13 @@ class uav_High_Level_Controller():
         # extract real values
         p = np.array([[state.pose.pose.position.x], [state.pose.pose.position.y], [state.pose.pose.position.z]])
         v = np.array([[state.twist.twist.linear.x], [state.twist.twist.linear.y], [state.twist.twist.linear.z]])
-        v = np.dot(Rbw, v)
+        #v = np.dot(Rbw, v)
 
-        state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]
+        state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]  # p, v, a, j, s, orientation
         ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
-        self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
-        #self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+        #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
+        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
 
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
@@ -208,16 +210,16 @@ class uav_High_Level_Controller():
         px4_msg = AttitudeTarget()
         px4_msg.header.stamp = rospy.Time.now()
         px4_msg.header.frame_id = 'map'
-        px4_msg.type_mask = 7 #px4_msg.IGNORE_ATTITUDE
+        px4_msg.type_mask = 7 # px4_msg.IGNORE_ATTITUDE
         q = tf.transformations.quaternion_from_matrix(utils.to_homogeneous_transform(self.Rbw_des))
         px4_msg.orientation.x = q[0]
         px4_msg.orientation.y = q[1]
         px4_msg.orientation.z = q[2]
         px4_msg.orientation.w = q[3]
-        px4_msg.body_rate.x = 0.01*w_des[0][0]
-        px4_msg.body_rate.y = 0.01*w_des[1][0]
-        px4_msg.body_rate.z = 0.01*w_des[2][0]
-        px4_msg.thrust =  np.min([1.0, 0.0381*self.T])   #0.56
+        px4_msg.body_rate.x = 20*w_des[0][0]
+        px4_msg.body_rate.y = 20*w_des[1][0]
+        px4_msg.body_rate.z = 20*w_des[2][0]
+        px4_msg.thrust =  np.min([1.0, 0.06*self.T])   #0.05715
         self.px4_pub.publish(px4_msg)
         
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
@@ -376,6 +378,28 @@ class uav_High_Level_Controller():
 
     def traj_cb(self, trajectory):
         self.traj = trajectory
+
+    def position_cb(self, pos):
+
+        self.state.pose.pose.position.x = pos.pose.position.x
+        self.state.pose.pose.position.y = pos.pose.position.y
+        self.state.pose.pose.position.z = pos.pose.position.z
+
+        self.state.pose.pose.orientation.x = pos.pose.orientation.x
+        self.state.pose.pose.orientation.y = pos.pose.orientation.y
+        self.state.pose.pose.orientation.z = pos.pose.orientation.z
+        self.state.pose.pose.orientation.w = pos.pose.orientation.w
+
+    def velocity_cb(self, vel):
+
+        self.state.twist.twist.linear.x = vel.twist.linear.x
+        self.state.twist.twist.linear.y = vel.twist.linear.y
+        self.state.twist.twist.linear.z = vel.twist.linear.z
+
+        self.state.twist.twist.angular.x = vel.twist.angular.x
+        self.state.twist.twist.angular.y = vel.twist.angular.y
+        self.state.twist.twist.angular.z = vel.twist.angular.z
+
 
 if __name__ == '__main__':
     try:
