@@ -12,7 +12,7 @@
         </geometry>
       </collision>
       <visual name="horizontal_low">
-        <pose>0 0 0 0 1.5707 0</pose>
+        <pose>0 0 -0.7 0 1.5707 0</pose>
         <geometry>
           <cylinder>
             <radius>0.05</radius>
@@ -27,7 +27,7 @@
         </material> <!-- End LED material -->
       </visual>
       <visual name="horizontal_high">
-        <pose>0 0 1.4 0 1.5707 0</pose>
+        <pose>0 0 0.7 0 1.5707 0</pose>
         <geometry>
           <cylinder>
             <radius>0.05</radius>
@@ -42,7 +42,7 @@
         </material> <!-- End LED material -->
       </visual>
       <visual name="vertical_right">
-        <pose>0.7 0 0.7 0 0 0</pose>
+        <pose>0.7 0 0.0 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.05</radius>
@@ -57,7 +57,7 @@
         </material> <!-- End LED material -->
       </visual>
       <visual name="vertical_left">
-        <pose>-0.7 0 0.7 0 0 0</pose>
+        <pose>-0.7 0 0.0 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.05</radius>

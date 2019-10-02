@@ -23,12 +23,12 @@
   <arg name="gate_yaw" default = "-1.5707"/>
 
   <!-- Pipe args -->
-  <arg name="pipe_x" default="1.0"/>
-  <arg name="pipe_y" default="1.0"/>
+  <arg name="pipe_x" default="5.0"/>
+  <arg name="pipe_y" default="0.0"/>
   <arg name="pipe_z" default="1.0"/>
   <arg name="pipe_roll" default = "0.0"/>
   <arg name="pipe_pitch" default = "0.0"/>
-  <arg name="pipe_yaw" default = "0.0"/> 
+  <arg name="pipe_yaw" default = "1.5707"/> 
 
   <!-- PX4 SITL, MAVROS, GAZEBO >
   <include file="$(find mavros)/launch/px4.launch">
@@ -85,21 +85,13 @@
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
 
-  <include file="$(find zed_wrapper)/launch/zedm.launch"/>
-  <!--node name="riseq_sacc" pkg="riseq_sacc" type="riseq_sacc_helix"/-->
-  <!--node pkg ='riseq_sacc' name='helix_mission' type='riseq_helix_trajectory_publisher.py' output='screen'/-->
-
   <!--node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"
-        args="/mavros/local_position/pose/pose/position riseq/sacc/ladder_depth/data riseq/sacc/trajectory/pose/position"/-->
-
-  <!--Main node publish waypoints-->
-  <node pkg="riseq_sacc" type="riseq_sacc_main.py" name="riseq_sacc_main" />
-
-  <!--Node running mission nodes-->
-  <node pkg="riseq_sacc" type="riseq_sacc_process.py" name="riseq_sacc_process" />
+        args="/mavros/local_position/pose/pose/position "/-->
 
   <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O $(arg rosbag_name) riseq/perception/uav_image_with_detections /mavros/global_position/global /mavros/local_position/pose /mavros/setpoint_position/global /riseq/sacc/setpoint_helix_local /riseq/sacc/setpoint_helix_global riseq/sacc/ladder_info"/>
+        args="-O $(arg rosbag_name) riseq/perception/uav_image_with_detections /mavros/global_position/global /mavros/local_position/pose"/>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/challenge.rviz"/>
+
+  <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen"/>
 </launch>

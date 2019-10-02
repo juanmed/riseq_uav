@@ -49,7 +49,7 @@ class MonoWaypointDetector():
 
         self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
-        self.ladder_info_pub = rospy.Publisher("riseq/sacc/ladder_info", RiseSaccHelix, queue_size = 10)
+        #self.ladder_info_pub = rospy.Publisher("riseq/sacc/ladder_info", RiseSaccHelix, queue_size = 10)
         #self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
         self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
         
@@ -119,9 +119,13 @@ class MonoWaypointDetector():
                     gate_quat = tf.transformations.quaternion_from_matrix(R)
 
                     # gate waypoint
-                    wp.pose.position.x = t[2][0]
-                    wp.pose.position.y = -t[0][0]
-                    wp.pose.position.z = t[1][0]
+                    x = t[2][0]
+                    y = -t[0][0]
+                    z = np.abs(t[1][0])
+
+                    wp.pose.position.x = x
+                    wp.pose.position.y = y
+                    wp.pose.position.z = z
                     wp.pose.orientation.x = gate_quat[0]
                     wp.pose.orientation.y = gate_quat[1]
                     wp.pose.orientation.z = gate_quat[2]
@@ -192,8 +196,8 @@ class MonoWaypointDetector():
             else:
                 rospy.loginfo("Monocular Object Detector mode non-existent.")
                 
-            #self.waypoint_pub.publish(path)
-            self.ladder_info_pub.publish(ladder_info)
+            self.waypoint_pub.publish(path)
+            #self.ladder_info_pub.publish(ladder_info)
             img = self.bridge.cv2_to_imgmsg(img, "rgb8")
             self.img_dect_pub.publish(img)
 
