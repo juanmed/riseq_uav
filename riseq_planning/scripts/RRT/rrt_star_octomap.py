@@ -61,28 +61,28 @@ class RRT:
         """
          Publish way point if path is constructed
         """
-        #while not rospy.is_shutdown():
-        if self.rrt_star():
-            rospy.loginfo("find path")
-            # if path is constructed
-            point = Path()
-            point.header.stamp = rospy.Time.now()
-            point.header.frame_id = "map"
-            for i in range(0, len(self.waypoint)):
-                pose = PoseStamped()
-                pose.header.frame_id = str(i)
-                pose.pose.position.x = self.waypoint[i][0]
-                pose.pose.position.y = self.waypoint[i][1]
-                pose.pose.position.z = self.height
-                q = quaternion_from_euler(0, 0, 0)
-                pose.pose.orientation.x = q[0]
-                pose.pose.orientation.y = q[1]
-                pose.pose.orientation.z = q[2]
-                pose.pose.orientation.w = q[3]
-                point.poses.append(pose)
+        while not rospy.is_shutdown():
+            if self.rrt_star():
+                rospy.loginfo("find path")
+                # if path is constructed
+                point = Path()
+                point.header.stamp = rospy.Time.now()
+                point.header.frame_id = "world"
+                for i in range(0, len(self.waypoint)):
+                    pose = PoseStamped()
+                    pose.header.frame_id = str(i)
+                    pose.pose.position.x = self.waypoint[i][0]
+                    pose.pose.position.y = self.waypoint[i][1]
+                    pose.pose.position.z = self.height
+                    q = quaternion_from_euler(0, 0, 0)
+                    pose.pose.orientation.x = q[0]
+                    pose.pose.orientation.y = q[1]
+                    pose.pose.orientation.z = q[2]
+                    pose.pose.orientation.w = q[3]
+                    point.poses.append(pose)
 
-            self.point_pub.publish(point)
-            #self.rate.sleep()
+                self.point_pub.publish(point)
+                self.rate.sleep()
 
     def pose_cb(self, msg):
         """
@@ -111,7 +111,7 @@ class RRT:
         search_until_maxiter: search until max iteration for path improving or not
         """
         self.start = Node(self.current_position[0], self.current_position[1])
-        end = rospy.get_param("riseq/planning/goal_point", [20, 0])
+        end = rospy.get_param("riseq/planning/goal_point", [10, 0])
         self.end = Node(end[0], end[1])
 
         self.nodeList = [self.start]
@@ -296,24 +296,7 @@ class RRT:
 if __name__ == '__main__':
     rospy.init_node('riseq_waypoint_publisher', anonymous=True)
 
-    # Wait some time before running. This is to adapt to some simulators
-    # which require some 'settling time'
-
-    try:
-        wait_time = int(rospy.get_param('riseq/planning_wait'))
-    except:
-        print('riseq/planning_wait_time parameter is unavailable')
-        print('Setting a wait time of 2 seconds.')
-        wait_time = 2
-    '''
-    # wait time for simulator to get ready...
-    while rospy.Time.now().to_sec() < wait_time:
-        if (int(rospy.Time.now().to_sec()) % 1) == 0:
-            rospy.loginfo(
-                "Starting Waypoint Publisher in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
-    '''
     rrt = RRT()
-
 
     try:
         rospy.loginfo("UAV Waypoint Publisher Created")
@@ -321,6 +304,7 @@ if __name__ == '__main__':
         #graphviz = output.GraphvizOutput(output_file='profile.png')
         #with PyCallGraph(output=graphviz):
         rrt.pub_point()
+        rospy.spin()
     except rospy.ROSInterruptException:
         print("ROS Terminated.")
         pass
