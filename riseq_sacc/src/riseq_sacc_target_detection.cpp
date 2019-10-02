@@ -9,8 +9,12 @@
 #include <sensor_msgs/NavSatFix.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/HomePosition.h>
+#include <math.h>
 
 #define PI 3.141592
+
+/* screen capture part */
+cv::VideoWriter writer("/home/nvidia/Desktop/target_tracking.avi", cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 15.0, cv::Size(1280,720));
 
 ros::Publisher target_contol_pub;
 ros::Publisher gimbal_pub;
@@ -57,7 +61,7 @@ void position_publish(float target_lat, float target_lon, float target_alt, floa
     target_contol_pub.publish(target_pub);  
 }
 
-int sw1 = 0, sw2 = 0, sw3 = 0, sw4 = 0, sw5 = 1;
+int sw1 = 0, sw2 = 0, sw3 = 0, sw4 = 0, sw5 = 1, sw6 = 0, sw7 = 0;
 ros::Time time_init1, time_init2, time_init3;
 ros::Duration delay(10.0);
 
@@ -77,7 +81,7 @@ void setGimbal(float tilt){
 }
 
 void setPoint(float cur_lat, float cur_lon, float cur_alt){
-  float yaw_rate = 0.003573 * 2.76; //{2.86 deg/s} / 14Hz
+  float yaw_rate = 0.003573 * 2.0; //{2.86 deg/s} / 14Hz
   float rel_alt = cur_alt - home_alt;
   /*step 0*/
   if(step == 0){
@@ -116,7 +120,7 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
             time_init3 = ros::Time::now();             
           }
           ros::Time time_fin3 = ros::Time::now();
-          if((time_fin3 - time_init3) > ros::Duration(0.5)){
+          if((time_fin3 - time_init3) > ros::Duration(0.2)){
             sw5 = 1;
           }
           else{
@@ -132,10 +136,16 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
               upper_color.val[0] = upper_H;
               lower_color.val[1] = lower_color.val[1] - 5;
               lower_color.val[2] = lower_color.val[2] - 5;
+              if(lower_color.val[1] < 0){
+                lower_color.val[1] = 0;
+              }
+              if(lower_color.val[2] < 0){
+                lower_color.val[2] = 0;
+              }
             }
           }
         }
-        if(color_count == 29){
+        if(color_count == 39){
           sw3 = 1;
           if(sw2 == 0){
             sw2 = 1;
@@ -161,9 +171,13 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     else if(target_yaw > 0.534942 + 2*PI){
       target_yaw = 0.534942 + 2*PI;
     }
+    
+    if(target_detection == 1){
+      sw6 = 1;
+    }
 
-    if(target_detection == 0){
-      tilt = 240 + 63/80*(100 - rel_alt);
+    if((target_detection == 0) && (sw6 == 0)){
+      tilt = 240.0 + 63.0/80.0*(100.0 - rel_alt);
       setGimbal(tilt);
     }
 
@@ -202,6 +216,18 @@ void setPoint(float cur_lat, float cur_lon, float cur_alt){
     }
     else if(target_yaw > 0.534942 + 2*PI){
       target_yaw = 0.534942 + 2*PI;
+    }
+
+    if(target_detection == 1){
+      sw7 = 1;
+    }
+
+    if((target_detection == 0) && (sw7 == 0)){
+      float a_square = pow((cur_lat-37.564906)/0.00001129413,2) + pow((cur_lon-126.628065)/0.00000895247,2);
+      float b_square = pow((37.564906-37.564700)/0.00001129413,2) + pow((126.628065-126.627628)/0.00000895247,2);
+      float c_square = pow((cur_lat-37.564700)/0.00001129413,2) + pow((cur_lon-126.627628)/0.00000895247,2);
+
+      target_yaw = 0.534942 + 2*PI - acos((a_square+b_square-c_square)/(2*sqrt(a_square)*sqrt(b_square)));
     }
 
     if((pow((cur_lat-target_lat)/0.00001129413,2) + pow((cur_lon-target_lon)/0.00000895247,2) + pow((rel_alt - target_alt),2)) < 1){
@@ -345,6 +371,10 @@ void TargetCallback(const sensor_msgs::Image::ConstPtr& msg) {
   if(target_detection == 1){ 
     cv::rectangle(img, cv::Point(left,top), cv::Point(left+width,top+height), cv::Scalar(66,255,5),3);
   }
+
+  /* screen capture part */
+  writer.write(img);
+
   cv::imshow("img", img);
   cv::waitKey(1);
 }
@@ -356,14 +386,6 @@ int main(int argc, char **argv){
   ros::init(argc, argv, "riseq_sacc_target_detection");
   ros::NodeHandle n1, n2, n3, n4, n5;
   
-  /*first position*/
-  target_lat = 37.565350;
-  target_lon = 126.626778;
-  target_alt = 100;
-  target_yaw = 5.85367;  
-  position_publish(target_lat, target_lon, target_alt, target_yaw);
-  ros::Duration(2).sleep();
-
   gimbal_pub = n1.advertise<std_msgs::Float64>("/gimbal_control", 1);
   target_contol_pub = n2.advertise<mavros_msgs::GlobalPositionTarget>("/setpoint_target",1);
 
@@ -373,6 +395,15 @@ int main(int argc, char **argv){
   image_transport::ImageTransport it(n5);    
   image_transport::Subscriber target_zed_image_sub = it.subscribe("/zed/zed_node/rgb/image_rect_color", 1, TargetCallback);
 
+  /*first position*/
+  target_lat = 37.565350;
+  target_lon = 126.626778;
+  target_alt = 100;
+  target_yaw = 5.85367;  
+  position_publish(target_lat, target_lon, target_alt, target_yaw);
+  ros::Duration(2).sleep();
+
+
   if (!ros::ok()){
       std_msgs::Float64 gimbal;
       gimbal.data = 303;
@@ -380,6 +411,7 @@ int main(int argc, char **argv){
 
       cv::destroyAllWindows();
       ros::shutdown();
+      writer.release();
   }
   ros::spin();
   return 0;

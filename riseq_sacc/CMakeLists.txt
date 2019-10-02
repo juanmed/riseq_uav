@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
-  mavros_msgs
+  genmsg
 )
 
 find_package(OpenCV REQUIRED)
@@ -149,6 +149,8 @@ add_dependencies(riseq_sacc_number ${rise_sacc_number_EXPORTED_TARGETS} ${catkin
 add_dependencies(riseq_sacc_target_detection ${rise_sacc_target_detection_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(riseq_sacc_obstacle_avoidance ${riseq_sacc_obstacle_avoidance_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(riseq_sacc_ladder_info ${test_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(riseq_sacc_ladder_info riseq_sacc_generate_messages_cpp)
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

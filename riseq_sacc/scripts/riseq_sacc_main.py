@@ -284,33 +284,32 @@ if __name__ == "__main__":
             wp.longitude = wp4.longitude
             wp.altitude = wp4.altitude + home.geo.altitude
             wp.yaw = wp4.yaw
-            for i in range(0, rate*16):
+            for i in range(0, rate*2):
                 wp.header.stamp = rospy.Time.now()
                 position_publisher.publish(wp)
                 r.sleep()
+            wp.altitude = wp.altitude - home.geo.altitude
             step += 1
         # Helical trajectory, Number segmentation
         elif step == 7:
             process_publisher.publish(process)
             wp.latitude = wp_helical.latitude
             wp.longitude = wp_helical.longitude
-            wp.altitude = wp_helical.altitude + home.geo.altitude
+            wp.altitude = wp_helical.altitude
             wp.yaw = wp_helical.yaw
-            print("Time of helix trajectory publish: {}".format(rospy.Time.now().to_sec()))
             if (current_position.altitude >= (35.0 + home.geo.altitude)):
-                print("Time of altitude > 35 + home.geo.altitude: {}".format(rospy.Time.now().to_sec()))
                 step += 1
                 process.data = 4
             waypoint.data = 0
 
         # Return home
         elif step == 8:
+            process_publisher.publish(process)
             wp.latitude = wp0.latitude
             wp.longitude = wp0.longitude
             wp.altitude = 35.0
             wp.yaw = wp0.yaw
             err_h, err_v = getDistance()
-            print("Time to HOME: {}".format(rospy.Time.now().to_sec()))
             if (err_h <= 2.0) and (abs(err_v) <= 2.0):
                 step += 1
             waypoint.data = 0

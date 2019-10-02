@@ -29,30 +29,23 @@ float side_thr = 255/2;
 float updown_thr = 255/2;
 float front_thr = 255/15;
 
+int offset = 20;
+
 int width = 640;
 int height = 360;
 int width_13 = 213;
 int width_23 = 427;
-int height_13 = 120;
-int height_23 = 240;
+int height_13 = 120 - offset;
+int height_23 = 240 - offset;
 
 int front_count = 0;
 int right_count = 0;
 
-<<<<<<< HEAD
 
-
-mavros_msgs::State current_state;
-void state_cb(const mavros_msgs::State::ConstPtr& msg){
-    current_state = *msg;
-}
-
-=======
->>>>>>> b5f87cbf810c4a32fd539f71ab9114d400aae90e
-cv::Rect left_box(0, height_13, width_13, 120);
-cv::Rect right_box(width_23, height_13, 640 - width_23 , 120);
-cv::Rect up_box(0, 0, width, 120);
-cv::Rect down_box(0, height_23, width, 120);
+cv::Rect left_box(0, height_13, width_13, height_23 - height_13);
+cv::Rect right_box(width_23, height_13, 640 - width_23 , height_23 - height_13);
+cv::Rect up_box(0, 0, width, height_13);
+cv::Rect down_box(0, height_23, width, 360 - height_23);
 cv::Rect front_box(width_13, height_13, width_23 - width_13, height_23 - height_13);
 
 
@@ -101,8 +94,11 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   down_obstacle = (down < updown_thr) ? false : true; 
   front_obstacle = (front < front_thr) ? false : true;
 
-  if(front_count < 32 ){   
-    if((left_obstacle || right_obstacle || front_obstacle) == true){      
+//  
+  if(front_count < 32 ){ 
+
+    // Move Right  
+    if((left_obstacle || right_obstacle || front_obstacle) == true && right_count < 10){
       // stop, right
       ROS_INFO("stop");
       if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
@@ -114,9 +110,27 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
         sw = true;
         right_count++;
       }
-      cv::arrowedLine(display_img, cv::Point(width_13, int(height/2)),cv::Point(width_23,int(height/2)), cv::Scalar(0,0,255), 3);
+      cv::arrowedLine(display_img, cv::Point(width_13, int(height/2) - offset),cv::Point(width_23,int(height/2) - offset), cv::Scalar(0,0,255), 3);
     }
-    else if((left_obstacle || right_obstacle || front_obstacle) == false){
+//
+/*
+    // Move Left
+    if((left_obstacle || right_obstacle || front_obstacle) == true && right_count < 10){      
+      // stop, left
+      if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
+        past_lon = target_lon;
+        past_lat = target_lat;
+        target_lat = past_lat + (8.155*2.5/1000000);
+        target_lon = past_lon - (4.812*2.5/1000000);
+
+        sw = true;
+        right_count++;
+      }
+      cv::arrowedLine(display_img, cv::Point(width_23,int(height/2) - offset), cv::Point(width_13, int(height/2) - offset), cv::Scalar(0,0,255), 3);
+    }
+*/
+
+    else{
       //go
       ROS_INFO("go");
       if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
@@ -128,7 +142,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
         sw = true;
         front_count++;
       } 
-      cv::circle(display_img, cv::Point(int(width/2), int(height/2)), 10, cv::Scalar(0,255,0),-1);                                  
+      cv::circle(display_img, cv::Point(int(width/2), int(height/2) - offset), 10, cv::Scalar(0,255,0),-1);                                  
     }     
    
   }
@@ -162,6 +176,9 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
 }
 
 int main(int argc, char **argv){
+    cv::namedWindow("depth");
+    cv::moveWindow("depth", 20,20);
+
     ros::init(argc, argv, "riseq_sacc_obstacle_avoidance");
     ros::NodeHandle n1, n2, n3;
     image_transport::ImageTransport it(n2);

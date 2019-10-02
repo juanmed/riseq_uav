@@ -12,7 +12,7 @@
   <arg name="log_output" default="screen" />
   <arg name="fcu_protocol" default="v2.0" />
   <arg name="respawn_mavros" default="false" />
-  <arg name="rosbag_name" default="test1"/>
+  <arg name="rosbag_name" default="red1detection"/>
 
   <!-- RISEQ args -->
   <arg name="gate_x" default="6"/>
@@ -22,11 +22,19 @@
   <arg name="gate_pitch" default = "0.0"/>
   <arg name="gate_yaw" default = "-1.5707"/>
 
-
+  <!-- Pipe args -->
+  <arg name="pipe_x" default="1.0"/>
+  <arg name="pipe_y" default="1.0"/>
+  <arg name="pipe_z" default="1.0"/>
+  <arg name="pipe_roll" default = "0.0"/>
+  <arg name="pipe_pitch" default = "0.0"/>
+  <arg name="pipe_yaw" default = "0.0"/> 
 
   <!-- PX4 SITL, MAVROS, GAZEBO >
   <include file="$(find mavros)/launch/px4.launch">
     <arg name="fcu_url" value="$(arg fcu_url)"/>
+    <env name="PX4_HOME_LAT" value="37.565011"/>
+    <env name="PX4_HOME_LON" value="126.628919"/>
   </include-->
 
 
@@ -62,6 +70,18 @@
     <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/drl_gate/drl_gate.sdf"/>
   </include>
 
+  <!-- Pipe  -->
+  <include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+    <arg name="robot_name" default="pipe"/>
+    <arg name="x" value="$(arg pipe_x)"/>
+    <arg name="y" value="$(arg pipe_y)"/>
+    <arg name="z" value="$(arg pipe_z)"/>
+    <arg name="roll" value="$(arg pipe_roll)"/>
+    <arg name="pitch" value="$(arg pipe_pitch)"/>
+    <arg name="yaw" value="$(arg pipe_yaw)"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/iros_gate/iros_gate2.sdf"/>
+  </include>
+
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
 
@@ -78,4 +98,8 @@
   <!--Node running mission nodes-->
   <node pkg="riseq_sacc" type="riseq_sacc_process.py" name="riseq_sacc_process" />
 
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O $(arg rosbag_name) riseq/perception/uav_image_with_detections /mavros/global_position/global /mavros/local_position/pose /mavros/setpoint_position/global /riseq/sacc/setpoint_helix_local /riseq/sacc/setpoint_helix_global riseq/sacc/ladder_info"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/challenge.rviz"/>
 </launch>

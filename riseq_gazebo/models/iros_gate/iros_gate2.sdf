@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <model name="Color Tutorial Model">
+    <static>true</static>
+    <link name="gate_link1">
+      <collision name="collision1">
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>1.4</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name="horizontal_low">
+        <pose>0 0 0 0 1.5707 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>1.4</length>
+          </cylinder>
+        </geometry>
+        <material> <!-- LED material -->
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+          <specular>0 0 0 0</specular>
+          <emissive>0 1 0 1</emissive>
+        </material> <!-- End LED material -->
+      </visual>
+      <visual name="horizontal_high">
+        <pose>0 0 1.4 0 1.5707 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>1.4</length>
+          </cylinder>
+        </geometry>
+        <material> <!-- LED material -->
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+          <specular>0 0 0 0</specular>
+          <emissive>0 1 0 1</emissive>
+        </material> <!-- End LED material -->
+      </visual>
+      <visual name="vertical_right">
+        <pose>0.7 0 0.7 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>1.4</length>
+          </cylinder>
+        </geometry>
+        <material> <!-- LED material -->
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+          <specular>0 0 0 0</specular>
+          <emissive>0 1 0 1</emissive>
+        </material> <!-- End LED material -->
+      </visual>
+      <visual name="vertical_left">
+        <pose>-0.7 0 0.7 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>1.4</length>
+          </cylinder>
+        </geometry>
+        <material> <!-- LED material -->
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+          <specular>0 0 0 0</specular>
+          <emissive>0 1 0 1</emissive>
+        </material> <!-- End LED material -->
+      </visual>
+    </link>
+  </model>
+</sdf>

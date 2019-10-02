@@ -95,10 +95,12 @@ if __name__ == "__main__":
             if process_avoidance.is_alive():
                 process_avoidance.stop()
             if check3 is True:
+                launch_darknet.start()
                 process_helical1 = launch_node.launch(node_helical1)
                 process_helical2 = launch_node.launch(node_helical2)
+                for i in range(0, rate*20):
+                    r.sleep()
                 process_helical3 = launch_node.launch(node_helical3)
-                launch_darknet.start()
                 check3 = False
 
         elif now.data == 4:

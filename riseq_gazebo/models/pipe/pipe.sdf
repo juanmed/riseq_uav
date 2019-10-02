@@ -3,8 +3,8 @@
     <model name="pipe">
       <static>1</static>
 
-      <material name="blue">
-        <color rgba="0 0 0.8 1"/>
+      <material name="red">
+        <color rgba="0.8 0 0 1"/>
       </material>  
       
       <link name="pipe">
@@ -24,8 +24,8 @@
           <pose>0 0 0 0 0 0</pose>
           <geometry>
             <mesh>
-                <uri>model://pipe/meshes/pipe.dae</uri>
-                <scale>0.01 0.01 0.01</scale>
+                <uri>model://pipe/meshes/pipe30.dae</uri>
+                <scale>0.01 0.005 0.005</scale>
             </mesh>
           </geometry>
         </collision>
@@ -33,8 +33,8 @@
           <pose>0 0 0 0 0 0</pose>
           <geometry>
             <mesh>
-                <uri>model://pipe/meshes/pipe.dae</uri>
-                <scale>0.01 0.01 0.01</scale>
+                <uri>model://pipe/meshes/pipe30.dae</uri>
+                <scale>0.01 0.005 0.005</scale>
             </mesh>
           </geometry>
         </visual>
