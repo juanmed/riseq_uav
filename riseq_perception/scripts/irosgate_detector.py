@@ -59,7 +59,7 @@ class IROSGateDetector():
         # camera intrinsic matrix
         self.K = np.zeros((3,3), dtype='float64')
         self.K[0, 0], self.K[0, 2] = 697.5170288085938, 638.0659790039062 #241.42682359130833, 376.5
-        self.K[1, 1], self.K[1, 2] = 697.5170288085938, 354.1419982910156#241.42682359130833, 240.5
+        self.K[1, 1], self.K[1, 2] = 697.5170288085938, 354.1419982910156 #241.42682359130833, 240.5
         self.K[2, 2] = 1.     
         self.distCoeffs = np.array([-0.17601299285888672, 0.028582999482750893, 0.0, 0.0006652449956163764, -0.0005063589778728783])# np.zeros((8), dtype='float32')  
         self.axis = np.float32([[0.5,0,0], [0,0.5,0], [0,0,-0.5]]).reshape(-1,3) 
@@ -111,7 +111,6 @@ class IROSGateDetector():
         else:
             print("No Countours found")
             img = self.img
-            #raise RunTimeError("No contours were found.")
 
         output = cv2.bitwise_and(self.img.copy(), img, mask = mask)
         if (self.color_space == 'BGR'):
@@ -121,7 +120,6 @@ class IROSGateDetector():
         else:
             self.ax.imshow(img)
             self.ax2.imshow(output)            
-
 
     def detect(self, img, max_size):
         """
@@ -143,7 +141,7 @@ class IROSGateDetector():
         # blur, filter colors, dilate and erode to define edges, and find contours
         blur = cv2.GaussianBlur(img, (self.gauss_k, self.gauss_k), 0)
         mask = self.filterColors(blur)
-        mask = cv2.dilate(mask, None, iterations = 1)
+        mask = cv2.dilate(mask, None, iterations = 2)
         mask = cv2.erode(mask, None, iterations = 1)
         inf, cnts, hrch = cv2.findContours(mask.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -175,7 +173,15 @@ class IROSGateDetector():
 
         for square in squares:
 
-            x,y,w,h = cv2.boundingRect(square)
+            rect = cv2.minAreaRect(square)
+            w,h = rect[1]
+            #x,y,w,h = cv2.boundingRect(square)
+
+            # set a lower threshold
+            if((w<40) or (h<40)):
+                continue
+            else:
+                pass
 
             # verify width and height are similar
             aspect_ratio = w/h
@@ -214,22 +220,26 @@ class IROSGateDetector():
             except ZeroDivisionError:
                 pass
 
-                break
+            break
 
         return R, t, R_exp, corners2D, cv2.resize(mask, None, fx = 1.0/scale, fy = 1.0/scale), cnts
 
     def verifyArea(self, w,h,square):
         """
+        Verify if boundingRect area defined by w,h is similar to the area inside 
+        the possible square profile found.
+        Args:
+            w: width of the bounding rect of the contour 'square'
+            h: height of the bounding rect of the contour 'square'
+            square: contour whose area is to be compared
         """
         valid_area = False
         area1 = w*h
-        area2 = cv2.contourArea(square)
-        print("w*h : {}  contourArea: {}".format(area1, area2))
+        area2 = cv2.contourArea(cv2.convexHull(square))
+        print("w*h : {}  contourArea: {}, ratio: {:.2f}".format(area1, area2, area1/area2))
         if (((area1/area2) > 0.9) and ((area1/area2) < 1.1)): 
             valid_area = True
         return valid_area
-
-
 
     def filterColors(self, img):
         """
@@ -262,7 +272,6 @@ class IROSGateDetector():
             mask = cv2.inRange(img, lower, upper) + mask
         
         return mask      
-
 
     def getPose(self, points_3D, points_2D, scale = 1.):
         """

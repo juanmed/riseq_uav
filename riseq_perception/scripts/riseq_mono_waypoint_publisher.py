@@ -216,6 +216,8 @@ class MonoWaypointDetector():
                 #print("rvec: {}\ntvec: {}".format(R_exp, t))
                 if cnt is not None:
 
+                    #img = cv2.bitwise_and(img, img, mask = mask)
+
                     img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
                     img = self.wd.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
