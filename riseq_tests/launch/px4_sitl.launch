@@ -94,4 +94,5 @@
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/challenge.rviz"/>
 
   <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen"/>
+  <node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/>
 </launch>

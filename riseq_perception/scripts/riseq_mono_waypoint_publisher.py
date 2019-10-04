@@ -32,9 +32,11 @@ import cv2
 from window_detector import WindowDetector
 from ellipse_detector import EllipseDetector
 from ladder_detector import LadderDetector 
+from irosgate_detector import IROSGateDetector
 from cv_bridge import CvBridge, CvBridgeError
 
 from sensor_msgs.msg import Image 
+from sensor_msgs.msg import CameraInfo
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from riseq_sacc.msg import RiseSaccHelix
@@ -50,9 +52,9 @@ class MonoWaypointDetector():
         self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
         #self.ladder_info_pub = rospy.Publisher("riseq/sacc/ladder_info", RiseSaccHelix, queue_size = 10)
-        #self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
-        self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
-        
+        self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.estimate_object_pose)
+        self.frontCamera_Mono_info = rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.camera_params)
+        #self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
         self.bridge = CvBridge()
 
         #self.init_pose = rospy.get_param("riseq/init_pose")
@@ -65,6 +67,10 @@ class MonoWaypointDetector():
         self.wd = WindowDetector(mode="eval")
         self.pd = EllipseDetector(mode = "eval")
         self.ld = LadderDetector(mode = "eval")
+        self.ig = IROSGateDetector(mode = "eval", color_space = 'RGB')
+        self.camera_info_ready = False
+        self.camera_info_received = False
+
 
         # ADR Gate Detector
         #cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
@@ -84,6 +90,17 @@ class MonoWaypointDetector():
             The detected translation as a 3-vector (np.array, [x,y,z]) and 
             orientation as a quaternion 4-vector(np.array, [x,y,z,w])
         """
+
+        r = rospy.Rate(2)
+        while not self.camera_info_received:
+            rospy.loginfo("Camera Info not yet received. Waiting...")
+            r.sleep()
+
+        if not self.camera_info_ready:
+            self.ig.K = self.K
+            self.ig.D = self.D
+            rospy.loginfo("Camera info set.")
+            self.camera_info_ready = True
 
         # update MonoWaypointDetector
         self.mode = rospy.get_param("riseq/monocular_cv", 'disable')
@@ -109,7 +126,7 @@ class MonoWaypointDetector():
             if(self.mode == 'window'):
 
                 R, t, R_exp, cnt = self.wd.detect(img.copy(), self.max_size)
-
+                print("rvec: {}\ntvec: {}".format(R_exp, t))
                 if cnt is not None:
 
                     img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
@@ -193,6 +210,34 @@ class MonoWaypointDetector():
 
                 else:
                     img = outimg
+            
+            elif(self.mode == 'irosgate'):
+                R, t, R_exp, cnt, mask, cnts = self.ig.detect(img.copy(), self.max_size)
+                #print("rvec: {}\ntvec: {}".format(R_exp, t))
+                if cnt is not None:
+
+                    #img = cv2.bitwise_and(img, img, mask = mask)
+
+                    img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
+                    img = self.wd.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
+                    R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
+                    R = np.concatenate((R, np.array([[0.0, 0.0, 0.0, 1.0]]).T ), axis = 1)
+                    gate_quat = tf.transformations.quaternion_from_matrix(R)
+
+                    # gate waypoint
+                    x = t[2][0]
+                    y = -t[0][0]
+                    z = np.abs(t[1][0])
+
+                    wp.pose.position.x = x
+                    wp.pose.position.y = y
+                    wp.pose.position.z = z
+                    wp.pose.orientation.x = gate_quat[0]
+                    wp.pose.orientation.y = gate_quat[1]
+                    wp.pose.orientation.z = gate_quat[2]
+                    wp.pose.orientation.w = gate_quat[3]
+
+                    path.poses = [wp]                
             else:
                 rospy.loginfo("Monocular Object Detector mode non-existent.")
                 
@@ -203,7 +248,7 @@ class MonoWaypointDetector():
 
         else:
             # Do nothing
-            print("Monocular mode: {}".format(self.mode))
+            rospy.loginfo("Monocular mode: {}".format(self.mode))
             pass
 
         #print("Type: {}, Len: {}, Width: {}, Height: {}, Enc: {}".format(type(image_msg.data), len(image_msg.data), image_msg.width, image_msg.height, image_msg.encoding))
@@ -222,12 +267,19 @@ class MonoWaypointDetector():
 
         #rospy.loginfo(waypoints)
 
+    def camera_params(self, params):
+        """
+        Receive camera params inside a CameraInfo message
+        """
+        if not self.camera_info_received:
+            self.K = np.array(params.K).reshape(3,3)
+            self.D = np.array(params.D)
+            self.camera_info_received = True
+
 def gate_pose_publisher():
     try:
         rospy.init_node("riseq_gate_pose_publisher", anonymous = True)
 
-
-        
         monocular_waypoint_publisher = MonoWaypointDetector()
 
         rospy.loginfo('Gate Pose Publisher Started')

@@ -19,4 +19,4 @@ riseq:
     arm_vector: [0.13, 0.22, 0.023]
     environment: 'simulator'
     challenge_name: 'easy'
-    monocular_cv: 'window'
+    monocular_cv: 'irosgate'
