@@ -94,6 +94,8 @@ class IROSGateDetector():
 
     def update(self, val):
         """
+        Callback for slide bars. Gets the new values in the slide bars 
+        and reprocess the input image. Displays the image later.
         """
         self.canny_lt = int(self.canny_lt_slider.val)
         self.canny_ht = int(self.canny_ht_slider.val)
@@ -123,7 +125,24 @@ class IROSGateDetector():
 
     def detect(self, img, max_size):
         """
-        """
+        Process an input image looking for squares within the color boundaries
+        defined in self.HSVboundaries. 
+        Args:
+            img: input image to be processed
+            max_size: value of the maximum dimension with which the image should 
+            be processed. 
+        Returns:
+            R: rotation matrix of the square (if any) in the camera frame
+            t: translation matrix of the square (if any) in the camera frame
+            R_exp: rotation vector of the square (if any) in the camera frame.
+            It is equivalent to R.
+            corners_2D: location, in pixels, of the 4 corners of the detected 
+            square
+            mask: boolean mask whose True values correspond to the regions of the
+            input image in which the filtered colors are found
+            cnts: list of candidate contours that were evaluated in look for 
+            squares
+        """ 
         scale = 1.0
         #scale = self.max_size / float(max(img.shape))
         #img = cv2.resize(img, None, fx=scale, fy = scale) 
@@ -236,7 +255,7 @@ class IROSGateDetector():
         valid_area = False
         area1 = w*h
         area2 = cv2.contourArea(cv2.convexHull(square))
-        print("w*h : {}  contourArea: {}, ratio: {:.2f}".format(area1, area2, area1/area2))
+        #print("w*h : {}  contourArea: {}, ratio: {:.2f}".format(area1, area2, area1/area2))
         if (((area1/area2) > 0.9) and ((area1/area2) < 1.1)): 
             valid_area = True
         return valid_area
