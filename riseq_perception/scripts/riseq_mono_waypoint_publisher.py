@@ -51,10 +51,12 @@ class MonoWaypointDetector():
 
         self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
+        self.object_centerpoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint2d", PoseStamped, queue_size = 10)        
         #self.ladder_info_pub = rospy.Publisher("riseq/sacc/ladder_info", RiseSaccHelix, queue_size = 10)
         self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.estimate_object_pose)
         self.frontCamera_Mono_info = rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.camera_params)
         #self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
+        #self.frontCamera_Mono_info = rospy.Subscriber("/iris/camera_nadir/camera_info", CameraInfo, self.camera_params)
         self.bridge = CvBridge()
 
         #self.init_pose = rospy.get_param("riseq/init_pose")
@@ -71,9 +73,11 @@ class MonoWaypointDetector():
         self.camera_info_ready = False
         self.camera_info_received = False   
 
-        self.enable_recording = True
+        self.enable_recording = False
         self.frames = 0.
         self.success = 0.
+
+        self.saved = False
 
 
         # ADR Gate Detector
@@ -108,7 +112,7 @@ class MonoWaypointDetector():
             self.initKalmanFilters()
             if(self.enable_recording):
                 fourcc = cv2.VideoWriter_fourcc(*'XVID')    
-                self.out = cv2.VideoWriter('~/Documents/gate_tracking.avi',fourcc, 20.0, (self.image_width,self.image_height)) 
+                self.out = cv2.VideoWriter('gate_tracking.avi',fourcc, 20.0, (self.image_width,self.image_height)) 
 
         # update MonoWaypointDetector
         self.mode = rospy.get_param("riseq/monocular_cv", 'disable')
@@ -117,7 +121,11 @@ class MonoWaypointDetector():
         if(self.mode != 'disable'):
 
             img = self.bridge.imgmsg_to_cv2(image_msg, "rgb8")
-            
+
+            if not self.saved:
+                cv2.imwrite(r"gatelow.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+                self.saved = True
             path = Path()
             path.header.stamp = rospy.Time.now()
             path.header.frame_id = ""
@@ -131,6 +139,10 @@ class MonoWaypointDetector():
             ladder_info.header.frame_id = ""         
             ladder_info.width = img.shape[1]
             ladder_info.height = img.shape[0]
+
+            wp2d = PoseStamped()
+            wp2d.header.stamp = rospy.Time.now()
+            wp2d.header.frame_id = ""
 
             if(self.mode == 'window'):
 
@@ -235,6 +247,9 @@ class MonoWaypointDetector():
                 wp.pose.position.y = y_predict
                 wp.pose.position.z = z_predict
 
+                wp2d.pose.position.x = cx_predict
+                wp2d.pose.position.y = cy_predict
+
                 #print("rvec: {}\ntvec: {}".format(R_exp, t))
                 if cnt is not None:
                     self.success = self.success + 1.
@@ -247,10 +262,10 @@ class MonoWaypointDetector():
                     
                     cx_measurement = np.array([[cnt[0][0]*1.0]])
                     cy_measurement = np.array([[cnt[0][1]*1.0]])
-                    cx_estimation =self.cx_kalman.correct(cx_measurement)
-                    cy_estimation = self.cy_kalman.correct(cy_measurement)
+                    cx_estimation = self.cx_kalman.correct(cx_measurement)[0,0]
+                    cy_estimation = self.cy_kalman.correct(cy_measurement)[0,0]
                     
-                    img = cv2.circle(img, (int(cx_estimation[0,0]),int(cy_estimation[0,0])), 3, (0,0,255), 3) # estimation
+                    img = cv2.circle(img, (int(cx_estimation),int(cy_estimation)), 3, (0,0,255), 3) # estimation
                     
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0, 1.0]]).T ), axis = 1)
@@ -279,17 +294,22 @@ class MonoWaypointDetector():
                     wp.pose.orientation.z = gate_quat[2]
                     wp.pose.orientation.w = gate_quat[3]
 
+                    wp2d.pose.position.x = cx_estimation
+                    wp2d.pose.position.y = cy_estimation
+
             else:
                 
                 rospy.loginfo("Monocular Object Detector mode non-existent.")
 
             path.poses = [wp]          
             self.waypoint_pub.publish(path)
+            self.object_centerpoint_pub.publish(wp2d)
             #self.ladder_info_pub.publish(ladder_info)
 
             img_msg = self.bridge.cv2_to_imgmsg(img, "rgb8")
             self.img_dect_pub.publish(img_msg)
-            self.out.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            if(self.enable_recording):
+                self.out.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         else:
             # Do nothing
             rospy.loginfo("Monocular mode: {}".format(self.mode))
@@ -324,7 +344,7 @@ class MonoWaypointDetector():
 
     def initKalmanFilters(self):
         self.cx_kalman = cv2.KalmanFilter(2,1,0)
-        self.cx_kalman.transitionMatrix = np.array([[1., .125], [0., 1.]])
+        self.cx_kalman.transitionMatrix = np.array([[1., 0.125], [0., 1.]])
         self.cx_kalman.measurementMatrix = 1. * np.ones((1, 2))
         self.cx_kalman.processNoiseCov = 100* np.eye(2)
         self.cx_kalman.measurementNoiseCov = 1 * np.ones((1, 1))
@@ -333,7 +353,7 @@ class MonoWaypointDetector():
         self.cx_kalman.statePost = 0.1 * np.random.randn(2, 1)  
 
         self.cy_kalman = cv2.KalmanFilter(2,1,0)
-        self.cy_kalman.transitionMatrix = np.array([[1., .125], [0., 1.]])
+        self.cy_kalman.transitionMatrix = np.array([[1., 0.125], [0., 1.]])
         self.cy_kalman.measurementMatrix = 1. * np.ones((1, 2))
         self.cy_kalman.processNoiseCov = 100 * np.eye(2)
         self.cy_kalman.measurementNoiseCov = 1 * np.ones((1, 1))
@@ -378,7 +398,8 @@ def gate_pose_publisher():
         rospy.spin()
         if monocular_waypoint_publisher.enable_recording:
             print("Saving video recording...")
-            monocular_waypoint_publisher.out.release()
+            if monocular_waypoint_publisher.enable_recording:
+                monocular_waypoint_publisher.out.release()
             print("Succes rate: {}/{} frames, {:.2f}%".format(monocular_waypoint_publisher.success, monocular_waypoint_publisher.frames, monocular_waypoint_publisher.success/monocular_waypoint_publisher.frames))
 
         rospy.loginfo('Gate Pose Publisher Terminated')     

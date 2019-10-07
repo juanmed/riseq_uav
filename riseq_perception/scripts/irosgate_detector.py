@@ -64,7 +64,7 @@ class IROSGateDetector():
         self.K[1, 1], self.K[1, 2] = 697.5170288085938, 354.1419982910156 #241.42682359130833, 240.5
         self.K[2, 2] = 1.     
         self.distCoeffs = np.array([-0.17601299285888672, 0.028582999482750893, 0.0, 0.0006652449956163764, -0.0005063589778728783])# np.zeros((8), dtype='float32')  
-        self.axis = np.float32([[0.5,0,0], [0,0.5,0], [0,0,-0.5]]).reshape(-1,3) 
+        self.axis = np.float32([[0.5,0,0], [0,0.5,0], [0,0,0.5]]).reshape(-1,3) 
                
         if (mode == "test"):
             self.color_space = 'BGR'
