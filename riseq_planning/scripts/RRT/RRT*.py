@@ -166,7 +166,7 @@ class RRT():
 
     def find_near_nodes(self, new_node):
         nnode = len(self.nodeList)
-        r = 50.0 * math.sqrt((math.log(nnode) / nnode))
+        r = 50.0 * math.sqrt(math.log(nnode) / nnode)
         dlist = [(node.x - new_node.x) ** 2 +
                  (node.y - new_node.y) ** 2 for node in self.nodeList]
         nearinds = [dlist.index(i) for i in dlist if i <= r ** 2]
@@ -272,5 +272,14 @@ def main():
             plt.show()
 
 
+def example():
+    r = []
+    t = np.linspace(1, 100, 10)
+    for i in t:
+        r.append((50.0 * math.sqrt(math.log(i) / i))**2)
+    plt.plot(t, r, "-k")
+    plt.show()
+
 if __name__ == '__main__':
+    #example()
     main()

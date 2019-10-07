@@ -62,6 +62,7 @@ def qp_solution(order, waypoint, state, time):
     A = matrix([A1, A2, A3])
     b = matrix([b1, b2, b3])
 
+    np.savetxt("A.csv", A, delimiter=",")
     # compute inequality constraint : G,h
     max_vel = 30
     min_vel = 0
@@ -73,7 +74,7 @@ def qp_solution(order, waypoint, state, time):
     #G = matrix([G1, G2])
     #h = matrix([h1, h2])
 
-    sol = solvers.qp(P, q, G, h, A, b)
+    sol = solvers.qp(P, q, None, None, A, b)
     sol_x = sol['x']
     val = sol['primal objective']
 

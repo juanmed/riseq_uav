@@ -6,6 +6,7 @@ from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandTOL
+from mavros_msgs.msg import GlobalPositionTarget
 
 
 current_state = State()
@@ -14,7 +15,6 @@ current_state = State()
 def state_cb(msg):
     global current_state
     current_state = msg
-    print "callback"
 
 
 if __name__ == "__main__":
@@ -22,6 +22,7 @@ if __name__ == "__main__":
     rospy.init_node('offb_node', anonymous=True)
     rospy.Subscriber("mavros/state", State, state_cb)
     local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
+    global_pos_pub = rospy.Publisher('/mavros/setpoint_position/global', GlobalPositionTarget, queue_size=10)
 
     print("Publisher and Subscriber Created")
     arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
@@ -35,15 +36,20 @@ if __name__ == "__main__":
         print(current_state.connected)
         rate.sleep()
 
-    print("Creating pose")
-    pose = PoseStamped()
-    # set position here
-    pose.pose.position.x = 0
-    pose.pose.position.y = 0
-    pose.pose.position.z = 2
+    print("Creating global position")
+    point = GlobalPositionTarget()
+    point.header.stamp = rospy.Time.now()
+    point.coordinate_frame = GlobalPositionTarget().FRAME_GLOBAL_TERRAIN_ALT
+    point.type_mask = GlobalPositionTarget().IGNORE_VX + GlobalPositionTarget().IGNORE_VY + GlobalPositionTarget().IGNORE_VZ + GlobalPositionTarget().IGNORE_AFX + GlobalPositionTarget().IGNORE_AFY + GlobalPositionTarget().IGNORE_AFZ + GlobalPositionTarget().FORCE + GlobalPositionTarget().IGNORE_YAW_RATE
+    point.latitude = 37.5647106
+    point.longitude = 126.6276294
+    point.altitude = 25.0657
+    point.yaw = 0.0
 
     for i in range(100):
-        local_pos_pub.publish(pose)
+        #local_pos_pub.publish(pose)
+        point.header.stamp = rospy.Time.now()
+        global_pos_pub.publish(point)
         rate.sleep()
 
     print("Creating Objects for services")
@@ -54,6 +60,8 @@ if __name__ == "__main__":
 
     last_request = rospy.Time.now()
     start_time = rospy.Time.now()
+
+    index = 0
 
     while not rospy.is_shutdown():
         # print(current_state)
@@ -68,16 +76,24 @@ if __name__ == "__main__":
                 print("Vehicle armed")
             last_request = rospy.Time.now()
 
-        local_pos_pub.publish(pose)
+        point.header.stamp = rospy.Time.now()
+        global_pos_pub.publish(point)
+        #local_pos_pub.publish(pose)
         # print current_state
         rate.sleep()
+
+        #if current_state.mode == "OFFBOARD" and current_state.armed and rospy.Time.now() - last_request > rospy.Duration(
+        #        5.0):
+        #    print "go foward"
+        #    index = index + 0.1
+        #    if index > 8:
+        #        break
+        #    pose.pose.position.x = index
 
         #if rospy.Time.now() - start_time > rospy.Duration(20.0):
         #    break
 
     print("Return")
-    pose.pose.position.x = 0
-    pose.pose.position.y = 0
     pose.pose.position.z = 0.1
     for i in range(100):
         local_pos_pub.publish(pose)
@@ -92,4 +108,3 @@ if __name__ == "__main__":
     print("disarming")
     arm_cmd.value = False
     arm_client_1 = arming_client(arm_cmd.value)
-

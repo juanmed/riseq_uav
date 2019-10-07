@@ -176,44 +176,35 @@ class QpMatrix:
             for h in range(0, self.k_r):
                 if i == 0:
                     # Initial vel, acc, jerk, snap: First polynomial which has time as 0.
-                    values = self.poly_coef[h+1, 0]
+                    # Final vel, acc, jerk, snap: Last polynomial which has time as 1.
+                    end_values = self.poly_coef[h+1, 1] / (self.time_scaling[self.m - 1]**(h+1))
+                    start_values = self.poly_coef[h+1, 0] / (self.time_scaling[0]**(h+1))
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
                         # Continuity
                         continuity = True
 
+                    # For time scaling method, consider derivative term
                     for k in range(0, self.n - 1):
                         a = np.zeros(self.n * (self.order + 1) * self.m)
                         if continuity is True:
-                            a[i*(self.order+1)*self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = values
-                            a[(self.m-1) * (self.order + 1) * self.n + k * (self.order+1):  (self.m -1) * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = -values
+                            a[i*(self.order+1)*self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = start_values
+                            a[(self.m-1) * (self.order + 1) * self.n + k * (self.order+1):  (self.m -1) * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = -end_values
                             A2[k + h*(self.n-1), :] = a
                             b2[k + h*(self.n-1)] = 0
                         else:
-                            a[i*(self.order+1)*self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = values
+                            a[i*(self.order+1)*self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = start_values
                             A2[k + h*(self.n-1), :] = a
-                            b2[k + h*(self.n-1)] = current_state[h+1][k] * np.power(self.time_scaling[0], h + 1)        # constraint_data_r[i, h]
-
-                    # Final vel, acc, jerk, snap: Last polynomial which has time as 1.
-                    values = self.poly_coef[h+1, 1]
-
-                    continuity = False
-                    if constraint_data_r[i, h] == 1:
-                        continuity = True
-                        # Continuity
-
-                    for k in range(0, self.n - 1):
-                        a = np.zeros(self.n * (self.order + 1) * self.m)
-                        if continuity is False:
-                            a[(self.m-1)*(self.order+1)*self.n + k*(self.order+1): (self.m-1)*(self.order+1)*self.n+k*(self.order+1)+self.order + 1] = values
-                            A2[k + h*(self.n-1) + (self.n-1)*self.k_r, :] = a
-                            b2[k + h*(self.n-1) + (self.n-1)*self.k_r] = constraint_data_r[i, h]
+                            b2[k + h*(self.n-1)] = current_state[h+1][k]
+                            a[(self.m - 1) * (self.order + 1) * self.n + k * (self.order + 1): (self.m - 1) * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = end_values
+                            A2[k + h * (self.n - 1) + (self.n - 1) * self.k_r, :] = a
+                            b2[k + h * (self.n - 1) + (self.n - 1) * self.k_r] = constraint_data_r[i, h]
 
                 else:
                     # Elsewhere: polynomial of each segment which has time as 0, 1 except initial, final point.
-                    end_values = self.poly_coef[h+1, 1]
-                    start_values = self.poly_coef[h+1, 0]
+                    end_values = self.poly_coef[h+1, 1] / (self.time_scaling[i-1]**(h+1))
+                    start_values = self.poly_coef[h+1, 0] / (self.time_scaling[i]**(h+1))
 
                     continuity = False
                     if constraint_data_r[i, h] == 1:
@@ -231,13 +222,9 @@ class QpMatrix:
                             a[(i-1)*(self.order+1)*self.n + k * (self.order + 1): (i-1) * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = end_values
                             A2[k + h*(self.n-1) + 2*i*(self.n-1)*self.k_r, :] = a
                             b2[k + h*(self.n-1) + 2*i*(self.n-1)*self.k_r] = constraint_data_r[i, h]
-
-                    for k in range(0, self.n - 1):
-                        a = np.zeros(self.n * (self.order + 1) * self.m)
-                        if continuity is False:
-                            a[i * (self.order+1) * self.n + k * (self.order+1): i * (self.order+1) * self.n + k * (self.order+1) + self.order + 1] = start_values
-                            A2[k + h*(self.n - 1) + 2*i*(self.n -1)*self.k_r + (self.n-1)*self.k_r, :] = a
-                            b2[k + h*(self.n - 1) + 2*i*(self.n -1)*self.k_r + (self.n-1)*self.k_r] = constraint_data_r[i, h]
+                            a[i * (self.order + 1) * self.n + k * (self.order + 1): i * (self.order + 1) * self.n + k * (self.order + 1) + self.order + 1] = start_values
+                            A2[k + h * (self.n - 1) + 2 * i * (self.n - 1) * self.k_r + (self.n - 1) * self.k_r, :] = a
+                            b2[k + h * (self.n - 1) + 2 * i * (self.n - 1) * self.k_r + (self.n - 1) * self.k_r] = constraint_data_r[i, h]
 
         A2, b2 = self.delete_redundant(A2, b2)
         A2 = matrix(A2)
@@ -266,7 +253,9 @@ class QpMatrix:
             for h in range(0, self.k_psi):
                 if i == 0:
                     # Initial yaw_dot, yaw_ddot: First polynomial which has time as 0.
-                    values = self.poly_coef[h+1, 0]
+                    # Final yaw_dot, yaw_ddot: Last polynomial which has time as 1.
+                    end_values = self.poly_coef[h + 1, 1] / (self.time_scaling[self.m - 1] ** (h+1))
+                    start_values = self.poly_coef[h + 1, 0] / (self.time_scaling[0] ** (h+1))
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -276,35 +265,24 @@ class QpMatrix:
                     for k in range(0, 1):
                         a = np.zeros(self.n * (self.order + 1) * self.m)
                         if continuity is True:
-                            a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1): i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = values
-                            a[(self.m-1) * (self.order + 1) * self.n + (k+3) * (self.order+1): (self.m-1) * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = -values
+                            a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1): i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = start_values
+                            a[(self.m-1) * (self.order + 1) * self.n + (k+3) * (self.order+1): (self.m-1) * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = -end_values
                             A3[k + h * 1, :] = a
                             b3[k + h * 1] = 0
                         else:
-                            a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1): i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = values
+                            a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1): i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = start_values
                             A3[k + h * 1, :] = a
-                            b3[k + h * 1] = current_state[h+1][k+3] * np.power(self.time_scaling[0], h + 1)
-
-                    # Final yaw_dot, yaw_ddot: Last polynomial which has time as 1.
-                    values = self.poly_coef[h+1, 1]
-
-                    continuity = False
-                    if constraint_data_psi[i, h] == 1:
-                        # Continuity
-                        continuity = True  # True
-
-                    for k in range(0, 1):
-                        a = np.zeros(self.n * (self.order + 1) * self.m)
-                        if continuity is False:
+                            b3[k + h * 1] = current_state[h+1][k+3]
                             a[(self.m - 1) * (self.order + 1) * self.n + (k + 3) * (self.order + 1):
-                              (self.m - 1) * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = values
+                              (self.m - 1) * (self.order + 1) * self.n + (k + 3) * (
+                                          self.order + 1) + self.order + 1] = end_values
                             A3[k + h * 1 + 1 * self.k_psi, :] = a
                             b3[k + h * 1 + 1 * self.k_psi] = constraint_data_psi[i, h]
 
                 else:
                     # Elsewhere: polynomial of each segment which has time as 0, 1 except initial, final point
-                    end_values = self.poly_coef[h+1, 1]
-                    start_values = self.poly_coef[h+1, 0]
+                    end_values = self.poly_coef[h + 1, 1] / (self.time_scaling[i - 1] ** (h + 1))
+                    start_values = self.poly_coef[h + 1, 0] / (self.time_scaling[i] ** (h + 1))
 
                     continuity = False
                     if constraint_data_psi[i, h] == 1:
@@ -322,12 +300,9 @@ class QpMatrix:
                             a[(i-1) * (self.order + 1) * self.n + (k + 3) * (self.order + 1): (i-1) * (self.order + 1) * self.n + (k+3) * (self.order + 1) + self.order + 1] = end_values
                             A3[k + h * 1 + 2 * i * 1 * self.k_psi, :] = a
                             b3[k + h * 1 + 2 * i * 1 * self.k_psi] = constraint_data_psi[i, h]
-
-                    for k in range(0, 1):
-                        a = np.zeros(self.n * (self.order + 1) * self.m)
-                        if continuity is False:
                             a[i * (self.order + 1) * self.n + (k + 3) * (self.order + 1):
-                              i * (self.order + 1) * self.n + (k + 3) * (self.order + 1) + self.order + 1] = start_values
+                              i * (self.order + 1) * self.n + (k + 3) * (
+                                          self.order + 1) + self.order + 1] = start_values
                             A3[k + h * 1 + 2 * i * 1 * self.k_psi + 1 * self.k_psi, :] = a
                             b3[k + h * 1 + 2 * i * 1 * self.k_psi + 1 * self.k_psi] = constraint_data_psi[i, h]
 
