@@ -138,7 +138,7 @@ class MonoWaypointDetector():
                     # gate waypoint
                     x = t[2][0]
                     y = -t[0][0]
-                    z = np.abs(t[1][0])
+                    z = -t[1][0]
 
                     wp.pose.position.x = x
                     wp.pose.position.y = y
@@ -219,7 +219,7 @@ class MonoWaypointDetector():
                     #img = cv2.bitwise_and(img, img, mask = mask)
 
                     img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
-                    img = self.wd.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
+                    img = self.ig.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0, 1.0]]).T ), axis = 1)
                     gate_quat = tf.transformations.quaternion_from_matrix(R)

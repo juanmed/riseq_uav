@@ -74,4 +74,11 @@
 
     <!-- Spawn obstacle -->
     <include file="$(find riseq_gazebo)/launch/spawn_arena.launch" />
+
+    <param name="riseq/monocular_cv" type="string" value="irosgate" />
+    <!-- gate detection node -->
+    <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen">
+        <remap from="/zed/zed_node/left_raw/image_raw_color" to="/stereo/left/image_color" />
+        <remap from="/zed/zed_node/left_raw/camera_info" to="/stereo/left/camera_info" />
+    </node>
 </launch>

@@ -1,21 +1,21 @@
 <?xml version='1.0'?>
 <sdf version='1.6'>
   <model name='iros_wall'>
-    <pose frame=''>2.32584 -1.03328 0 0 -0 0</pose>
-    <link name='Wall_10'>
-      <collision name='Wall_10_Collision'>
+    <pose frame=''>1.092 0.747 0 0 -0 0</pose>
+    <link name='Wall_0'>
+      <collision name='Wall_0_Collision'>
         <geometry>
           <box>
-            <size>7.69549 0.15 2.5</size>
+            <size>7 0.15 2.5</size>
           </box>
         </geometry>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
       </collision>
-      <visual name='Wall_10_Visual'>
+      <visual name='Wall_0_Visual'>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
         <geometry>
           <box>
-            <size>7.69549 0.15 2.5</size>
+            <size>7 0.15 2.5</size>
           </box>
         </geometry>
         <material>
@@ -26,22 +26,22 @@
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame=''>0 -9.4067 0 0 0 -0.010956</pose>
+      <pose frame=''>0 7.3 0 0 -0 0</pose>
     </link>
-    <link name='Wall_11'>
-      <collision name='Wall_11_Collision'>
+    <link name='Wall_1'>
+      <collision name='Wall_1_Collision'>
         <geometry>
           <box>
-            <size>19.0468 0.15 2.5</size>
+            <size>14.75 0.15 2.5</size>
           </box>
         </geometry>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
       </collision>
-      <visual name='Wall_11_Visual'>
+      <visual name='Wall_1_Visual'>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
         <geometry>
           <box>
-            <size>19.0468 0.15 2.5</size>
+            <size>14.75 0.15 2.5</size>
           </box>
         </geometry>
         <material>
@@ -52,22 +52,22 @@
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame=''>3.70983 0.000372 0 0 -0 1.57177</pose>
+      <pose frame=''>3.425 0 0 0 0 -1.5708</pose>
     </link>
-    <link name='Wall_12'>
-      <collision name='Wall_12_Collision'>
+    <link name='Wall_2'>
+      <collision name='Wall_2_Collision'>
         <geometry>
           <box>
-            <size>7.64203 0.15 2.5</size>
+            <size>7 0.15 2.5</size>
           </box>
         </geometry>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
       </collision>
-      <visual name='Wall_12_Visual'>
+      <visual name='Wall_2_Visual'>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
         <geometry>
           <box>
-            <size>7.64203 0.15 2.5</size>
+            <size>7 0.15 2.5</size>
           </box>
         </geometry>
         <material>
@@ -78,22 +78,22 @@
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame=''>0.008143 9.44871 0 0 0 -3.14158</pose>
+      <pose frame=''>0 -7.3 0 0 -0 3.14159</pose>
     </link>
-    <link name='Wall_14'>
-      <collision name='Wall_14_Collision'>
+    <link name='Wall_3'>
+      <collision name='Wall_3_Collision'>
         <geometry>
           <box>
-            <size>13 0.15 2.5</size>
+            <size>14.75 0.15 2.5</size>
           </box>
         </geometry>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
       </collision>
-      <visual name='Wall_14_Visual'>
+      <visual name='Wall_3_Visual'>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
         <geometry>
           <box>
-            <size>13 0.15 2.5</size>
+            <size>14.75 0.15 2.5</size>
           </box>
         </geometry>
         <material>
@@ -104,22 +104,22 @@
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame=''>-0.476392 0.046156 0 0 -0 1.5708</pose>
+      <pose frame=''>-3.425 0 0 0 -0 1.5708</pose>
     </link>
-    <link name='Wall_9'>
-      <collision name='Wall_9_Collision'>
+    <link name='Wall_5'>
+      <collision name='Wall_5_Collision'>
         <geometry>
           <box>
-            <size>18.9465 0.15 2.5</size>
+            <size>9.75 0.15 2.5</size>
           </box>
         </geometry>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
       </collision>
-      <visual name='Wall_9_Visual'>
+      <visual name='Wall_5_Visual'>
         <pose frame=''>0 0 1.25 0 -0 0</pose>
         <geometry>
           <box>
-            <size>18.9465 0.15 2.5</size>
+            <size>9.75 0.15 2.5</size>
           </box>
         </geometry>
         <material>
@@ -130,7 +130,7 @@
           <ambient>1 1 1 1</ambient>
         </material>
       </visual>
-      <pose frame=''>-3.77252 0.032876 0 0 0 -1.5708</pose>
+      <pose frame=''>-0.471326 0.246941 0 0 -0 1.5708</pose>
     </link>
     <static>1</static>
   </model>

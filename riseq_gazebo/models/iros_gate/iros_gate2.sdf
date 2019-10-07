@@ -3,14 +3,7 @@
   <model name="Color Tutorial Model">
     <static>true</static>
     <link name="gate_link1">
-      <collision name="collision1">
-        <geometry>
-          <cylinder>
-            <radius>0.05</radius>
-            <length>1.4</length>
-          </cylinder>
-        </geometry>
-      </collision>
+
       <visual name="horizontal_low">
         <pose>0 0 -0.7 0 1.5707 0</pose>
         <geometry>
