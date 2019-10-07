@@ -147,7 +147,7 @@ class MonoWaypointDetector():
                     # gate waypoint
                     x = t[2][0]
                     y = -t[0][0]
-                    z = np.abs(t[1][0])
+                    z = -t[1][0]
 
                     wp.pose.position.x = x
                     wp.pose.position.y = y
@@ -242,7 +242,7 @@ class MonoWaypointDetector():
                     #img = cv2.bitwise_and(img, img, mask = mask)
 
                     img = cv2.drawContours(img, [cnt[1:]], -1, (255,0,0), 3)
-                    #img = self.ig.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
+                    img = self.ig.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
                     img = cv2.circle(img, (cnt[0][0],cnt[0][1]), 3, (0,255,0), 3 ) # measurement
                     
                     cx_measurement = np.array([[cnt[0][0]*1.0]])

@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # set position here
     pose.pose.position.x = 0
     pose.pose.position.y = 0
-    pose.pose.position.z = 2
+    pose.pose.position.z = 4
 
     for i in range(100):
         local_pos_pub.publish(pose)
