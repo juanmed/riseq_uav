@@ -20,3 +20,4 @@ riseq:
     environment: 'simulator'
     challenge_name: 'easy'
     monocular_cv: 'irosgate'
+    gate_color: 'rgb'

@@ -227,7 +227,7 @@ class MonoWaypointDetector():
                     # gate waypoint
                     x = t[2][0]
                     y = -t[0][0]
-                    z = np.abs(t[1][0])
+                    z = -t[1][0]
 
                     wp.pose.position.x = x
                     wp.pose.position.y = y

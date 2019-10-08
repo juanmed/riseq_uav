@@ -42,6 +42,7 @@ class IROSGateDetector():
         # For how to decide HSV color boundaries, look
         # https://stackoverflow.com/questions/10948589/choosing-the-correct-upper-and-lower-hsv-boundaries-for-color-detection-withcv
         green = [([60-20, 100, 40], [60+20, 255, 255])]
+        blue = [([120-20, 100, 40], [120+20, 255, 255])]
         self.HSVboundaries = green
         #self.HSVboundaries = [([160, 100, 40], [180, 255, 255]), #red
         #                      ([0, 100, 40], [30, 255, 255])]
