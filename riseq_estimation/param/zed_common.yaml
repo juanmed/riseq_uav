@@ -3,8 +3,8 @@
 ---
 
 # Dynamic parameters cannot have a namespace
-auto_exposure:              true                                # Dynamic
-exposure:                   100                                 # Dynamic
+auto_exposure:              false                               # Dynamic
+exposure:                   5                                   # Dynamic
 gain:                       100                                 # Dynamic
 confidence:                 100                                 # Dynamic
 mat_resize_factor:          1.0                                 # Dynamic

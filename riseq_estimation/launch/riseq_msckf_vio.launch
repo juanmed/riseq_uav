@@ -1,6 +1,7 @@
+<?xml version="1.0"?>
 <launch>
   <arg name="robot" default="msckf" />
-  <arg name="fixed_frame_id" default="local_origin_ned" />
+  <arg name="fixed_frame_id" default="world" />
   <arg name="calibration_file"
     default="$(find riseq_estimation)/calib/camchain-imucam.yaml" />
 
@@ -12,9 +13,7 @@
 
   <!-- Msckf Vio Nodelet  -->
   <group ns="$(arg robot)">
-    <node pkg="nodelet" type="nodelet" name="vio"
-      args='standalone msckf_vio/MsckfVioNodelet'
-      output="screen">
+    <node pkg="nodelet" type="nodelet" name="vio" args="standalone msckf_vio/MsckfVioNodelet" output="screen">
 
       <!-- Calibration parameters -->
       <rosparam command="load" file="$(arg calibration_file)" />
@@ -54,7 +53,7 @@
       <remap from="~imu" to="/mavros/imu/data" />
       <remap from="~features" to="/msckf/image_processor/features" />
 
-      <remap from="/msckf/vio/odom" to="/riseq/estimation/vo_pose" />
+      <!--remap from="/msckf/vio/odom" to="/riseq/estimation/vo_pose" /-->
     </node>
   </group>
 </launch>

@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
   <arg name="robot" default="msckf" />
   <arg name="calibration_file"
@@ -5,9 +6,7 @@
 
   <!-- Image Processor Nodelet  -->
   <group ns="$(arg robot)">
-    <node pkg="nodelet" type="nodelet" name="image_processor"
-      args="standalone msckf_vio/ImageProcessorNodelet"
-      output="screen">
+    <node pkg="nodelet" type="nodelet" name="image_processor" args="standalone msckf_vio/ImageProcessorNodelet" output="screen">
 
       <rosparam command="load" file="$(arg calibration_file)" />
       <param name="grid_row" value="4" />
