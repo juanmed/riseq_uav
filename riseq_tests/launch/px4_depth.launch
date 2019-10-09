@@ -1,0 +1,43 @@
+<launch>
+    <arg name="world_file_name"    default="simple_obstacle" />
+    <arg name="world_path" default="$(find mavlink_sitl_gazebo)/worlds/empty.world" />
+    <arg name="pointcloud_topics" default="[/camera/depth/points]"/>
+
+
+    <!-- Define a static transform from a camera internal frame to the fcu for every camera used -->
+    <node pkg="tf" type="static_transform_publisher" name="tf_depth_camera"
+          args="0 0 0 -1.57 0 -1.57 fcu camera_link 10"/>
+
+    <!-- Launch PX4 and mavros -->
+    <include file="$(find avoidance)/launch/avoidance_sitl_mavros.launch" >
+        <arg name="model" value="iris_depth_camera" />
+        <arg name="world_path" value="$(arg world_path)" />
+        <arg name="gui" default="true"/>
+    </include>
+
+    <!-- Launch local planner -->
+    <!--<node name="local_planner_node" pkg="local_planner" type="local_planner_node">
+        <param name="goal_x_param" value="17" />
+        <param name="goal_y_param" value="15"/>
+        <param name="goal_z_param" value="3" />
+        <param name="world_name" value="$(find avoidance)/sim/worlds/$(arg world_file_name).yaml" />
+        <rosparam param="pointcloud_topics" subst_value="True">$(arg pointcloud_topics)</rosparam>
+    </node>-->
+
+    <!-- Run Rviz and Gazebo -->
+    <node name="rviz" pkg="rviz" type="rviz"/>
+    <!-- node name="gazebo_node" pkg="gazebo_ros" type="gazebo" / -->
+
+    <!-- Spawn obstacle -->
+    <include file="$(find riseq_gazebo)/launch/spawn_ladder.launch" >
+        <arg name="x_location" value="11.0"/>
+		<arg name="y_location" value="6.0"/>
+    </include>
+
+    <!-- Run avoidance node -->
+    <node name="obstacle_avoidance" pkg="riseq_sacc" type="riseq_sacc_obstacle_avoidance" output="screen">
+        <remap from="/zed/zed_node/depth/depth_registered" to="/camera/depth/image_raw" />
+        <remap from="/setpoint_avoidance" to="/mavros/setpoint_position/global" />
+    </node>
+
+</launch>

@@ -45,19 +45,39 @@ Otherwise, install by yourself the following required python packages:
 * slycot
 * cvxopt
 
-
+You will also need the [ZED Camera ROS Wrapper](https://www.stereolabs.com/docs/ros/#installation) so follow the installation instructions in that link.
 
 
 
 ## Testing 
 
-#### MIT FlightGoggles Simulator
 
-We have developed our algorithms to work with the MIT's [flightgoggles simulator](https://github.com/mit-fast/FlightGoggles). Follow the steps in their [wiki](https://github.com/mit-fast/FlightGoggles/wiki) to install it. Then:
+### Install PX4 SITL (Software-In-The-Loop simulation)
+Follow the instructions as shown in the [ROS with Gazebo Simulation PX4 Documentation](https://dev.px4.io/master/en/simulation/ros_interface.html)
+To check if the necessary environment is setup correctly, you can run the gazebo SITL using the following command
 
 ```bash
-roslaunch riseq_common flightgoggles_control.launch
+cd <Firmware_directory>
+DONT_RUN=1 make px4_sitl_default gazebo
 ```
+To source the PX4 environment, run the following commands
+
+```bash
+cd <Firmware_directory>
+source ~/riseq_ws/devel/setup.bash    # (optional)
+source Tools/setup_gazebo.bash $(pwd) $(pwd)/build/px4_sitl_default
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/sitl_gazebo
+```
+
+You can run the rest of the roslaunch files in the same terminal
+
+```bash
+ roslaunch px4 posix_sitl.launch
+```
+
+You will need to source the PX4 environment in every new terminal you open to launch riseq_uav. 
+
 
 #### On a real drone
 

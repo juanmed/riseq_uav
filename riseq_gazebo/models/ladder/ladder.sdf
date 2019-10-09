@@ -1,0 +1,100 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name='ladder car'>
+      <pose frame=''>0 0 0 0 0 0</pose>
+      <link name='car'>
+        <inertial>
+          <mass>1</mass>
+          <inertia>
+            <ixx>1.4</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.4</iyy>
+            <iyz>0</iyz>
+            <izz>1.2</izz>
+          </inertia>
+        </inertial>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>5 2 2</size>
+            </box>
+          </geometry>
+          <max_contacts>100</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>5 2 2</size>
+            </box>
+          </geometry>
+          <material>
+            <script>
+              <name>Gazebo/Grey</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+          </material>
+        </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
+      </link>
+      <link name='ladder'>
+        <pose>0 0 15 0 0 0</pose>
+        <inertial>
+          <mass>1</mass>
+          <inertia>
+            <ixx>0</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0</iyy>
+            <iyz>0</iyz>
+            <izz>0</izz>
+          </inertia>
+        </inertial>
+        <collision name='collision'>
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>30</length>
+            </cylinder>
+          </geometry>
+
+        </collision>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>30</length>
+            </cylinder>
+          </geometry>
+
+          <material>
+            <script>
+              <name>Gazebo/Grey</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+          </material>
+        </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
+      </link>
+      <joint name="car_ladder" type="fixed">
+
+        <parent>car</parent>
+        <child>ladder</child>
+      </joint>
+    </model>
