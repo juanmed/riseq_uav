@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # set position here
     pose.pose.position.x = 0
     pose.pose.position.y = 0
-    pose.pose.position.z = 4
+    pose.pose.position.z = 1
 
     for i in range(100):
         local_pos_pub.publish(pose)
@@ -72,8 +72,8 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
 
-        #if rospy.Time.now() - start_time > rospy.Duration(20.0):
-        #    break
+        if rospy.Time.now() - start_time > rospy.Duration(20.0):
+            break
 
     print("Return")
     pose.pose.position.x = 0

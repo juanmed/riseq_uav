@@ -23,8 +23,8 @@
   <arg name="gate_yaw" default = "-1.5707"/>
 
   <!-- Pipe args -->
-  <arg name="pipe_x" default="5.0"/>
-  <arg name="pipe_y" default="0.0"/>
+  <arg name="pipe_x" default="10.0"/>
+  <arg name="pipe_y" default="-10.0"/>
   <arg name="pipe_z" default="1.0"/>
   <arg name="pipe_roll" default = "0.0"/>
   <arg name="pipe_pitch" default = "0.0"/>
@@ -79,8 +79,10 @@
     <arg name="roll" value="$(arg pipe_roll)"/>
     <arg name="pitch" value="$(arg pipe_pitch)"/>
     <arg name="yaw" value="$(arg pipe_yaw)"/>
-    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/iros_gate/iros_gate2.sdf"/>
+    <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/pipe/pipe.sdf"/>
   </include>
+
+  <include file="$(find riseq_gazebo)/launch/spawn_arena.launch"/>
 
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
@@ -93,6 +95,9 @@
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/challenge.rviz"/>
 
-  <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen"/>
+  <!--node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen">
+    <remap from="/zed/zed_node/left_raw/image_raw_color" to="/iris/camera_nadir/image_raw" />
+    <remap from="/zed/zed_node/left_raw/camera_info" to="/iris/camera_nadir/camera_info" />
+  </node-->
   <node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/>
 </launch>

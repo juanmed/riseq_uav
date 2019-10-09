@@ -7,14 +7,23 @@ from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandTOL
+from std_msgs.msg import Int64MultiArray
+
 import tf
 import numpy as np
 
 
+camera_width = 400  # [pixel]
+camera_height = 400  # [pixel]
+
+gate_width = 1.4  # [m]
+gate_height = 1.4  # [m]
+
 current_state = State()
 current_pose = PoseStamped()
 gate_pose = PoseStamped()
-
+px = 0
+py = 0
 
 def state_cb(msg):
     global current_state
@@ -35,11 +44,25 @@ def gate_cb(msg):
     :param msg: gate position
     """
     global gate_pose
-    try:
-        gate_pose = msg.poses[0]
-        rospy.loginfo(gate_pose)
-    except IndexError:
-        pass
+    gate_pose = msg
+
+
+def gate_size_cb(msg):
+    global px, py
+    px = msg.data[0]
+    py = msg.data[1]
+
+
+def calculate_ratio(cx, cy):
+    """
+    Function to calculate of real distance of gate center from drone
+    :param cx: center x of gate
+    :param cy: center y of gate
+    :return: real distance
+    """
+    dx = gate_width * (gate_pose.pose.position.x - camera_width/2) / px
+    dy = gate_height * (gate_pose.pose.position.y - camera_height/2) /py
+    return dx, dy
 
 if __name__ == "__main__":
     rospy.init_node('iros_node', anonymous=True)
@@ -47,7 +70,8 @@ if __name__ == "__main__":
     # Create Subscriber
     rospy.Subscriber("mavros/state", State, state_cb)
     rospy.Subscriber("mavros/local_position/pose", PoseStamped, pose_cb)
-    rospy.Subscriber("/riseq/perception/uav_mono_waypoint", Path, gate_cb)
+    rospy.Subscriber("/riseq/perception/2D_position", PoseStamped, gate_cb)
+    rospy.Subscriber("/riseq/perception/gate_pixel_size", Int64MultiArray, gate_size_cb)
 
     local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
@@ -59,12 +83,12 @@ if __name__ == "__main__":
     print("Clients Created")
     rate = rospy.Rate(20)
 
-    while (not current_state.connected):
+    while not current_state.connected:
         rate.sleep()
 
     print("Creating pose")
     goal_pose = PoseStamped()
-    # set position here
+    # set position here at start
     goal_pose.pose.position.x = 0
     goal_pose.pose.position.y = 0
     goal_pose.pose.position.z = 1.5
@@ -90,23 +114,29 @@ if __name__ == "__main__":
         local_pos_pub.publish(goal_pose)
         rate.sleep()
 
-    wp = [[(+1, 0), (0, +3), (-6, 0)], [(-2, 0), (0, -4), (6, 0)]]
-    heading = [[0, +np.pi / 2, +np.pi], [np.pi, np.pi /2 *3, 0]]
+    wp = [(+5, 0), (+2, 0), (0, +3), (-9, 0)], [(-2, 0), (-2, 0), (0, -4), (6, 0)]
+    heading = [[0, 0, +np.pi / 2, +np.pi], [np.pi, np.pi, np.pi /2 *3, 0]]
     gate_detecting = True
     gate_count = 0
     wp_len = len(wp[0])
     wp_index = 0
     update_goal = True
+
     while not rospy.is_shutdown():
         if update_goal is True:
             if gate_detecting is True:
+                cx = gate_pose.pose.position.x
+                cy = gate_pose.pose.position.y
+                dx_camera, dy_camera = calculate_ratio(cx, cy)
+
+                dy_drone = -dx_camera
+                dz_drone = -dy_camera
                 if gate_count == 0:
-                    goal_pose.pose.position.x = current_pose.pose.position.x + gate_pose.pose.position.x
-                    goal_pose.pose.position.y = current_pose.pose.position.y + gate_pose.pose.position.y
+                    goal_pose.pose.position.y = current_pose.pose.position.y + dy_drone
+                    goal_pose.pose.position.z = current_pose.pose.position.z + dz_drone
                 else:
-                    goal_pose.pose.position.x = current_pose.pose.position.x - gate_pose.pose.position.x
-                    goal_pose.pose.position.y = current_pose.pose.position.y - gate_pose.pose.position.y
-                goal_pose.pose.position.z = current_pose.pose.position.z + gate_pose.pose.position.z
+                    goal_pose.pose.position.y = current_pose.pose.position.y - dy_drone
+                    goal_pose.pose.position.z = current_pose.pose.position.z + dz_drone
 
                 gate_detecting = False
                 update_goal = False
@@ -132,6 +162,7 @@ if __name__ == "__main__":
 
         if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
             update_goal = True
+
         local_pos_pub.publish(goal_pose)
         rate.sleep()
 

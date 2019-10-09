@@ -51,7 +51,7 @@ def main(args):
     # create video capture, codec and storage
     cap = cv2.VideoCapture(args.video)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')    
-    out = cv2.VideoWriter('np5.avi',fourcc, 30.0, (460,259))
+    out = cv2.VideoWriter('~/np5.avi',fourcc, 30.0, (460,259))
 
     wd = WindowDetector(mode="eval")
 

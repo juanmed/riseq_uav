@@ -10,9 +10,9 @@ project(riseq_trajectory)
 find_package(catkin REQUIRED COMPONENTS
   message_generation
   nav_msgs
+  sensor_msgs
   roscpp
   rospy
-  sensor_msgs
   std_msgs
 )
 
@@ -73,7 +73,7 @@ catkin_python_setup()
  generate_messages(
    DEPENDENCIES
    nav_msgs
-   sensor_msgs   
+   sensor_msgs
    std_msgs
  )
 
