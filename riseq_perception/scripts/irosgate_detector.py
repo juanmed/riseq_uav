@@ -7,6 +7,7 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import cv2
+from imutils import perspective
 
 
 def build_arg_parser():
@@ -23,12 +24,12 @@ def build_arg_parser():
 
 class IROSGateDetector():
 
-    def __init__(self, mode="test", color_space='BGR'):
+    def __init__(self, mode="test", color_space='BGR', max_size = None):
         """
         Initialize parameters. Mode must be 'test' if you want to display the
         result with sliders that update parameters of each algorithm.
         """
-        self.max_size = 460
+        self.max_size = max_size
         self.img = 0
         self.window_width = 1.4  # m
         self.window_height = 1.4  # m
@@ -52,10 +53,10 @@ class IROSGateDetector():
 
         # Define corners of 3D Model's bounding cube
         self.corners3D = np.zeros((4, 3))
-        self.corners3D[0] = np.array([self.window_width / 2, 0.0, self.window_height / 2])
-        self.corners3D[1] = np.array([-self.window_width / 2, 0.0, self.window_height / 2])
-        self.corners3D[2] = np.array([-self.window_width / 2, 0.0, -self.window_height / 2])
-        self.corners3D[3] = np.array([self.window_width / 2, 0.0, -self.window_height / 2])
+        self.corners3D[1] = np.array([self.window_width / 2, 0.0, self.window_height / 2])
+        self.corners3D[0] = np.array([-self.window_width / 2, 0.0, self.window_height / 2])
+        self.corners3D[3] = np.array([-self.window_width / 2, 0.0, -self.window_height / 2])
+        self.corners3D[2] = np.array([self.window_width / 2, 0.0, -self.window_height / 2])
         # self.corners3D[4] = np.array([0.0, 0.0, 0.0]) #center
 
         # camera intrinsic matrix
@@ -63,8 +64,8 @@ class IROSGateDetector():
         self.K[0, 0], self.K[0, 2] = 697.5170288085938, 638.0659790039062  # 241.42682359130833, 376.5
         self.K[1, 1], self.K[1, 2] = 697.5170288085938, 354.1419982910156  # 241.42682359130833, 240.5
         self.K[2, 2] = 1.
-        self.distCoeffs = np.array([-0.17601299285888672, 0.028582999482750893, 0.0, 0.0006652449956163764,
-                                    -0.0005063589778728783])  # np.zeros((8), dtype='float32')
+        self.K = np.array([[699.385009765625, 0.0, 634.9920043945312, 0.0, 699.385009765625, 389.59600830078125, 0.0, 0.0, 1.0]]).reshape((3,3))
+        self.distCoeffs = np.array([-0.17428700625896454, 0.027085600420832634, 0.0, -0.0005054270150139928, -3.0833100026939064e-05])  # np.zeros((8), dtype='float32')
         self.axis = np.float32([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]]).reshape(-1, 3)
 
         if (mode == "test"):
@@ -105,7 +106,6 @@ class IROSGateDetector():
         self.canny_k = int(self.canny_k_slider.val)
         self.epsilon = self.epsilon_slider.val
         self.gauss_k = int(self.gauss_k_slider.val)
-
         R, t, R_exp, cnt, mask, cnts = self.detect(self.img.copy(), self.max_size)
         print("Translation: ", t)
         print("Rotation: ", R_exp)
@@ -147,8 +147,11 @@ class IROSGateDetector():
             squares
         """
         scale = 1.0
-        # scale = self.max_size / float(max(img.shape))
-        # img = cv2.resize(img, None, fx=scale, fy = scale)
+        orig_shape = (img.shape[1], img.shape[0])   # need to store them in inverse order (1,0)
+                                                    # instead of (0,1) 'cause, weirdly enough, opencv wants it this way
+        if max_size is not None:
+            scale = self.max_size / float(max(img.shape))
+            img = cv2.resize(img, None, fx=scale, fy = scale)
 
         toGray = False
         if toGray:
@@ -195,6 +198,7 @@ class IROSGateDetector():
 
         for square in squares:
 
+            square = (square * (1.0 / scale)).astype('float32')
             rect = cv2.minAreaRect(square)
             w, h = rect[1]
             # x,y,w,h = cv2.boundingRect(square)
@@ -219,31 +223,38 @@ class IROSGateDetector():
             else:
                 pass
 
-            screenCnt = square.reshape((-1, 2))  # square_couples[0][0].reshape((-1,2))
-            screenCnt = (screenCnt * (1.0 / scale)).astype('float32')
-            screenCnt = screenCnt.reshape((4, -1))
-
+            box = cv2.boxPoints(rect)
+            box = np.array(box, dtype="int")
+            rect = perspective.order_points(box) # order points: top-left, top-right, down-right, down-left
+                                                 # https://www.pyimagesearch.com/2016/03/21/ordering-coordinates-clockwise-with-python-and-opencv/
+            square = square.reshape((-1, 2))  # square_couples[0][0].reshape((-1,2))
+            square = perspective.order_points(square)
             # get centroid
-            m = cv2.moments(screenCnt)
+            m = cv2.moments(square)
             try:
                 cx = int(m["m10"] / m["m00"])
                 cy = int(m["m01"] / m["m00"])
 
                 centroid = np.array([[cx, cy]])
-                corners2D = screenCnt
+                corners2D = rect
                 # corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
 
                 R, t, R_exp = self.getPose(self.corners3D, corners2D, scale)
 
-                corners2D = np.concatenate((centroid, screenCnt), axis=0)
+                corners2D = np.concatenate((centroid, corners2D), axis=0)
                 corners2D = corners2D.astype('int')
 
             except ZeroDivisionError:
                 pass
 
+            # rescale everything
+            if max_size is not None:
+                mask = cv2.resize(mask, orig_shape )
+                cnts = (cnts.astype('float') * (1.0 / scale)).astype('int')
+
             break
 
-        return R, t, R_exp, corners2D, cv2.resize(mask, None, fx=1.0 / scale, fy=1.0 / scale), cnts
+        return R, t, R_exp, corners2D, mask, cnts 
 
     def verifyArea(self, w, h, square):
         """
@@ -352,7 +363,7 @@ def main(args):
     """
     """
     image = cv2.imread(args.image)
-    wd = IROSGateDetector(mode="test", color_space="BGR")
+    wd = IROSGateDetector(mode="test", color_space="BGR", max_size = None)
     wd.img = image
     wd.update(1)
     plt.show()

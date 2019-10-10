@@ -57,10 +57,8 @@ class MonoWaypointDetector():
         #self.frontCamera_Mono_info = rospy.Subscriber("/iris/camera_nadir/camera_info", CameraInfo, self.camera_params)
         self.bridge = CvBridge()
 
-        #self.init_pose = rospy.get_param("riseq/init_pose")
-        #self.init_pose = [float(a) for a in self.init_pose]
         self.mode = rospy.get_param("riseq/monocular_cv", 'disable')
-        self.max_size = 460
+        self.max_size = None    # 
 
 
         # AI Challenge detectors
@@ -74,7 +72,6 @@ class MonoWaypointDetector():
         self.enable_recording = False
         self.frames = 0.
         self.success = 0.
-
         self.saved = False
 
 
@@ -242,8 +239,7 @@ class MonoWaypointDetector():
                 wp2d.pose.position.x = cx_predict
                 wp2d.pose.position.y = cy_predict
 
-                #print("rvec: {}\ntvec: {}".format(R_exp, t))
-                if cnt is not None:
+                if R is not None:
                     self.success = self.success + 1.
 
                     #img = cv2.bitwise_and(img, img, mask = mask)
@@ -265,7 +261,7 @@ class MonoWaypointDetector():
 
                     x_measurement = np.array([[t[2][0]]])
                     y_measurement = np.array([[-t[0][0]]])
-                    z_measurement = np.array([[np.abs(t[1][0])]])
+                    z_measurement = np.array([[-t[1][0]]])
                     x_estimation = self.x_kalman.correct(x_measurement)[0,0]
                     y_estimation = self.y_kalman.correct(y_measurement)[0,0]
                     z_estimation = self.z_kalman.correct(z_measurement)[0,0]
@@ -277,9 +273,9 @@ class MonoWaypointDetector():
                     #y = np.clip(-t[0][0], minval, maxval)
                     #z = np.clip(np.abs(t[1][0]), minval, maxval)
 
-                    wp.pose.position.x = x_estimation
-                    wp.pose.position.y = y_estimation
-                    wp.pose.position.z = z_estimation
+                    wp.pose.position.x = t[2][0] #x_estimation 
+                    wp.pose.position.y = -t[0][0] #y_estimation
+                    wp.pose.position.z = -t[1][0] #z_estimation
                     wp.pose.orientation.x = gate_quat[0]
                     wp.pose.orientation.y = gate_quat[1]
                     wp.pose.orientation.z = gate_quat[2]
