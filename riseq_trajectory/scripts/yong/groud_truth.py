@@ -8,16 +8,22 @@ from nav_msgs.msg import Odometry
 class Estimator:
     def __init__(self):
         """
-        This class is rapper class for ground truth.
+        Class for publishing ground truth.
         It changes topic name for riseq system.
+        This can be used only when Rotors
         """
-        model_name = rospy.get_param("model_name", "firefly")
+        model_name = rospy.get_param("model_name", "iris")
 
         # Create subscriber and publisher
         rospy.Subscriber("/" + model_name + "/ground_truth/odometry", Odometry, self.groundtruth_cb)
         self.state_pub = rospy.Publisher("riseq/estimator/uav_estimated_state", Odometry, queue_size=10)
 
     def groundtruth_cb(self, msg):
+        """
+        Callback function to publish odometry information.
+        Odometry contains twist and pose.
+        :param msg: ground truth from Rotors simulator
+        """
         odometry = Odometry()
         odometry = msg
         self.state_pub.publish(odometry)

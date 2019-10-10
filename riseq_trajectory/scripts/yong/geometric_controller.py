@@ -25,21 +25,24 @@ class Controller:
     ew = w - R.TR_dw_d
     """
     def __init__(self):
+        model_name = rospy.get_param("model_name", "iris")
+
         # Initialize drone's parameter
-        # Ixx = rospy.get_param("riseq/Ixx")
-        Ixx = 0.0347563
-        Iyy = 0.0458929
-        Izz = 0.0977
+        # Iris in Rotors
+        Ixx = rospy.get_param("riseq/Ixx", 0.0347563)
+        Iyy = rospy.get_param("riseq/Iyy", 0.0458929)
+        Izz = rospy.get_param("riseq/Izz", 0.0977)
         self.Inertia = np.diag([Ixx, Iyy, Izz])
 
-        self.m = 1.5 # [kg]
-        rotor_drag_coefficient = 8.06428e-05
-        rolling_moment_coefficient = 0.000001
-        arm_length_front_x = 0.13 # [m]
+        # /rotors_simulator/rotors_gazebo/resource/iris.yaml
+        self.m = 1.52   # [kg]
+        rotor_drag_coefficient = 8.06428e-05  # rotor_force_constant
+        rolling_moment_coefficient = 0.000001  # rotor_moment_constant
+        arm_length_front_x = 0.13  # [m]
         arm_length_back_x = 0.13
         arm_length_front_y = 0.22
         arm_length_back_y = 0.2
-        max_rot_velocity = 838 # [rad/s]
+        max_rot_velocity = 838  # [rad/s]
         self.max_thrust = 4 * rotor_drag_coefficient * max_rot_velocity
 
         # r0 : front_right, r1 : back_left, r2 : front_left, r3 : back_right
@@ -64,8 +67,6 @@ class Controller:
         self.kv = np.array([1, 1, 1])
         self.kR = np.diag([1, 1, 1])
         self.kw = np.diag([1, 1, 1])
-
-        model_name = rospy.get_param("model_name")
 
         # Create subscriber and publisher
         rospy.Subscriber("riseq/trajectory/uav_trajectory", riseq_uav_trajectory, self.traj_cb)
