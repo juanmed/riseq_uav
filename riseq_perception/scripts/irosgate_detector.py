@@ -43,10 +43,10 @@ class IROSGateDetector():
 
         # For how to decide HSV color boundaries, look
         # https://stackoverflow.com/questions/10948589/choosing-the-correct-upper-and-lower-hsv-boundaries-for-color-detection-withcv
-        green = [([60 - 20, 100, 40], [60 + 20, 255, 255])]
-        self.HSVboundaries = green
-        # self.HSVboundaries = [([160, 100, 40], [180, 255, 255]), #red
-        #                      ([0, 100, 40], [30, 255, 255])]
+        self.HSVboundaries = [([165, 100, 40], [180, 255, 255]), #red upper range
+                               ([0, 100, 40], [15, 255, 255]),    # red lower range
+                               ([40, 50, 40], [80, 255, 255]),  # green range
+                               ([100, 30, 40],[145, 255, 255])]  # blue range
         # ([25, 146, 190], [62, 174, 250]),
         # ([103, 86, 65], [145, 133, 128])]
 
@@ -352,7 +352,7 @@ def main(args):
     """
     """
     image = cv2.imread(args.image)
-    wd = IROSGateDetector(mode="test")
+    wd = IROSGateDetector(mode="test", color_space="BGR")
     wd.img = image
     wd.update(1)
     plt.show()
