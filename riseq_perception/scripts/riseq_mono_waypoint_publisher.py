@@ -39,7 +39,6 @@ from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
-from riseq_sacc.msg import RiseSaccHelix
 
 
 class MonoWaypointDetector():
@@ -52,17 +51,14 @@ class MonoWaypointDetector():
         self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
         self.object_centerpoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint2d", PoseStamped, queue_size = 10)        
-        #self.ladder_info_pub = rospy.Publisher("riseq/sacc/ladder_info", RiseSaccHelix, queue_size = 10)
         self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.estimate_object_pose)
         self.frontCamera_Mono_info = rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.camera_params)
         #self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
         #self.frontCamera_Mono_info = rospy.Subscriber("/iris/camera_nadir/camera_info", CameraInfo, self.camera_params)
         self.bridge = CvBridge()
 
-        #self.init_pose = rospy.get_param("riseq/init_pose")
-        #self.init_pose = [float(a) for a in self.init_pose]
         self.mode = rospy.get_param("riseq/monocular_cv", 'disable')
-        self.max_size = 460
+        self.max_size = None    # 
 
 
         # AI Challenge detectors
@@ -76,7 +72,6 @@ class MonoWaypointDetector():
         self.enable_recording = False
         self.frames = 0.
         self.success = 0.
-
         self.saved = False
 
 
@@ -115,14 +110,14 @@ class MonoWaypointDetector():
                 self.out = cv2.VideoWriter('gate_tracking.avi',fourcc, 20.0, (self.image_width,self.image_height)) 
 
         # update MonoWaypointDetector
-        self.mode = rospy.get_param("riseq/monocular_cv", 'disable')
+        self.mode = rospy.get_param("riseq/monocular_cv", 'irosgate')
         self.frames = self.frames + 1.
 
         if(self.mode != 'disable'):
 
             img = self.bridge.imgmsg_to_cv2(image_msg, "rgb8")
 
-            if not self.saved:
+            if not self.saved and self.frames == 15.:
                 cv2.imwrite(r"gatelow.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
                 print("Image saved!")
                 self.saved = True
@@ -133,12 +128,6 @@ class MonoWaypointDetector():
             wp = PoseStamped()
             wp.header.stamp = rospy.Time.now()
             wp.header.frame_id = ""
-            
-            ladder_info = RiseSaccHelix()
-            ladder_info.header.stamp = rospy.Time.now()
-            ladder_info.header.frame_id = ""         
-            ladder_info.width = img.shape[1]
-            ladder_info.height = img.shape[0]
 
             wp2d = PoseStamped()
             wp2d.header.stamp = rospy.Time.now()
@@ -250,8 +239,7 @@ class MonoWaypointDetector():
                 wp2d.pose.position.x = cx_predict
                 wp2d.pose.position.y = cy_predict
 
-                #print("rvec: {}\ntvec: {}".format(R_exp, t))
-                if cnt is not None:
+                if R is not None:
                     self.success = self.success + 1.
 
                     #img = cv2.bitwise_and(img, img, mask = mask)
@@ -273,7 +261,7 @@ class MonoWaypointDetector():
 
                     x_measurement = np.array([[t[2][0]]])
                     y_measurement = np.array([[-t[0][0]]])
-                    z_measurement = np.array([[np.abs(t[1][0])]])
+                    z_measurement = np.array([[-t[1][0]]])
                     x_estimation = self.x_kalman.correct(x_measurement)[0,0]
                     y_estimation = self.y_kalman.correct(y_measurement)[0,0]
                     z_estimation = self.z_kalman.correct(z_measurement)[0,0]
@@ -285,9 +273,9 @@ class MonoWaypointDetector():
                     #y = np.clip(-t[0][0], minval, maxval)
                     #z = np.clip(np.abs(t[1][0]), minval, maxval)
 
-                    wp.pose.position.x = x_estimation
-                    wp.pose.position.y = y_estimation
-                    wp.pose.position.z = z_estimation
+                    wp.pose.position.x = t[2][0] #x_estimation 
+                    wp.pose.position.y = -t[0][0] #y_estimation
+                    wp.pose.position.z = -t[1][0] #z_estimation
                     wp.pose.orientation.x = gate_quat[0]
                     wp.pose.orientation.y = gate_quat[1]
                     wp.pose.orientation.z = gate_quat[2]
@@ -397,9 +385,8 @@ def gate_pose_publisher():
         rospy.spin()
         if monocular_waypoint_publisher.enable_recording:
             print("Saving video recording...")
-            if monocular_waypoint_publisher.enable_recording:
-                monocular_waypoint_publisher.out.release()
-            print("Succes rate: {}/{} frames, {:.2f}%".format(monocular_waypoint_publisher.success, monocular_waypoint_publisher.frames, monocular_waypoint_publisher.success/monocular_waypoint_publisher.frames))
+            monocular_waypoint_publisher.out.release()
+        print("Succes rate: {}/{} frames, {:.2f}%".format(monocular_waypoint_publisher.success, monocular_waypoint_publisher.frames, monocular_waypoint_publisher.success/monocular_waypoint_publisher.frames))
 
         rospy.loginfo('Gate Pose Publisher Terminated')     
 
