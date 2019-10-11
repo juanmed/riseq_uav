@@ -56,6 +56,7 @@ if __name__ == "__main__":
     start_time = rospy.Time.now()
 
     while not rospy.is_shutdown():
+        """
         # print(current_state)
         if (current_state.mode != "OFFBOARD" and (rospy.Time.now() - last_request > rospy.Duration(5.0))):
             resp1 = set_mode_client(0, offb_set_mode.custom_mode)
@@ -67,7 +68,7 @@ if __name__ == "__main__":
             if arm_client_1.success:
                 print("Vehicle armed")
             last_request = rospy.Time.now()
-
+        """
         local_pos_pub.publish(pose)
         # print current_state
         rate.sleep()
