@@ -236,8 +236,8 @@ class MonoWaypointDetector():
                 wp.pose.position.y = y_predict
                 wp.pose.position.z = z_predict
 
-                wp2d.pose.position.x = cx_predict
-                wp2d.pose.position.y = cy_predict
+                wp2d.pose.position.x = cx_predict[0,0]
+                wp2d.pose.position.y = cy_predict[0,0]
 
                 if R is not None:
                     self.success = self.success + 1.
