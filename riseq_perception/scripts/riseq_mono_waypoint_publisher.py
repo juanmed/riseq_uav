@@ -281,8 +281,8 @@ class MonoWaypointDetector():
                     wp.pose.orientation.z = gate_quat[2]
                     wp.pose.orientation.w = gate_quat[3]
 
-                    wp2d.pose.position.x = cx_estimation
-                    wp2d.pose.position.y = cy_estimation
+                    wp2d.pose.position.x = cnt[0][0]
+                    wp2d.pose.position.y = cnt[0][1]
 
             else:
                 
