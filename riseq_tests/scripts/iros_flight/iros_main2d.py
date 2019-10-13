@@ -47,22 +47,19 @@ def gate_cb(msg):
     gate_pose = msg
 
 
-def gate_size_cb(msg):
-    global px, py
-    px = msg.data[0]
-    py = msg.data[1]
-
-
 def calculate_ratio(cx, cy):
     """
     Function to calculate of real distance of gate center from drone
+    x y is in image frame.
     :param cx: center x of gate
     :param cy: center y of gate
     :return: real distance
     """
     dx = gate_width * (gate_pose.pose.position.x - camera_width/2) / px
     dy = gate_height * (gate_pose.pose.position.y - camera_height/2) /py
+
     return dx, dy
+
 
 if __name__ == "__main__":
     rospy.init_node('iros_node', anonymous=True)
@@ -71,7 +68,6 @@ if __name__ == "__main__":
     rospy.Subscriber("mavros/state", State, state_cb)
     rospy.Subscriber("mavros/local_position/pose", PoseStamped, pose_cb)
     rospy.Subscriber("/riseq/perception/2D_position", PoseStamped, gate_cb)
-    rospy.Subscriber("/riseq/perception/gate_pixel_size", Int64MultiArray, gate_size_cb)
 
     local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
@@ -125,18 +121,15 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         if update_goal is True:
             if gate_detecting is True:
-                cx = gate_pose.pose.position.x
-                cy = gate_pose.pose.position.y
-                dx_camera, dy_camera = calculate_ratio(cx, cy)
-
-                dy_drone = -dx_camera
-                dz_drone = -dy_camera
+                dx = gate_pose.pose.position.x
+                dy = gate_pose.pose.position.y
+                dz = gate_pose.pose.position.z
                 if gate_count == 0:
-                    goal_pose.pose.position.y = current_pose.pose.position.y + dy_drone
-                    goal_pose.pose.position.z = current_pose.pose.position.z + dz_drone
+                    goal_pose.pose.position.y = current_pose.pose.position.y + dy
+                    goal_pose.pose.position.z = current_pose.pose.position.z + dz
                 else:
-                    goal_pose.pose.position.y = current_pose.pose.position.y - dy_drone
-                    goal_pose.pose.position.z = current_pose.pose.position.z + dz_drone
+                    goal_pose.pose.position.y = current_pose.pose.position.y - dy
+                    goal_pose.pose.position.z = current_pose.pose.position.z + dz
 
                 gate_detecting = False
                 update_goal = False

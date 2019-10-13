@@ -8,13 +8,26 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
+
+import lowpassfilter as lpf
 
 
 class IROSGateDetector:
     def __init__(self):
-        self.window_width = 1.4  # m
-        self.window_height = 1.4  # m
+        self.gate_width = 1.4  # m
+        self.gate_height = 1.4  # m
+
+        self.window_height = 1.4
+        self.window_width = 1.4
+        self.corners3D = np.zeros((4, 3))
+        self.corners3D[0] = np.array([self.window_width / 2, 0.0, self.window_height / 2])
+        self.corners3D[1] = np.array([-self.window_width / 2, 0.0, self.window_height / 2])
+        self.corners3D[2] = np.array([-self.window_width / 2, 0.0, -self.window_height / 2])
+        self.corners3D[3] = np.array([self.window_width / 2, 0.0, -self.window_height / 2])
+
+        self.lpf1 = lpf.LowPassFilter(1, 25)
+        self.lpf2 = lpf.LowPassFilter(1, 25)
 
         # This params must be initialized with the best performing values
         self.canny_lt = 75
@@ -27,33 +40,27 @@ class IROSGateDetector:
         # https://stackoverflow.com/questions/10948589/choosing-the-correct-upper-and-lower-hsv-boundaries-for-color-detection-withcv
         green = [([60 - 20, 100, 40], [60 + 20, 255, 255])]
         blue = [([120 - 20, 100, 40], [120 + 20, 255, 255])]
-        self.HSVboundaries = green
-
+        self.HSVboundaries = blue
         # self.HSVboundaries = [([160, 100, 40], [180, 255, 255]), #red
         #                      ([0, 100, 40], [30, 255, 255])]
         # ([25, 146, 190], [62, 174, 250]),
         # ([103, 86, 65], [145, 133, 128])]
-
-        self.window_height = 1.4
-        self.window_width = 1.4
-        self.corners3D = np.zeros((4, 3))
-        self.corners3D[0] = np.array([self.window_width / 2, 0.0, self.window_height / 2])
-        self.corners3D[1] = np.array([-self.window_width / 2, 0.0, self.window_height / 2])
-        self.corners3D[2] = np.array([-self.window_width / 2, 0.0, -self.window_height / 2])
-        self.corners3D[3] = np.array([self.window_width / 2, 0.0, -self.window_height / 2])
+        self.bridge = CvBridge()
 
         self.axis = np.float32([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]]).reshape(-1, 3)
         self.K = None
         self.D = None
 
-        self.bridge = CvBridge()
-        rospy.Subscriber("/stereo/left/camera_info", CameraInfo, self.init_param)
+        #rospy.Subscriber("/stereo/left/camera_info", CameraInfo, self.init_param)
+        rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.init_param)
         while self.K is None:
             rospy.sleep(0.1)
-
-        rospy.Subscriber("/stereo/left/image_color", Image, self.detect)
+        #rospy.Subscriber("/stereo/left/image_color", Image, self.detect)
+        rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.detect)
+        self.computed_wp_pub = rospy.Publisher("/riseq/perception/computed_position", PoseStamped, queue_size=10)
+        self.solvepnp_wp_pub = rospy.Publisher("/riseq/perception/solvepnp_position", PoseStamped, queue_size=10)
         self.img_with_det = rospy.Publisher("/riseq/perception/uav_image_with_detections", Image, queue_size=10)
-        self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
+        self.mask = rospy.Publisher("/riseq/perception/mask_image", Image, queue_size=10)
 
     def detect(self, msg):
         img = self.bridge.imgmsg_to_cv2(msg, "rgb8")
@@ -76,6 +83,8 @@ class IROSGateDetector:
         corners2D = None
         R = None
         t = None
+        cx = 0
+        cy = 0
 
         for cnt in cnts:
 
@@ -122,19 +131,20 @@ class IROSGateDetector:
                 cx = int(m["m10"] / m["m00"])
                 cy = int(m["m01"] / m["m00"])
 
-                centroid = np.array([[cx, cy]])
                 corners2D = screenCnt.astype('float32')
                 # corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
-
                 R, t, R_exp = self.getPose(self.corners3D, corners2D)
                 img = self.draw_frame(img, (cx, cy), R_exp, t)
+
             except ZeroDivisionError:
                 pass
 
-
             break
 
-        self.pub_center(img, R, t)
+        self.pub_center(img, cx, cy, corners2D, R, t)
+
+        maskmsg = self.bridge.cv2_to_imgmsg(mask, "mono8")
+        self.mask.publish(maskmsg)
 
     def verifyArea(self, w, h, square):
         """
@@ -211,10 +221,57 @@ class IROSGateDetector:
         """
         imgpts, jac = cv2.projectPoints(self.axis, R_exp, t, self.K, self.D)
 
-        img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (255,0,0), 2)
-        img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 2)
-        img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (0,0,255), 2)
+        img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (255, 0, 0), 2)
+        img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0, 255, 0), 2)
+        img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (0, 0, 255), 2)
+
+        img = cv2.circle(img, corner, 5, (255, 0, 0), 3)
         return img
+
+    def pub_center(self, img, cx, cy, corners2D, R, t):
+        if corners2D is not None:
+            px = corners2D[2][0] - corners2D[0][0]
+            py = corners2D[2][1] - corners2D[0][1]
+
+            dx = self.gate_width * (cx - self.camera_width / 2) / px
+            dy = self.gate_height * (cy - self.camera_height / 2) / py
+
+            f = self.K[0][0]  # f = fx = fy
+            dz = self.gate_width / px * f
+
+            x = np.abs(dz)
+            y = -dx
+            z = -dy
+
+            x = self.lpf1.low_pass_filter(x)
+
+            wp = PoseStamped()
+            wp.header.stamp = rospy.Time.now()
+            wp.header.frame_id = ""
+            wp.pose.position.x = x
+            wp.pose.position.y = y
+            wp.pose.position.z = z
+
+            self.computed_wp_pub.publish(wp)
+
+        if t is not None:
+            x = abs(t[2][0])
+            y = -t[0][0]
+            z = -t[1][0]
+
+            x = self.lpf2.low_pass_filter(x)
+
+            wp = PoseStamped()
+            wp.header.stamp = rospy.Time.now()
+            wp.header.frame_id = ""
+            wp.pose.position.x = x
+            wp.pose.position.y = y
+            wp.pose.position.z = z
+
+            self.solvepnp_wp_pub.publish(wp)
+
+        imgmsg = self.bridge.cv2_to_imgmsg(img, "rgb8")
+        self.img_with_det.publish(imgmsg)
 
     def init_param(self, msg):
         self.camera_height = msg.height
@@ -224,27 +281,9 @@ class IROSGateDetector:
         self.D = np.array(msg.D)
         # self.R, self.P
 
-    def pub_center(self, img, R, t):
-        if t is not None:
-            wp = PoseStamped()
-            wp.header.stamp = rospy.Time.now()
-            wp.header.frame_id = ""
-
-            wp.pose.position.x = t[2][0]
-            wp.pose.position.y = -t[0][0]
-            wp.pose.position.z = -t[1][0]
-
-            path = Path()
-            path.poses = [wp]
-
-            self.waypoint_pub.publish(path)
-
-        imgmsg = self.bridge.cv2_to_imgmsg(img, "rgb8")
-        self.img_with_det.publish(imgmsg)
-
 
 if __name__ == "__main__":
-    rospy.init_node('riseq_3d', anonymous=True)
+    rospy.init_node('riseq_2d', anonymous=True)
 
     ig = IROSGateDetector()
 
