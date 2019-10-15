@@ -27,14 +27,18 @@ class IROSGateDetector:
         # https://stackoverflow.com/questions/10948589/choosing-the-correct-upper-and-lower-hsv-boundaries-for-color-detection-withcv
         green = [([60 - 20, 100, 40], [60 + 20, 255, 255])]
         blue = [([120 - 20, 100, 40], [120 + 20, 255, 255])]
-        self.HSVboundaries = green
-        # self.HSVboundaries = [([160, 100, 40], [180, 255, 255]), #red
+        self.HSVboundaries = [([165, 100, 40], [180, 255, 255]), #red upper range
+                               ([0, 100, 40], [15, 255, 255]),    # red lower range
+                               ([40, 50, 40], [80, 255, 255]),  # green range
+                               ([100, 30, 40],[145, 255, 255])]  # blue range
+        self.HSVboundaries = blue 
+
         #                      ([0, 100, 40], [30, 255, 255])]
         # ([25, 146, 190], [62, 174, 250]),
         # ([103, 86, 65], [145, 133, 128])]
         self.bridge = CvBridge()
 
-        rospy.Subscriber("/stereo/left/image_color", Image, self.detect)
+        rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.detect)
         self.wp_pub = rospy.Publisher("/riseq/perception/2D_position", PoseStamped, queue_size=10)
         self.img_with_det = rospy.Publisher("/riseq/perception/uav_image_with_detections2d", Image, queue_size=10)
         self.size_pub = rospy.Publisher("/riseq/perception/gate_pixel_size", Int64MultiArray, queue_size=10)
@@ -110,7 +114,7 @@ class IROSGateDetector:
                 # corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
 
                 corners2D = np.concatenate((centroid, screenCnt), axis=0)
-                cv2.circle(img, (cx, cy), 10, (255, 0, 0), 1)
+                cv2.circle(img, (cx, cy), 3, (255, 0, 0), 3)
 
 
             except ZeroDivisionError:
@@ -182,6 +186,8 @@ class IROSGateDetector:
             size.data.append(int(px))
             size.data.append(int(py))
             self.size_pub.publish(size)
+
+            cv2.circle(img, (px, py), 3, (0, 255, 0), 3)
 
         imgmsg = self.bridge.cv2_to_imgmsg(img, "rgb8")
         self.img_with_det.publish(imgmsg)
