@@ -8,8 +8,9 @@
   <include file="$(find vrpn_client_ros)/launch/sample.launch">
      <arg name="server" value="192.168.0.150"/>
   </include>
-  <!--include file="$(find zed_wrapper)/launch/zedm.launch"/-->
-  <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/>
+  <include file="$(find zed_wrapper)/launch/zedm.launch"/>
+  <!--include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/-->
+  <node name="optitrack_to_mavros" type="relay" pkg="topic_tools" args="/vrpn_client_node/Fastquad/pose /mavros/vision_pose/pose"/>
   <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left_raw/camera_info /zed/zed_node/left_raw/image_raw_color /vrpn_client_node/Fastquad/pose"/>
+        args="-O $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left_raw/camera_info /zed/zed_node/left_raw/image_raw_color /vrpn_client_node/Fastquad/pose /vrpn_client_node/gate/pose /riseq/perception/uav_mono_waypoint /riseq/perception/uav_image_with_detections riseq/perception/uav_mono_waypoint2d"/>
 </launch>
