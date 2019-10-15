@@ -15,11 +15,14 @@ class DroneFlatSystem(nn.Module):
     __constants__=['g', 'm']
 
     def __init__(self, g = 9.81, m = 1.0, I = torch.eye(3)):
+        
         super(DroneFlatSystem, self).__init__()
-        self.g = nn.Parameter(torch.tensor([0.,0.,g]))
-        self.m = nn.Parameter(torch.tensor([m]))
-        self.I = nn.Parameter(I)
-        self.invI = nn.Parameter(torch.inverse(self.I))
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.g = nn.Parameter(torch.tensor([0.,0.,g]).to(self.device))
+        self.m = nn.Parameter(torch.tensor([m]).to(self.device))
+        self.I = nn.Parameter(I.to(self.device))
+        self.invI = nn.Parameter(torch.inverse(self.I).to(self.device))
 
     #@torch.jit.script_method
     def forward(self, flat_input):
@@ -49,8 +52,8 @@ class DroneFlatSystem(nn.Module):
         w_y_dot = self.get_wy_dot(x_b, flat_snap, u_1_dot, w_y, u_1, w_x, w_z)
         w_x_dot = self.get_wx_dot(y_b, flat_snap, u_1_dot, w_x, u_1, w_y, w_z)  
         w_z_dot = self.get_wz_dot(flat_yaw_ddot, x_c, x_b, flat_yaw_dot, w_z, y_b, w_y, z_b, w_x, y_c, w_y_dot)
-        w_dot_ = torch.cat((w_x_dot, w_y_dot, w_z_dot), dim = 0)
-        w_ = torch.cat((w_x, w_y, w_z), dim = 0)
+        w_dot_ = torch.cat((w_x_dot, w_y_dot, w_z_dot), dim = 0).to(self.device)
+        w_ = torch.cat((w_x, w_y, w_z), dim = 0).to(self.device)
 
         # get vector fo torque inputs
         u_x = self.get_ux(w_dot_, w_)
@@ -61,7 +64,7 @@ class DroneFlatSystem(nn.Module):
         u_b = self.get_ub(w_, u_x)  
         u_c = self.get_uc(w_, or_) 
 
-        u_1 = torch.cat((torch.tensor([0.0]), torch.tensor([0.0]), u_1), dim = 0) # pack u_1 in a tensor
+        u_1 = torch.cat((torch.tensor([0.0]).to(self.device), torch.tensor([0.0]).to(self.device), u_1), dim = 0).to(self.device) # pack u_1 in a tensor
         ref_state = torch.cat((flat_pos.unsqueeze(0), flat_vel.unsqueeze(0), or_.unsqueeze(0), 
                                w_.unsqueeze(0), w_dot_.unsqueeze(0), u_a.unsqueeze(0), u_b.unsqueeze(0), 
                                u_c.unsqueeze(0), u_1.unsqueeze(0), u_x.unsqueeze(0), 
@@ -86,12 +89,12 @@ class DroneFlatSystem(nn.Module):
     
     def get_yc(self, yaw):
         # type: (float) -> Tensor
-        y_c = torch.tensor([-1.0 * torch.sin(yaw), torch.cos(yaw), 0.0])
+        y_c = torch.tensor([-1.0 * torch.sin(yaw), torch.cos(yaw), 0.0]).to(self.device)
         return y_c
 
     def get_xc(self, yaw):
         # type: (float) -> Tensor
-        x_c = torch.tensor([torch.cos(yaw), torch.sin(yaw), 0.0])
+        x_c = torch.tensor([torch.cos(yaw), torch.sin(yaw), 0.0]).to(self.device)
         return x_c    
 
     def get_xb(self, y_c, z_b):
@@ -188,7 +191,7 @@ class DroneFlatSystem(nn.Module):
         theta = torch.asin(-1.0 * R[2, 0])
         phi = torch.atan2(R[2, 1] / torch.cos(theta), R[2, 2] / torch.cos(theta))
         psi = torch.atan2(R[1, 0] / torch.cos(theta), R[0, 0] / torch.cos(theta))
-        return torch.tensor([float(phi.item()), float(theta.item()), float(psi.item())])
+        return torch.tensor([float(phi.item()), float(theta.item()), float(psi.item())]).to(self.device)
 
     def get_ua(self, u_1, z_b):
         # type: (Tensor, Tensor) -> Tensor
@@ -214,7 +217,7 @@ class DroneFlatSystem(nn.Module):
         peta = torch.tensor([
             [1.0, torch.sin(phi_) * torch.tan(theta_), torch.cos(phi_) * torch.tan(theta_)],
             [0.0, torch.cos(phi_), -1.0 * torch.sin(phi_)],
-            [0.0, torch.sin(phi_) / torch.cos(theta_), torch.cos(phi_) / torch.cos(theta_)]])
+            [0.0, torch.sin(phi_) / torch.cos(theta_), torch.cos(phi_) / torch.cos(theta_)]]).to(self.device)
         u_c = torch.mm(peta , w_.view(-1,1)).squeeze()
 
         return u_c
@@ -359,8 +362,29 @@ def to_list(s):
     return states
 
 def main():
+    cpu = 'Intel Core i5-8400 CPU @ 2.80GHz x 6'
+    gpu = 'GeForce GTX 1050 Ti/PCIe/SSE2'
     global sim_time
-    jit_difflat = torch.jit.script(DroneFlatSystem())
+    global mass
+    global g
+    import pandas as pd
+    mass = 0.18
+    g = 9.81
+    I = torch.tensor([(0.00025, 0, 2.55e-6),
+                      (0, 0.000232, 0),
+                      (2.55e-6, 0, 0.0003738)])
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print("Found {} device".format(device)) 
+
+    #warm up
+    q = np.random.rand(1000,1000)
+    t = np.random.rand(1000,1000)
+    np.dot(q,t)
+    q = torch.from_numpy(q).to(device)
+    t = torch.from_numpy(t).to(device)
+    torch.mm(q,t)
+
+    jit_difflat = torch.jit.script(DroneFlatSystem(m = mass, g = g, I = I))
 
     tmax = 10
     step = 0.01
@@ -368,6 +392,7 @@ def main():
 
     flat_out_traj = []
     ref_states1 = []
+    array_trans_times = []
 
     for t in sim_time:
         flat_out_state = gen_helix_trajectory2(t)
@@ -376,8 +401,19 @@ def main():
         #print(flat_out_state)
 
         # Generate flat state references
-        flat_out_state = torch.from_numpy(flat_out_state)
+        flat_out_state = torch.from_numpy(flat_out_state).to(device)
+
+        
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        torch.cuda.synchronize()
+        start.record()
+        #print("addcmul jit", addcmul(a,-1.0,k,s,r))
         states = jit_difflat(flat_out_state)
+        end.record()
+        torch.cuda.synchronize()
+        array_trans_times.append(start.elapsed_time(end))
+
         states = to_list(states)
         ref_states1.append(states)
 
@@ -391,9 +427,29 @@ def main():
         fig0ax3 = fig0.add_subplot(3,2,4)
         fig0ax4 = fig0.add_subplot(3,2,5)
         fig0ax5 = fig0.add_subplot(3,2,6) 
-        fig0.suptitle("Differential Flatness")  
+        fig0.suptitle("Differential Flatness JIT")  
         figlist0 = [fig0ax0, fig0ax1, fig0ax2, fig0ax3, fig0ax4, fig0ax5]
         draw_output(ref_states1, figlist0)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    logx = True
+    logy = True
+    n1 = 'torchscript'
+    array_times = pd.DataFrame(array_trans_times, columns = [n1])
+    array_times[n1] = array_times[ array_times[n1] < array_times[n1].quantile(0.99)]
+    ax = array_times.plot.hist(ax = ax, bins = 400, logx = logx, logy=logy, title = 'Differential Flatness Trajectory Calculation\nTorchScript Performance\n{}, {}'.format(cpu,gpu), color = 'r', alpha  = 0.5)#, xlim = (0.001,1.0))
+    ax.set_xlabel("Execution time {ms}")
+    print("TorchScript: points: {}, mean: {}, std: {}, max: {}, min: {}, 25p: {}, 50p: {}, 75p: {}, 90p: {}, 99p: {}".format(len(array_trans_times),
+                                                                                                 np.mean(array_trans_times), 
+                                                                                                 np.std(array_trans_times), 
+                                                                                                 np.max(array_trans_times), 
+                                                                                                 np.min(array_trans_times),
+                                                                                                 np.percentile(array_trans_times, 25),
+                                                                                                 np.percentile(array_trans_times, 50),
+                                                                                                 np.percentile(array_trans_times, 75),
+                                                                                                 np.percentile(array_trans_times, 90),
+                                                                                                 np.percentile(array_trans_times, 99)))
 
     plt.show()
 
