@@ -21,7 +21,7 @@ if __name__ == "__main__":
     global current_state
     rospy.init_node('offb_node', anonymous=True)
     rospy.Subscriber("mavros/state", State, state_cb)
-    local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
+    local_pos_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
     print("Publisher and Subscriber Created")
     arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
@@ -37,12 +37,14 @@ if __name__ == "__main__":
 
     print("Creating pose")
     pose = PoseStamped()
-    # set position here
+    # set position heres
+    pose.header.stamp = rospy.Time.now()
     pose.pose.position.x = 0
     pose.pose.position.y = 0
     pose.pose.position.z = 1
 
     for i in range(100):
+        pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(pose)
         rate.sleep()
 
@@ -63,20 +65,23 @@ if __name__ == "__main__":
             if resp1.mode_sent:
                 print ("Offboard enabled")
             last_request = rospy.Time.now()
+        
         elif (not current_state.armed and (rospy.Time.now() - last_request > rospy.Duration(5.0))):
-            arm_client_1 = arming_client(arm_cmd.value)
+           : arm_client_1 = arming_client(arm_cmd.value)
             if arm_client_1.success:
                 print("Vehicle armed")
             last_request = rospy.Time.now()
         """
+        pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(pose)
         # print current_state
         rate.sleep()
-
-        if rospy.Time.now() - start_time > rospy.Duration(20.0):
+        print("Sending pose: {}".format(pose))
+        if rospy.Time.now() - start_time > rospy.Duration(40.0):
             break
 
     print("Return")
+    pose.header.stamp = rospy.Time.now()
     pose.pose.position.x = 0
     pose.pose.position.y = 0
     pose.pose.position.z = 0.1
