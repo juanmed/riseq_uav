@@ -1,0 +1,7 @@
+gates:
+    gate_vertical: [5,-1,2]
+    gate_horizontal: [-5,1,2]
+    drone_init: [0,-1,0]
+perception:
+    colors: 'rgb'
+    
