@@ -46,6 +46,7 @@ if __name__ == "__main__":
     for i in range(100):
         pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(pose)
+        print("Sending pose: {}".format(pose))
         rate.sleep()
 
     print("Creating Objects for services")
@@ -77,7 +78,14 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
         print("Sending pose: {}".format(pose))
-        if rospy.Time.now() - start_time > rospy.Duration(40.0):
+        if rospy.Time.now() - start_time > rospy.Duration(17.0):
+            pose.pose.position.x=1.0
+        if rospy.Time.now() - start_time > rospy.Duration(34.0):
+            pose.pose.position.y=1.0
+        if rospy.Time.now() - start_time > rospy.Duration(51.0):
+            pose.pose.position.x = 0.0
+            pose.pose.position.y = 0.0
+        if rospy.Time.now() - start_time > rospy.Duration(60.0):
             break
 
     print("Return")
