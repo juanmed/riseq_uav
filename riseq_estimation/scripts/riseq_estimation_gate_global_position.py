@@ -24,7 +24,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import numpy as np
 import rospy
-from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 
 from eugene_kinematics import q2r
@@ -41,14 +40,18 @@ class GateGlobal:
         self.cur_pose.pose.orientation.w = 1.0
 
         # Publisher, Subscriber
-        self.gate_global_pose_pub = rospy.Publisher('/gate/global_pose', PoseStamped, queue_size=10)
-        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/riseq/perception/uav_mono_waypoint', Path, self.gate_cb)
+        self.gate_global_pose_pub = rospy.Publisher('/riseq/gate/global_pose', PoseStamped, queue_size=10)
+        self.cur_pose_pub = rospy.Publisher('/riseq/drone/cur_pose', PoseStamped, queue_size=10)
+        #rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.pose_cb)
+        #rospy.Subscriber('/riseq/perception/solvepnp_position', PoseStamped, self.gate_cb)
+        rospy.Subscriber('/riseq/perception/computed_position', PoseStamped, self.gate_cb)
 
     def loop(self):
         self.r.sleep()
 
     def pose_cb(self, msg):
+        self.cur_pose.header.stamp = rospy.Time.now()
         self.cur_pose.pose.position.x = msg.pose.position.x
         self.cur_pose.pose.position.y = msg.pose.position.y
         self.cur_pose.pose.position.z = msg.pose.position.z
@@ -56,15 +59,16 @@ class GateGlobal:
         self.cur_pose.pose.orientation.y = msg.pose.orientation.y
         self.cur_pose.pose.orientation.z = msg.pose.orientation.z
         self.cur_pose.pose.orientation.w = msg.pose.orientation.w
+        self.cur_pose_pub.publish(self.cur_pose)
 
     def gate_cb(self, msg):
         R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
-        p = np.dot(R, np.array([[msg.poses[0].pose.position.x], [msg.poses[0].pose.position.y], [msg.poses[0].pose.position.z]]))
+        p = np.dot(R, np.array([[msg.pose.position.x], [msg.pose.position.y], [msg.pose.position.z]]))
         gate_global_pose = PoseStamped()
         gate_global_pose.header.stamp = rospy.Time.now()
-        gate_global_pose.pose.position.x = p[0]
-        gate_global_pose.pose.position.y = p[1]
-        gate_global_pose.pose.position.z = p[2]
+        gate_global_pose.pose.position.x = p[0][0] + self.cur_pose.pose.position.x
+        gate_global_pose.pose.position.y = p[1][0] + self.cur_pose.pose.position.y
+        gate_global_pose.pose.position.z = p[2][0] + self.cur_pose.pose.position.z
         gate_global_pose.pose.orientation.w = 1.0
         self.gate_global_pose_pub.publish(gate_global_pose)
 
