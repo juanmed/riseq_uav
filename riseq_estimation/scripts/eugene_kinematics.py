@@ -58,7 +58,7 @@ def rotation2euler(R):
     return phi, theta, psi
 
 
-def euler2quaternion(pi, theta, psi):
+def euler2quaternion(phi, theta, psi):
     """
     Put Euler angles, then calculate quatrenion angle
     """
