@@ -37,6 +37,9 @@ class GateGlobal:
         self.frequency = 1.0
         self.r = rospy.Rate(self.frequency)
 
+        self.cur_pose = PoseStamped()
+        self.cur_pose.pose.orientation.w = 1.0
+
         # Publisher, Subscriber
         self.gate_global_pose_pub = rospy.Publisher('/gate/global_pose', PoseStamped, queue_size=10)
         rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
@@ -56,12 +59,13 @@ class GateGlobal:
 
     def gate_cb(self, msg):
         R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
-        p = np.dot(R, np.array([[msg.pose.position.x], [msg.pose.position.y], [msg.pose.position.z]]))
+        p = np.dot(R, np.array([[msg.poses[0].pose.position.x], [msg.poses[0].pose.position.y], [msg.poses[0].pose.position.z]]))
         gate_global_pose = PoseStamped()
-        gate_global_pose.pose.orientation.w = 1.0
+        gate_global_pose.header.stamp = rospy.Time.now()
         gate_global_pose.pose.position.x = p[0]
         gate_global_pose.pose.position.y = p[1]
         gate_global_pose.pose.position.z = p[2]
+        gate_global_pose.pose.orientation.w = 1.0
         self.gate_global_pose_pub.publish(gate_global_pose)
 
 
