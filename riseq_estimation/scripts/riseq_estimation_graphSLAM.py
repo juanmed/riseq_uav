@@ -168,7 +168,7 @@ class Optimizer2D:
 
             # Add pose-landmark node and constraint
             R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
-            p = np.dot(R, np.array([[msg.pose.position.x], [msg.pose.position.y], [msg.pose.position.z]))
+            p = np.dot(R, np.array([[msg.pose.position.x], [msg.pose.position.y], [msg.pose.position.z]]))
             self.nodes.append(Pose2D(p[0][0], p[1][0], 0.0))
             id1 = self.cur_id
             id2 = self.gate1_id

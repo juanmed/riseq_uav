@@ -7,6 +7,7 @@ from nav_msgs.msg import Odometry
 
 
 zedpose = np.zeros(3)
+optipose = np.zeros(3)
 
 def zedpose_cb(odom):
 	x = odom.pose.pose.position.x
@@ -16,17 +17,25 @@ def zedpose_cb(odom):
 	zedpose[1] = y
 	zedpose[2] = z
 
+def optitrack_cb(msg):
+	x = msg.pose.position.x
+	y = msg.pose.position.y
+	z = msg.pose.position.z
+	optipose[0] = x
+	optipose[1] = y
+	optipose[2] = z
+
 def main():
 
 	gatepose_pub = rospy.Publisher("/riseq/perception/gate_pose", PoseStamped, queue_size = 10)
 	zedcam_sub = rospy.Subscriber("/zed/zed_node/odom", Odometry, zedpose_cb)
-
-	gate_pose = np.array([7.9, 0.0, 1.03+0.7-1.05])
+	optitrack_sub = rospy.Subscriber("/vrpn_client_node/Fastquad/pose", PoseStamped, optitrack_cb)
+	gate_pose = np.array([4.45, 0.0, 0.82])
 
 	r = rospy.Rate(30)
 	while not rospy.is_shutdown():
 
-		gate_wrt_zed = gate_pose - zedpose
+		gate_wrt_zed = gate_pose - optipose
 		#print(gate_wrt_zed)
 		gate_msg = PoseStamped()
 		gate_msg.header.stamp = rospy.Time.now()
