@@ -52,11 +52,11 @@ class IROSGateDetector:
         self.D = None
 
         #rospy.Subscriber("/stereo/left/camera_info", CameraInfo, self.init_param)
-        rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.init_param)
+        rospy.Subscriber("/zed/zed_node/left/camera_info", CameraInfo, self.init_param)
         while self.K is None:
             rospy.sleep(0.1)
         #rospy.Subscriber("/stereo/left/image_color", Image, self.detect)
-        rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.detect)
+        rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.detect)
         self.computed_wp_pub = rospy.Publisher("/riseq/perception/computed_position", PoseStamped, queue_size=10)
         self.solvepnp_wp_pub = rospy.Publisher("/riseq/perception/solvepnp_position", PoseStamped, queue_size=10)
         self.img_with_det = rospy.Publisher("/riseq/perception/uav_image_with_detections", Image, queue_size=10)
@@ -279,6 +279,7 @@ class IROSGateDetector:
 
         self.K = np.array(msg.K).reshape(3, 3)
         self.D = np.array(msg.D)
+        #self.D = np.array(msg.D)
         # self.R, self.P
 
 
