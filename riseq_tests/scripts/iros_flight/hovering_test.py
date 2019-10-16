@@ -17,11 +17,33 @@ def state_cb(msg):
     print "callback"
 
 
+def computed_gate_cb(msg):
+    """
+    callback function to receive gate x y z position
+    :param msg: gate position
+    """
+    global computed_gate_pose
+    computed_gate_pose = msg
+    print "computed: " + msg.pose.position.x
+
+
+def solvepnp_gate_cb(msg):
+    """
+    callback function to receive gate x y z position
+    :param msg: gate position
+    """
+    global solvepnp_gate_pose
+    solvepnp_gate_pose = msg
+    print "solvepnp: " + msg.pose.position.x
+
+
 if __name__ == "__main__":
     global current_state
     rospy.init_node('offb_node', anonymous=True)
     rospy.Subscriber("mavros/state", State, state_cb)
     local_pos_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+    rospy.Subscriber("/riseq/perception/computed_position", PoseStamped, computed_gate_cb)
+    rospy.Subscriber("/riseq/perception/solvepnp_position", PoseStamped, solvepnp_gate_cb)
 
     print("Publisher and Subscriber Created")
     arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
@@ -41,7 +63,7 @@ if __name__ == "__main__":
     pose.header.stamp = rospy.Time.now()
     pose.pose.position.x = 0
     pose.pose.position.y = 0
-    pose.pose.position.z = 1
+    pose.pose.position.z = 1.3
 
     for i in range(100):
         pose.header.stamp = rospy.Time.now()
@@ -54,30 +76,19 @@ if __name__ == "__main__":
     arm_cmd = CommandBool()
     arm_cmd.value = True
 
+    resp1 = set_mode_client(0, offb_set_mode.custom_mode)
+    arm_client_1 = arming_client(arm_cmd.value)
+
     last_request = rospy.Time.now()
     start_time = rospy.Time.now()
 
     while not rospy.is_shutdown():
-        """
-        # print(current_state)
-        if (current_state.mode != "OFFBOARD" and (rospy.Time.now() - last_request > rospy.Duration(5.0))):
-            resp1 = set_mode_client(0, offb_set_mode.custom_mode)
-            if resp1.mode_sent:
-                print ("Offboard enabled")
-            last_request = rospy.Time.now()
-        
-        elif (not current_state.armed and (rospy.Time.now() - last_request > rospy.Duration(5.0))):
-           : arm_client_1 = arming_client(arm_cmd.value)
-            if arm_client_1.success:
-                print("Vehicle armed")
-            last_request = rospy.Time.now()
-        """
         pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(pose)
         # print current_state
         rate.sleep()
         print("Sending pose: {}".format(pose))
-        if rospy.Time.now() - start_time > rospy.Duration(40.0):
+        if rospy.Time.now() - start_time > rospy.Duration(20.0):
             break
 
     print("Return")

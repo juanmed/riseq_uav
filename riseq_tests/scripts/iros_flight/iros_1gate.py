@@ -13,7 +13,8 @@ import numpy as np
 
 current_state = State()
 current_pose = PoseStamped()
-gate_pose = PoseStamped()
+computed_gate_pose = PoseStamped()
+solvepnp_gate_pose = PoseStamped()
 
 
 def state_cb(msg):
@@ -29,6 +30,27 @@ def pose_cb(msg):
     current_pose = msg
 
 
+def computed_gate_cb(msg):
+    """
+    callback function to receive gate x y z position
+    :param msg: gate position
+    """
+    global computed_gate_pose
+    computed_gate_pose = msg
+    print "computed: " + msg.pose.position.x
+
+
+def solvepnp_gate_cb(msg):
+    """
+    callback function to receive gate x y z position
+    :param msg: gate position
+    """
+    global solvepnp_gate_pose
+    solvepnp_gate_pose = msg
+    print "solvepnp: " + msg.pose.position.x
+
+
+'''
 def gate_cb(msg):
     """
     callback function to receive gate x y z position
@@ -40,6 +62,8 @@ def gate_cb(msg):
         rospy.loginfo(gate_pose)
     except IndexError:
         pass
+'''
+
 
 if __name__ == "__main__":
     rospy.init_node('iros_node', anonymous=True)
@@ -47,19 +71,18 @@ if __name__ == "__main__":
     # Create Subscriber
     rospy.Subscriber("mavros/state", State, state_cb)
     rospy.Subscriber("mavros/local_position/pose", PoseStamped, pose_cb)
-    rospy.Subscriber("/riseq/perception/uav_mono_waypoint", Path, gate_cb)
-
+    rospy.Subscriber("/riseq/perception/computed_position", PoseStamped, computed_gate_cb)
+    rospy.Subscriber("/riseq/perception/solvepnp_position", PoseStamped, solvepnp_gate_cb)
     local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
-
     print("Publisher and Subscriber Created")
+
     arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
     set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
     landing_client = rospy.ServiceProxy('mavros/cmd/land', CommandTOL)
-
     print("Clients Created")
     rate = rospy.Rate(20)
 
-    while (not current_state.connected):
+    while not current_state.connected:
         rate.sleep()
 
     print("Creating pose")
@@ -94,9 +117,10 @@ if __name__ == "__main__":
 
     while not rospy.is_shutdown():
         if update_goal:
-            goal_pose.pose.position.x = current_pose.pose.position.x + gate_pose.pose.position.x
-            goal_pose.pose.position.y = current_pose.pose.position.y + gate_pose.pose.position.y
-            goal_pose.pose.position.z = current_pose.pose.position.z + gate_pose.pose.position.z
+            goal_pose.pose.position.x = current_pose.pose.position.x + computed_gate_pose.pose.position.x
+
+            #goal_pose.pose.position.y = current_pose.pose.position.y + computed_gate_pose.pose.position.y
+            #goal_pose.pose.position.z = current_pose.pose.position.z + computed_gate_pose.pose.position.z
             update_goal = False
 
         if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
