@@ -24,7 +24,7 @@ def computed_gate_cb(msg):
     """
     global computed_gate_pose
     computed_gate_pose = msg
-    print "computed: " + msg.pose.position.x
+    print "computed: %f" %msg.pose.position.x
 
 
 def solvepnp_gate_cb(msg):
@@ -34,7 +34,7 @@ def solvepnp_gate_cb(msg):
     """
     global solvepnp_gate_pose
     solvepnp_gate_pose = msg
-    print "solvepnp: " + msg.pose.position.x
+    print "solvepnp: %f" %msg.pose.position.x
 
 
 if __name__ == "__main__":
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     for i in range(100):
         pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(pose)
+        #print("Sending pose: {}".format(pose))
         rate.sleep()
 
     print("Creating Objects for services")
@@ -87,8 +88,18 @@ if __name__ == "__main__":
         local_pos_pub.publish(pose)
         # print current_state
         rate.sleep()
-        print("Sending pose: {}".format(pose))
-        if rospy.Time.now() - start_time > rospy.Duration(20.0):
+        #print("Sending pose: {}".format(pose))
+        '''
+        if rospy.Time.now() - start_time > rospy.Duration(17.0):
+            pose.pose.position.x=1.0
+        if rospy.Time.now() - start_time > rospy.Duration(34.0):
+            pose.pose.position.y=1.0
+        if rospy.Time.now() - start_time > rospy.Duration(51.0):
+            pose.pose.position.x = 0.0
+            pose.pose.position.y = 0.0
+        if rospy.Time.now() - start_time > rospy.Duration(60.0):
+        '''
+        if rospy.Time.now() - start_time > rospy.Duration(10.0):
             break
 
     print("Return")

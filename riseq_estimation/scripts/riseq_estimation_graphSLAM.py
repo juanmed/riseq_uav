@@ -31,7 +31,6 @@ from scipy import sparse
 from scipy.sparse import linalg
 import matplotlib.pyplot as plt
 import rospy
-from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 
 from eugene_kinematics import q2r
@@ -103,7 +102,7 @@ class Optimizer2D:
         # Publisher, Subscriber
         self.pose_pub = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
         rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/riseq/perception/uav_mono_waypoint', Path, self.gate_cb)
+        rospy.Subscriber('/riseq/gate/global_pose', PoseStamped, self.gate_cb)
 
     def loop(self):
         # Optimize nodes
@@ -151,7 +150,7 @@ class Optimizer2D:
 
     def gate_cb(self, msg):
         # Add pose-pose node and contraint, Update the last pose to calculate odometry information
-        if rospy.Duration(self.last_gate_time, rospy.Time.now()) >= (1.0/self.frequency):
+        if (rospy.Time.now().to_sec() - self.last_gate_time.to_sec()) >= (1.0/self.frequency):
             self.nodes.append(Pose2D(self.cur_pose.pose.position.x, self.cur_pose.pose.position.y, 0.0))
             id1 = self.cur_id
             id2 = self.cur_id + 1
@@ -160,24 +159,22 @@ class Optimizer2D:
                                  [0.0, 1.0, 0.0],
                                  [0.0, 0.0, self.init_w]])
             self.consts.append(Constraint2D(id1, id2, t, info_mat))
-            self.cur_id += 1
-            self.last_pose_time = rospy.Time.now()
-            self.last_pose.pose.position.x = self.cur_pose.pose.position.x
-            self.last_pose.pose.position.y = self.cur_pose.pose.position.y
-            self.last_pose.pose.position.z = self.cur_pose.pose.position.z
 
-            # Add pose-landmark node and constraint
-            R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
-            p = np.dot(R, np.array([[msg.pose.position.x], [msg.pose.position.y], [msg.pose.position.z]))
-            self.nodes.append(Pose2D(p[0][0], p[1][0], 0.0))
+            # Add pose node and landmark constraint
             id1 = self.cur_id
             id2 = self.gate1_id
-            t = Pose2D(msg.poses[0].position.x, msg.poses[0].position.y, 0.0)
+            t = Pose2D(msg.pose.position.x - self.cur_pose.pose.position.x, msg.pose.position.y - self.cur_pose.pose.position.x, 0.0)
             info_mat = np.array([[1.0, 0.0, 0.0],
                                  [0.0, 1.0, 0.0],
                                  [0.0, 0.0, self.init_w]])
             self.consts.append(Constraint2D(id1, id2, t, info_mat))
+
+            self.cur_id += 1
             self.last_gate_time = rospy.Time.now()
+            self.last_pose_time = rospy.Time.now()
+            self.last_pose.pose.position.x = self.cur_pose.pose.position.x
+            self.last_pose.pose.position.y = self.cur_pose.pose.position.y
+            self.last_pose.pose.position.z = self.cur_pose.pose.position.z
 
     def optimize_path(self, nodes, consts, max_iter, min_iter):
         graph_nodes = nodes[:]
