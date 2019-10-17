@@ -30,7 +30,7 @@ def main():
 	gatepose_pub = rospy.Publisher("/riseq/perception/gate_pose", PoseStamped, queue_size = 10)
 	zedcam_sub = rospy.Subscriber("/zed/zed_node/odom", Odometry, zedpose_cb)
 	optitrack_sub = rospy.Subscriber("/vrpn_client_node/Fastquad/pose", PoseStamped, optitrack_cb)
-	gate_pose = np.array([4.45, 0.0, 0.82])
+	gate_pose = np.array([3.5, 0.0, 1.21])
 
 	r = rospy.Rate(30)
 	while not rospy.is_shutdown():

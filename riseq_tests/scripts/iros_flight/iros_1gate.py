@@ -77,6 +77,7 @@ if __name__ == "__main__":
     goal_pose.pose.position.y = 0
     goal_pose.pose.position.z = 1.5
 
+    print("OFFBOARD")
     for i in range(100):
         local_pos_pub.publish(goal_pose)
         rate.sleep()
@@ -87,9 +88,9 @@ if __name__ == "__main__":
     arm_cmd = CommandBool()
     arm_cmd.value = True
 
-    print("OFFBOARD and ARMING")
-    resp1 = set_mode_client(0, offb_set_mode.custom_mode)
-    arm_client_1 = arming_client(arm_cmd.value)
+    #print("OFFBOARD and ARMING")
+    #resp1 = set_mode_client(0, offb_set_mode.custom_mode)
+    #arm_client_1 = arming_client(arm_cmd.value)
 
     while current_state.mode != "OFFBOARD" or not current_state.armed:
         rospy.sleep(5.0)
@@ -102,12 +103,20 @@ if __name__ == "__main__":
 
     while not rospy.is_shutdown():
         if update_goal:
-            goal_pose.pose.position.x = current_pose.pose.position.x + computed_gate_pose.pose.position.x - 2
+            goal_pose.pose.position.x = current_pose.pose.position.x + computed_gate_pose.pose.position.x
 
             goal_pose.pose.position.y = current_pose.pose.position.y + computed_gate_pose.pose.position.y
             goal_pose.pose.position.z = current_pose.pose.position.z + computed_gate_pose.pose.position.z
             update_goal = False
-
+            if goal_pose.pose.position.x > 4:
+                print("x is too big")
+                break
+            if abs(goal_pose.pose.position.y) > 1:
+                print("y is too big")
+                break
+            if goal_pose.pose.position.z > 2.0 or goal_pose.pose.position.z < 0.5:
+                print("z is out of range")
+                break
         if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
             break
 
