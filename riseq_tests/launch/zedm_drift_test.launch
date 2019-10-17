@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="rosbag_name" default="drift"/>
+
+  <node name="riseq_gate_global_LPF" pkg="riseq_estimation" type="riseq_estimation_gate_global_LPF.py" />
+
+  <node name="irosgate_detector" pkg="riseq_trajectory" type="irosgate_detector.py"/>
+  <include file="$(find vrpn_client_ros)/launch/sample.launch">
+    <arg name="server" value="192.168.0.150"/>
+  </include>
+  <node name="ground_truth" pkg="riseq_tests" type="irosgate_pose.py" />
+  <!--include file="$(find mavros)/launch/px4.launch"/-->
+  <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/>
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-o $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose /riseq/perception/computed_position /riseq/perception/solvepnp_position /riseq/perception/mask_image /riseq/perception/uav_image_with_detections /riseq/perception/gate_pose /vrpn_client_node/Fastquad/pose /vrpn_client_node/gate/pose /mavros/setpoint_position/local /riseq/gate/global_pose /tf /tf_static" />
+</launch>

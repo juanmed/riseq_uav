@@ -36,16 +36,16 @@ class GateGlobal:
         self.frequency = 1.0
         self.r = rospy.Rate(self.frequency)
 
+        self.camera_on_body = np.array([0.185, 0.0, 0.0])
         self.cur_pose = PoseStamped()
         self.cur_pose.pose.orientation.w = 1.0
 
         # Publisher, Subscriber
         self.gate_global_pose_pub = rospy.Publisher('/riseq/gate/global_pose', PoseStamped, queue_size=10)
         self.cur_pose_pub = rospy.Publisher('/riseq/drone/cur_pose', PoseStamped, queue_size=10)
-        
-        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
-        #rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.pose_cb)
-        
+
+        #rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.pose_cb)
         #rospy.Subscriber('/riseq/perception/solvepnp_position', PoseStamped, self.gate_cb)
         rospy.Subscriber('/riseq/perception/computed_position', PoseStamped, self.gate_cb)
 
@@ -53,7 +53,7 @@ class GateGlobal:
         self.last_time = rospy.Time.now()
         self.gate_global_LPF = PoseStamped()
         self.gate_global_LPF.pose.orientation.w = 1.0
-        self.alpha = 0.5
+        self.alpha = 0.077
 
     def loop(self):
         self.r.sleep()
@@ -71,7 +71,7 @@ class GateGlobal:
 
     def gate_cb(self, msg):
         R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
-        p = np.dot(R, np.array([[msg.pose.position.x+0.185], [msg.pose.position.y], [msg.pose.position.z]]))
+        p = np.dot(R, np.array([[msg.pose.position.x + self.camera_on_body[0]], [msg.pose.position.y + self.camera_on_body[1]], [msg.pose.position.z + self.camera_on_body[2]]]))
         gate_global_pose = PoseStamped()
         gate_global_pose.header.stamp = rospy.Time.now()
         gate_global_pose.pose.position.x = p[0][0] + self.cur_pose.pose.position.x
@@ -79,15 +79,17 @@ class GateGlobal:
         gate_global_pose.pose.position.z = p[2][0] + self.cur_pose.pose.position.z
         gate_global_pose.pose.orientation.w = 1.0
 
+        # LPF
         if (rospy.Time.now().to_sec() - self.last_time.to_sec()) > 1.0:
             self.gate_global_LPF.pose.position.x = gate_global_pose.pose.position.x
             self.gate_global_LPF.pose.position.y = gate_global_pose.pose.position.y
             self.gate_global_LPF.pose.position.z = gate_global_pose.pose.position.z
         else:
-            self.gate_global_LPF.pose.position.x = self.alpha*self.gate_global_LPF.pose.position.x + (1-self.alpha)*gate_global_pose.pose.position.x
-            self.gate_global_LPF.pose.position.y = self.alpha*self.gate_global_LPF.pose.position.y + (1-self.alpha)*gate_global_pose.pose.position.y
-            self.gate_global_LPF.pose.position.z = self.alpha*self.gate_global_LPF.pose.position.z + (1-self.alpha)*gate_global_pose.pose.position.z
-        self.gate_global_pose_pub.publish(self.gate_global_pose_pub)
+            self.gate_global_LPF.pose.position.x = (1-self.alpha)*self.gate_global_LPF.pose.position.x + self.alpha*gate_global_pose.pose.position.x
+            self.gate_global_LPF.pose.position.y = (1-self.alpha)*self.gate_global_LPF.pose.position.y + self.alpha*gate_global_pose.pose.position.y
+            self.gate_global_LPF.pose.position.z = (1-self.alpha)*self.gate_global_LPF.pose.position.z + self.alpha*gate_global_pose.pose.position.z
+        self.gate_global_LPF.header.stamp = rospy.Time.now()
+        self.gate_global_pose_pub.publish(self.gate_global_LPF)
         self.last_time = rospy.Time.now()
 
 
