@@ -63,7 +63,7 @@ class GateGlobal:
 
     def gate_cb(self, msg):
         R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
-        p = np.dot(R, np.array([[msg.pose.position.x], [msg.pose.position.y], [msg.pose.position.z]]))
+        p = np.dot(R, np.array([[msg.pose.position.x+0.185], [msg.pose.position.y], [msg.pose.position.z]]))
         gate_global_pose = PoseStamped()
         gate_global_pose.header.stamp = rospy.Time.now()
         gate_global_pose.pose.position.x = p[0][0] + self.cur_pose.pose.position.x
