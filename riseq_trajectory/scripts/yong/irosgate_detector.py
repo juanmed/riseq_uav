@@ -26,8 +26,10 @@ class IROSGateDetector:
         self.corners3D[2] = np.array([-self.window_width / 2, 0.0, -self.window_height / 2])
         self.corners3D[3] = np.array([self.window_width / 2, 0.0, -self.window_height / 2])
 
-        self.lpf1 = lpf.LowPassFilter(1, 25)
-        self.lpf2 = lpf.LowPassFilter(1, 25)
+        self.lpf1_x = lpf.LowPassFilter(0.1, 25)
+        self.lpf1_y = lpf.LowPassFilter(0.1, 25)
+        self.lpf1_z = lpf.LowPassFilter(0.1, 25)
+        self.lpf2 = lpf.LowPassFilter(0.1, 25)
 
         # This params must be initialized with the best performing values
         self.canny_lt = 75
@@ -58,6 +60,7 @@ class IROSGateDetector:
         #rospy.Subscriber("/stereo/left/image_color", Image, self.detect)
         rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.detect)
         self.computed_wp_pub = rospy.Publisher("/riseq/perception/computed_position", PoseStamped, queue_size=10)
+        self.computed_wp_lpf_pub = rospy.Publisher("/riseq/perception/computed_position_lpf", PoseStamped, queue_size=10)
         self.solvepnp_wp_pub = rospy.Publisher("/riseq/perception/solvepnp_position", PoseStamped, queue_size=10)
         self.img_with_det = rospy.Publisher("/riseq/perception/uav_image_with_detections", Image, queue_size=10)
         self.mask = rospy.Publisher("/riseq/perception/mask_image", Image, queue_size=10)
@@ -239,11 +242,10 @@ class IROSGateDetector:
             f = self.K[0][0]  # f = fx = fy
             dz = self.gate_width / px * f
 
+            # raw data
             x = np.abs(dz)
             y = -dx
             z = -dy
-
-            x = self.lpf1.low_pass_filter(x)
 
             wp = PoseStamped()
             wp.header.stamp = rospy.Time.now()
@@ -252,7 +254,19 @@ class IROSGateDetector:
             wp.pose.position.y = y
             wp.pose.position.z = z
 
+            # Low Pass Filter data
+            x = self.lpf1_x.low_pass_filter(x)
+            y = self.lpf1_y.low_pass_filter(y)
+            z = self.lpf1_z.low_pass_filter(z)
             self.computed_wp_pub.publish(wp)
+
+            wp = PoseStamped()
+            wp.header.stamp = rospy.Time.now()
+            wp.header.frame_id = ""
+            wp.pose.position.x = x
+            wp.pose.position.y = y
+            wp.pose.position.z = z
+            self.computed_wp_lpf_pub.publish(wp)
 
         if t is not None:
             x = abs(t[2][0])
@@ -283,8 +297,7 @@ class IROSGateDetector:
 
 
 if __name__ == "__main__":
-    rospy.init_node('riseq_2d', anonymous=True)
-
+    rospy.init_node('riseq_gatedetector', anonymous=True)
     ig = IROSGateDetector()
 
     #rospy.Subscriber("/stereo/left/camera_info", CameraInfo, ig.init_param)
@@ -292,3 +305,8 @@ if __name__ == "__main__":
 
     if rospy.is_shutdown():
         cv2.destroyAllWindows()
+
+    try:
+        rospy.loginfo("UAV gate detector created")
+    except rospy.ROSInterruptException:
+        print("ROS Terminated.")

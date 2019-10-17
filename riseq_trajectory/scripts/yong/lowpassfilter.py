@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import rospy
 import numpy as np
 
 
@@ -25,3 +26,14 @@ class LowPassFilter:
         else:
             self.last_y = current_x
             return self.last_y
+
+
+if __name__ == "__main__":
+    rospy.init_node('riseq_gate_lowpassfilter', anonymous=True)
+
+    rospy.spin()
+
+    try:
+        rospy.loginfo("Gate lowpass filter created")
+    except rospy.ROSInterruptException:
+        print("ROS Terminated.")
