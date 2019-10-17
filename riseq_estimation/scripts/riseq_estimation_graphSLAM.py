@@ -150,7 +150,7 @@ class Optimizer2D:
 
     def gate_cb(self, msg):
         # Add pose-pose node and contraint, Update the last pose to calculate odometry information
-        if rospy.Duration(self.last_gate_time, rospy.Time.now()) >= (1.0/self.frequency):
+        if (rospy.Time.now().to_sec() - self.last_gate_time.to_sec()) >= (1.0/self.frequency):
             self.nodes.append(Pose2D(self.cur_pose.pose.position.x, self.cur_pose.pose.position.y, 0.0))
             id1 = self.cur_id
             id2 = self.cur_id + 1
