@@ -1,4 +1,5 @@
 <launch>
+  <rosparam command="load" file="$(file riseq_common)/config/env/iros_settings.yaml" />
 
   <arg name="rosbag_name" default="test1"/>
   <!--node name="hovering" pkg="riseq_tests" type="hovering_test.py"/-->

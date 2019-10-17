@@ -26,9 +26,10 @@ class IROSGateDetector:
         self.corners3D[2] = np.array([-self.window_width / 2, 0.0, -self.window_height / 2])
         self.corners3D[3] = np.array([self.window_width / 2, 0.0, -self.window_height / 2])
 
-        self.lpf1_x = lpf.LowPassFilter(0.1, 25)
-        self.lpf1_y = lpf.LowPassFilter(0.1, 25)
-        self.lpf1_z = lpf.LowPassFilter(0.1, 25)
+        cutoff = rospy.get_param("/perception/cutoff", 0.001)
+        self.lpf1_x = lpf.LowPassFilter(cutoff, 25)
+        self.lpf1_y = lpf.LowPassFilter(cutoff, 25)
+        self.lpf1_z = lpf.LowPassFilter(cutoff, 25)
         self.lpf2 = lpf.LowPassFilter(0.1, 25)
 
         # This params must be initialized with the best performing values
@@ -53,12 +54,14 @@ class IROSGateDetector:
         self.K = None
         self.D = None
 
-        #rospy.Subscriber("/stereo/left/camera_info", CameraInfo, self.init_param)
-        rospy.Subscriber("/zed/zed_node/left/camera_info", CameraInfo, self.init_param)
+        # rospy.Subscriber("/stereo/left/camera_info", CameraInfo, self.init_param)  # simulator
+        rospy.Subscriber("/zed/zed_node/left/camera_info", CameraInfo, self.init_param)  # rect
+        # rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.init_param)  # raw
         while self.K is None:
             rospy.sleep(0.1)
-        #rospy.Subscriber("/stereo/left/image_color", Image, self.detect)
-        rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.detect)
+        # rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.detect)  # raw
+        rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.detect)  # rect
+        # rospy.Subscriber("/stereo/left/image_rect_color", Image, self.detect)  # simulator
         self.computed_wp_pub = rospy.Publisher("/riseq/perception/computed_position", PoseStamped, queue_size=10)
         self.computed_wp_lpf_pub = rospy.Publisher("/riseq/perception/computed_position_lpf", PoseStamped, queue_size=10)
         self.solvepnp_wp_pub = rospy.Publisher("/riseq/perception/solvepnp_position", PoseStamped, queue_size=10)
