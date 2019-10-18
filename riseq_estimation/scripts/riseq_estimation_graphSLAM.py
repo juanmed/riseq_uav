@@ -72,7 +72,7 @@ class Optimizer2D:
 
         # Set Graph-SLAM parameters
         self.max_iter = 20
-        self.min_iter = 20
+        self.min_iter = 3
         self.verbose = True
         self.animation = True
         self.p_lambda = 1e-6
@@ -83,7 +83,7 @@ class Optimizer2D:
         # Initialize nodes and edge with gate's pose and drone's initial pose, drift
         self.min_node = 5
         self.nodes, self.consts = [], []
-        self.gate1_pose = Pose2D(5.0, 0.0, 0.0)
+        self.gate1_pose = Pose2D(3.7, 0.0, 0.0)
         self.gate1_id = 0
         self.nodes.append(self.gate1_pose)
         self.nodes.append(Pose2D(0.0, 0.0, 0.0))
@@ -200,13 +200,13 @@ class Optimizer2D:
                     break
             prev_cost = cost
 
-        plt.cla()
-        plot_nodes(nodes, color="-b", label="initial")
-        plot_nodes(graph_nodes, color="-r", label="optimized")
-        plt.axis("equal")
-        plt.grid(True)
-        plt.pause(0.1)
-        #plt.show()
+        if self.animation is True:
+            plt.cla()
+            plot_nodes(nodes, color="-b", label="initial")
+            plot_nodes(graph_nodes, color="-r", label="optimized")
+            plt.axis("equal")
+            plt.grid(True)
+            plt.pause(0.1)
 
         return graph_nodes
 
