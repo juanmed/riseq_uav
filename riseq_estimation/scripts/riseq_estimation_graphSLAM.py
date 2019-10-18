@@ -201,9 +201,12 @@ class Optimizer2D:
             prev_cost = cost
 
         plt.cla()
-        self.plot_nodes(nodes, color="-b", label="initial")
-        self.plot_nodes(graph_nodes, color="-r", label="optimized")
+        plot_nodes(nodes, color="-b", label="initial")
+        plot_nodes(graph_nodes, color="-r", label="optimized")
         plt.axis("equal")
+        plt.grid(True)
+        plt.pause(0.1)
+        #plt.show()
 
         return graph_nodes
 
@@ -306,12 +309,12 @@ class Optimizer2D:
             val += 2.0 * np.pi
         return val
 
-    def plot_nodes(self, nodes, color ="-r", label = ""):
-        x, y = [], []
-        for n in nodes:
-            x.append(n.x)
-            y.append(n.y)
-        plt.plot(x, y, color, label=label)
+def plot_nodes(nodes, color ="-r", label = ""):
+    x, y = [], []
+    for n in nodes:
+        x.append(n.x)
+        y.append(n.y)
+    plt.plot(x, y, color, label=label)
 
 
 if __name__ == "__main__":
