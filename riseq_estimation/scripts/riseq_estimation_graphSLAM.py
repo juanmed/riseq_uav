@@ -72,7 +72,7 @@ class Optimizer2D:
 
         # Set Graph-SLAM parameters
         self.max_iter = 20
-        self.min_iter = 3
+        self.min_iter = 20
         self.verbose = True
         self.animation = True
         self.p_lambda = 1e-6
@@ -81,6 +81,7 @@ class Optimizer2D:
         self.dim = 3  # state dimension
 
         # Initialize nodes and edge with gate's pose and drone's initial pose, drift
+        self.min_node = 5
         self.nodes, self.consts = [], []
         self.gate1_pose = Pose2D(5.0, 0.0, 0.0)
         self.gate1_id = 0
@@ -100,25 +101,29 @@ class Optimizer2D:
         self.cur_pose = PoseStamped()
 
         # Publisher, Subscriber
-        self.pose_pub = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
-        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/riseq/gate/global_pose', PoseStamped, self.gate_cb)
+        self.pose_pub = rospy.Publisher('/riseq/estimation/compensated_pose', PoseStamped, queue_size=10)
+        #self.pose_pub = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
+
+        #rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.pose_cb)
+
+        rospy.Subscriber('/riseq/gate/lpf_global/global_pose', PoseStamped, self.gate_cb)
 
     def loop(self):
         # Optimize nodes
-        final_nodes = self.optimize_path(self.nodes, self.consts, self.max_iter, self.min_iter)
-        self.x_drift = self.cur_pose.pose.position.x - final_nodes[len(final_nodes)-1].x
-        self.y_drift = self.cur_pose.pose.position.y - final_nodes[len(final_nodes)-1].y
+        length = len(self.nodes)
+        rospy.loginfo("Node: %d", length)
+        # for i in range(0, length):
+        #     print("%d: %.1f %.1f" % (i, self.nodes[i].x, self.nodes[i].y))
 
-        # Plot result
-        # plt.cla()
-        # plot_nodes(self.nodes, color="-b", label="before")
-        # plot_nodes(final_nodes, label="after")
-        # plt.axis("equal")
-        # plt.grid(True)
-        # plt.legend()
+        if length > self.min_node:
+            final_nodes = self.optimize_path(self.nodes, self.consts, self.max_iter, self.min_iter)
+            self.x_drift = self.cur_pose.pose.position.x - final_nodes[len(final_nodes)-1].x
+            self.y_drift = self.cur_pose.pose.position.y - final_nodes[len(final_nodes)-1].y
 
-        self.r.sleep()
+            rospy.loginfo("Drift: %.3f %.3f", self.x_drift, self.y_drift)
+            
+            self.r.sleep()
 
     def pose_cb(self, msg):
         # Add pose-pose node and contrant, Update the last pose to calculate odometry information
@@ -138,15 +143,16 @@ class Optimizer2D:
             self.last_pose.pose.position.z = msg.pose.position.z
 
         # Publish compensated visual odometry position
-        self.cur_pose.pose.position.x = msg.pose.position.x - self.x_drift
-        self.cur_pose.pose.position.y = msg.pose.position.y - self.y_drift
-        self.cur_pose.pose.position.z = msg.pose.position.z
-        self.cur_pose.pose.orientation.x = msg.pose.orientation.x
-        self.cur_pose.pose.orientation.y = msg.pose.orientation.y
-        self.cur_pose.pose.orientation.z = msg.pose.orientation.z
-        self.cur_pose.pose.orientation.w = msg.pose.orientation.w
-        self.cur_pose.header.stamp = rospy.Time.now()
-        self.pose_pub.publish(self.cur_pose)
+        comp_pose = PoseStamped()
+        comp_pose.pose.position.x = msg.pose.position.x - self.x_drift
+        comp_pose.pose.position.y = msg.pose.position.y - self.y_drift
+        comp_pose.pose.position.z = msg.pose.position.z
+        comp_pose.pose.orientation.x = msg.pose.orientation.x
+        comp_pose.pose.orientation.y = msg.pose.orientation.y
+        comp_pose.pose.orientation.z = msg.pose.orientation.z
+        comp_pose.pose.orientation.w = msg.pose.orientation.w
+        comp_pose.header.stamp = rospy.Time.now()
+        self.pose_pub.publish(comp_pose)
 
     def gate_cb(self, msg):
         # Add pose-pose node and contraint, Update the last pose to calculate odometry information
@@ -185,20 +191,19 @@ class Optimizer2D:
             cost, graph_nodes = self.optimize_path_one_step(graph_nodes, consts)
             elapsed = time.time() - start
             if self.verbose:
-                print("step ", i, " cost: ", cost, " time:", elapsed, "s")
+                print("step %d  cost: %f  time: %fs" % (i, cost, elapsed))
 
             # check convergence
             if (i > min_iter) and (prev_cost - cost < self.stop_thre):
                 if self.verbose:
-                    print("converged:", prev_cost - cost, " < ", self.stop_thre)
+                    print("converged: %f < %f" % (prev_cost - cost, self.stop_thre))
                     break
             prev_cost = cost
 
-            if self.animation and (i == 0 or i == max_iter-1):
-                plt.cla()
-                plot_nodes(nodes, color="-b")
-                plot_nodes(graph_nodes)
-                plt.axis("equal")
+        plt.cla()
+        plot_nodes(nodes, color="-b", label="initial")
+        plot_nodes(graph_nodes, color="-r", label="optimized")
+        plt.axis("equal")
 
         return graph_nodes
 
@@ -213,8 +218,7 @@ class Optimizer2D:
             idb = con.id2
             assert 0 <= ida and ida < numnodes, "ida is invalid"
             assert 0 <= idb and idb < numnodes, "idb is invalid"
-            r, Ja, Jb = self.calc_error(
-                graph_nodes[ida], graph_nodes[idb], con.t)
+            r, Ja, Jb = self.calc_error(graph_nodes[ida], graph_nodes[idb], con.t)
 
             trJaInfo = np.dot(Ja.transpose(), con.info_mat)
             trJaInfoJa = np.dot(trJaInfo, Ja)
