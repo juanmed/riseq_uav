@@ -118,8 +118,8 @@ class Optimizer2D:
 
         if length > self.min_node:
             final_nodes = self.optimize_path(self.nodes, self.consts, self.max_iter, self.min_iter)
-            self.x_drift = self.cur_pose.pose.position.x - final_nodes[len(final_nodes)-1].x
-            self.y_drift = self.cur_pose.pose.position.y - final_nodes[len(final_nodes)-1].y
+            self.x_drift = self.last_pose.pose.position.x - final_nodes[len(final_nodes)-1].x
+            self.y_drift = self.last_pose.pose.position.y - final_nodes[len(final_nodes)-1].y
 
             rospy.loginfo("Drift: %.3f %.3f", self.x_drift, self.y_drift)
             
@@ -201,8 +201,8 @@ class Optimizer2D:
             prev_cost = cost
 
         plt.cla()
-        plot_nodes(nodes, color="-b", label="initial")
-        plot_nodes(graph_nodes, color="-r", label="optimized")
+        self.plot_nodes(nodes, color="-b", label="initial")
+        self.plot_nodes(graph_nodes, color="-r", label="optimized")
         plt.axis("equal")
 
         return graph_nodes
@@ -238,8 +238,8 @@ class Optimizer2D:
             bf[idb * self.dim: idb * self.dim + 3] += np.dot(trJbInfo, r)
 
         # Fix first node
-        for k in indlist:
-            tripletList.push_back(k, k, self.init_w)
+        # for k in indlist:
+        #     tripletList.push_back(k, k, self.init_w)
 
         for i in range(self.dim * numnodes):
             tripletList.push_back(i, i, self.p_lambda)
@@ -306,13 +306,12 @@ class Optimizer2D:
             val += 2.0 * np.pi
         return val
 
-
-def plot_nodes(nodes, color ="-r", label = ""):
-    x, y = [], []
-    for n in nodes:
-        x.append(n.x)
-        y.append(n.y)
-    plt.plot(x, y, color, label=label)
+    def plot_nodes(self, nodes, color ="-r", label = ""):
+        x, y = [], []
+        for n in nodes:
+            x.append(n.x)
+            y.append(n.y)
+        plt.plot(x, y, color, label=label)
 
 
 if __name__ == "__main__":
