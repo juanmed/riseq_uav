@@ -4,4 +4,6 @@ gates:
     drone_init: [0,-1,0]
 perception:
     colors: 'rgb'
+    cutoff: 0.001
+    camera: left_rect
     
