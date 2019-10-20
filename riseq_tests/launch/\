@@ -1,0 +1,15 @@
+<launch>
+
+  <arg name="rosbag_name" default="test1"/>
+  <!--node name="hovering" pkg="riseq_tests" type="hovering_test.py"/-->
+  <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py"/>
+
+  <include file="$(find mavros)/launch/px4.launch"/>
+  <include file="$(find vrpn_client_ros)/launch/sample.launch">
+     <arg name="server" value="192.168.0.150"/>
+  </include>
+  <!--include file="$(find zed_wrapper)/launch/zedm.launch"/-->
+  <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/>
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left_raw/camera_info /zed/zed_node/left_raw/image_raw_color /vrpn_client_node/Fastquad/pose"/>
+</launch>

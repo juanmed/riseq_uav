@@ -41,7 +41,7 @@ def rotation2quaternion(R):
     """
     Put 3x3 rotation matrix, then calculate quatrenion angle
     """
-    qw = sqrt(1 + R[0][0] + R[1][1] + R[2][2]) / 2
+    qw = np.sqrt(1 + R[0][0] + R[1][1] + R[2][2]) / 2
     qx = (R[2][1] - R[1][2]) / (4*qw)
     qy = (R[0][2] - R[2][0]) / (4*qw)
     qz = (R[1][0] - R[0][1]) / (4*qw)
@@ -58,7 +58,7 @@ def rotation2euler(R):
     return phi, theta, psi
 
 
-def euler2quaternion(pi, theta, psi):
+def euler2quaternion(phi, theta, psi):
     """
     Put Euler angles, then calculate quatrenion angle
     """
@@ -73,9 +73,9 @@ def q2r(qw, qx, qy, qz):
     """
     Put quaternion angle, then calculate rotation matrix
     """
-    R = np.array([[1-2*qy**2-2*qz**2, 2*qx*qy-2*qz*qw, 2*qz*qx+2*qy*qw],
-                  [2*qx*qy+2*qz*qw, 1-2*qz**2-2*qx**2, 2*qy*qz-2*qx*qw],
-                  [2*qz*qx-2*qy*qw, 2*qy*qz+2*qx*qw, 1-2*qx**2-qw*qy**2]])
+    R = np.array([[1-2*qy**2-2*qz**2, 2*qx*qy-2*qw*qz, 2*qx*qz+2*qw*qy],
+                  [2*qx*qy+2*qw*qz, 1-2*qx**2-2*qz**2, 2*qy*qz-2*qw*qx],
+                  [2*qx*qz-2*qw*qy, 2*qy*qz+2*qx*qw, 1-2*qx**2-2*qy**2]])
     return R
 
 
