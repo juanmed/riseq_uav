@@ -4,6 +4,7 @@ import rospy
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
+from imutils import perspective
 
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
@@ -123,15 +124,22 @@ class IROSGateDetector:
             else:
                 pass
 
-            screenCnt = square.reshape((4, 2))
+            box = cv2.boxPoints(rect)
+            box = np.array(box, dtype="int")
+            rect = perspective.order_points(box) # order points: top-left, top-right, down-right, down-left
+                                                 # https://www.pyimagesearch.com/2016/03/21/ordering-coordinates-clockwise-with-python-and-opencv/
+            square = square.reshape((-1, 2))  # square_couples[0][0].reshape((-1,2))
+            square = perspective.order_points(square)
+
+            #screenCnt = square.reshape((4, 2))
 
             # get centroid
-            m = cv2.moments(screenCnt)
+            m = cv2.moments(square)
             try:
                 cx = int(m["m10"] / m["m00"])
                 cy = int(m["m01"] / m["m00"])
 
-                corners2D = screenCnt.astype('float32')
+                corners2D = square.astype('float32')
                 # corners2D = np.concatenate((screenCnt2, centroid), axis = 0)
                 R, t, R_exp = self.getPose(self.corners3D, corners2D)
                 img = self.draw_frame(img, (cx, cy), R_exp, t)
@@ -255,7 +263,7 @@ class IROSGateDetector:
             self.computed_wp_pub.publish(wp)
 
         if t is not None:
-            x = abs(t[2][0])
+            x = t[2][0]
             y = -t[0][0]
             z = -t[1][0]
 
