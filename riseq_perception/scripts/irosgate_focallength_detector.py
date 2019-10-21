@@ -66,8 +66,8 @@ class IROSGateDetector():
         self.K[0, 0], self.K[0, 2] = 697.5170288085938, 638.0659790039062  # 241.42682359130833, 376.5
         self.K[1, 1], self.K[1, 2] = 697.5170288085938, 354.1419982910156  # 241.42682359130833, 240.5
         self.K[2, 2] = 1.
-        self.K = np.array([[699.385009765625, 0.0, 634.9920043945312, 0.0, 699.385009765625, 389.59600830078125, 0.0, 0.0, 1.0]]).reshape((3,3))
-        self.distCoeffs = np.array([-0.17428700625896454, 0.027085600420832634, 0.0, -0.0005054270150139928, -3.0833100026939064e-05])  # np.zeros((8), dtype='float32')
+        self.K = np.array([699.9710083007812, 0.0, 636.3740234375, 0.0, 699.9710083007812, 388.91400146484375, 0.0, 0.0, 1.0]).reshape((3,3))
+        self.distCoeffs = np.array([-0.17539499700069427, 0.027834899723529816, 0.0, 0.0, 0.0])  # np.zeros((8), dtype='float32')
         self.axis = np.float32([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]]).reshape(-1, 3)
 
         self.lpf1 = lpf.LowPassFilter(1, 25)
@@ -86,8 +86,8 @@ class IROSGateDetector():
             axcannyk = self.fig.add_axes([0.1, 0.11, 0.8, 0.01], facecolor=axcolor)
             axepsilon = self.fig.add_axes([0.1, 0.13, 0.8, 0.01], facecolor=axcolor)
 
-            self.dilate_iter_slider = Slider(axdilate, 'dilate iter', 0, 15, valinit=2, valstep=1)
-            self.erode_iter_slider = Slider(axerode, 'erode iter', 0, 15, valinit=1, valstep=1)
+            self.dilate_iter_slider = Slider(axdilate, 'dilate iter', 0, 15, valinit=self.dilate_iter, valstep=1)
+            self.erode_iter_slider = Slider(axerode, 'erode iter', 0, 15, valinit=self.erode_iter, valstep=1)
             self.gauss_k_slider = Slider(axgaussk, 'Gaussian K', 3, 21, valinit=5, valstep=2)
             self.canny_k_slider = Slider(axcannyk, 'canny K', 3, 30, valinit=5, valstep=2)
             self.epsilon_slider = Slider(axepsilon, 'epsilon', 0.02, 1.0, valinit=0.1)
