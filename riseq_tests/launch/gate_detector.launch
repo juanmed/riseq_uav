@@ -1,0 +1,7 @@
+<launch>
+	<arg name="rosbag_name" default="test1"/>
+	<node name="monocular" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen"/>
+	<node name="gate_pose" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/>
+	<node name="rosbag_record" pkg="rosbag" type="record"
+        args="-o $(arg rosbag_name) /riseq/perception/uav_mono_waypoint /riseq/perception/gate_pose_computed"/> 
+</launch>
