@@ -63,7 +63,7 @@ if __name__ == "__main__":
     pose.header.stamp = rospy.Time.now()
     pose.pose.position.x = 0
     pose.pose.position.y = 0
-    pose.pose.position.z = 1.3
+    pose.pose.position.z = 1
 
     for i in range(100):
         pose.header.stamp = rospy.Time.now()
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         # print current_state
         rate.sleep()
         #print("Sending pose: {}".format(pose))
-        '''
+    
         if rospy.Time.now() - start_time > rospy.Duration(17.0):
             pose.pose.position.x=1.0
         if rospy.Time.now() - start_time > rospy.Duration(34.0):
@@ -98,8 +98,8 @@ if __name__ == "__main__":
             pose.pose.position.x = 0.0
             pose.pose.position.y = 0.0
         if rospy.Time.now() - start_time > rospy.Duration(60.0):
-        '''
-        if rospy.Time.now() - start_time > rospy.Duration(10.0):
+        
+        #if rospy.Time.now() - start_time > rospy.Duration(10.0):
             break
 
     print("Return")
@@ -120,4 +120,3 @@ if __name__ == "__main__":
     print("disarming")
     arm_cmd.value = False
     arm_client_1 = arming_client(arm_cmd.value)
-

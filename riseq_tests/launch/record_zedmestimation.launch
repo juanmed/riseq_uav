@@ -10,5 +10,5 @@
   <!--node name="monowaypoint" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py"/-->
   <node name="monowaypoint" pkg="riseq_trajectory" type="irosgate_detector.py"/>
   <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left_raw/camera_info /zed/zed_node/left_raw/image_raw_color /vrpn_client_node/Fastquad/pose /vrpn_client_node/gate/pose /riseq/perception/uav_mono_waypoint /riseq/perception/uav_mono_waypoint2d /mavros/setpoint_position/local /riseq/perception/computed_position /riseq/perception/solvepnp_position"/>
+        args="-O $(arg rosbag_name) /zed/zed_node/left_raw/camera_info /zed/zed_node/left_raw/image_raw_color /vrpn_client_node/Fastquad/pose /vrpn_client_node/gate/pose /mavros/setpoint_position/local /mavros/local_position/pose"/>
 </launch>

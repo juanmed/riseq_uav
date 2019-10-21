@@ -100,6 +100,7 @@ if __name__ == "__main__":
         rate.sleep()
 
     update_goal = True
+    start_time = rospy.Time.now()
 
     while not rospy.is_shutdown():
         if update_goal:
@@ -117,7 +118,8 @@ if __name__ == "__main__":
             if goal_pose.pose.position.z > 2.0 or goal_pose.pose.position.z < 0.5:
                 print("z is out of range")
                 break
-        if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
+	euclidean_distance = np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y))
+        if ((rospy.Time.now() - start_time) > rospy.Duration(10.0)):
             break
 
         local_pos_pub.publish(goal_pose)
