@@ -32,7 +32,7 @@ import cv2
 from window_detector import WindowDetector
 from ellipse_detector import EllipseDetector
 from ladder_detector import LadderDetector 
-from irosgate_detector import IROSGateDetector
+from irosgate_focallength_detector import IROSGateDetector
 from cv_bridge import CvBridge, CvBridgeError
 
 from sensor_msgs.msg import Image 
@@ -48,7 +48,7 @@ class MonoWaypointDetector():
         Initialize CNN for gate pose detection
         """
 
-        self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", Path, queue_size = 10)
+        self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", PoseStamped, queue_size = 10)
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
         self.object_centerpoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint2d", PoseStamped, queue_size = 10)        
         self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.estimate_object_pose)
@@ -102,6 +102,9 @@ class MonoWaypointDetector():
         if not self.camera_info_ready:
             self.ig.K = self.K
             self.ig.D = self.D
+            self.ig.image_width = self.image_width
+            self.ig.image_height = self.image_height
+
             rospy.loginfo("Camera info set.")
             self.camera_info_ready = True
             self.initKalmanFilters()
@@ -121,17 +124,14 @@ class MonoWaypointDetector():
                 cv2.imwrite(r"gatelow.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
                 print("Image saved!")
                 self.saved = True
-            path = Path()
-            path.header.stamp = rospy.Time.now()
-            path.header.frame_id = ""
+
+            #path = Path()
+            #path.header.stamp = rospy.Time.now()
+            #path.header.frame_id = ""
 
             wp = PoseStamped()
-            wp.header.stamp = rospy.Time.now()
-            wp.header.frame_id = ""
-
             wp2d = PoseStamped()
-            wp2d.header.stamp = rospy.Time.now()
-            wp2d.header.frame_id = ""
+
 
             if(self.mode == 'window'):
 
@@ -224,6 +224,7 @@ class MonoWaypointDetector():
             elif(self.mode == 'irosgate'):
                 R, t, R_exp, cnt, mask, cnts = self.ig.detect(img.copy(), self.max_size)
                 
+                """ KALMAN FILTER SECTION, NOT USED ANYMORE  
                 cx_predict = self.cx_kalman.predict()
                 cy_predict = self.cy_kalman.predict()
                 x_predict = self.x_kalman.predict()[0, 0]
@@ -238,8 +239,10 @@ class MonoWaypointDetector():
 
                 wp2d.pose.position.x = cx_predict[0,0]
                 wp2d.pose.position.y = cy_predict[0,0]
+                """
 
-                if R is not None:
+                if t is not None:
+
                     self.success = self.success + 1.
 
                     #img = cv2.bitwise_and(img, img, mask = mask)
@@ -248,23 +251,27 @@ class MonoWaypointDetector():
                     img = self.ig.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
                     img = cv2.circle(img, (cnt[0][0],cnt[0][1]), 3, (0,255,0), 3 ) # measurement
                     
+                    # KALMAN FILTER SECTION, NOT USED ANYMORE
+                    """
                     cx_measurement = np.array([[cnt[0][0]*1.0]])
                     cy_measurement = np.array([[cnt[0][1]*1.0]])
                     cx_estimation = self.cx_kalman.correct(cx_measurement)[0,0]
                     cy_estimation = self.cy_kalman.correct(cy_measurement)[0,0]
-                    
                     img = cv2.circle(img, (int(cx_estimation),int(cy_estimation)), 3, (0,0,255), 3) # estimation
-                    
+                    """
+
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0]])), axis = 0)
                     R = np.concatenate((R, np.array([[0.0, 0.0, 0.0, 1.0]]).T ), axis = 1)
                     gate_quat = tf.transformations.quaternion_from_matrix(R)
 
+                    """
                     x_measurement = np.array([[t[2][0]]])
                     y_measurement = np.array([[-t[0][0]]])
                     z_measurement = np.array([[-t[1][0]]])
                     x_estimation = self.x_kalman.correct(x_measurement)[0,0]
                     y_estimation = self.y_kalman.correct(y_measurement)[0,0]
                     z_estimation = self.z_kalman.correct(z_measurement)[0,0]
+                    """
 
                     # gate waypoint
                     minval = -50.
@@ -273,6 +280,9 @@ class MonoWaypointDetector():
                     #y = np.clip(-t[0][0], minval, maxval)
                     #z = np.clip(np.abs(t[1][0]), minval, maxval)
 
+                    wp = PoseStamped()
+                    wp.header.stamp = rospy.Time.now()
+                    wp.header.frame_id = ""
                     wp.pose.position.x = t[2][0] #x_estimation 
                     wp.pose.position.y = -t[0][0] #y_estimation
                     wp.pose.position.z = -t[1][0] #z_estimation
@@ -281,6 +291,9 @@ class MonoWaypointDetector():
                     wp.pose.orientation.z = gate_quat[2]
                     wp.pose.orientation.w = gate_quat[3]
 
+                    wp2d = PoseStamped()
+                    wp2d.header.stamp = rospy.Time.now()
+                    wp2d.header.frame_id = ""
                     wp2d.pose.position.x = cnt[0][0]
                     wp2d.pose.position.y = cnt[0][1]
 
@@ -288,13 +301,15 @@ class MonoWaypointDetector():
                 
                 rospy.loginfo("Monocular Object Detector mode non-existent.")
 
-            path.poses = [wp]          
-            self.waypoint_pub.publish(path)
-            self.object_centerpoint_pub.publish(wp2d)
-            #self.ladder_info_pub.publish(ladder_info)
+            #path.poses = [wp]  
+            if wp is not None:        
+                self.waypoint_pub.publish(wp)
+            if wp2d is not None:
+                self.object_centerpoint_pub.publish(wp2d)
 
             img_msg = self.bridge.cv2_to_imgmsg(img, "rgb8")
             self.img_dect_pub.publish(img_msg)
+
             if(self.enable_recording):
                 self.out.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         else:
