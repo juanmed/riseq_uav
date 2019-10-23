@@ -85,8 +85,8 @@ def main():
     global drone_pose
     global gate_pose_mono
 
-    gate_down_pose_pub = rospy.Publisher("/riseq/perception/gate_down_pose_computed", PoseStamped, queue_size = 10)
-    gate_right_pose_pub = rospy.Publisher("/riseq/perception/gate_right_pose_computed", PoseStamped, queue_size = 10)
+    gate_down_pose_pub = rospy.Publisher("/riseq/perception/gate_down_pose_gt", PoseStamped, queue_size = 10)
+    gate_right_pose_pub = rospy.Publisher("/riseq/perception/gate_right_pose_gt", PoseStamped, queue_size = 10)
     rospy.Subscriber("/zed/zed_node/odom", Odometry, zedpose_cb)
     rospy.Subscriber("/vrpn_client_node/Fastquad/pose", PoseStamped, optitrack_cb)
     rospy.Subscriber("/vrpn_client_node/gatedown/pose", PoseStamped, optitrack_gate_down_cb)
