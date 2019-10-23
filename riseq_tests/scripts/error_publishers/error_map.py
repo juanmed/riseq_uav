@@ -60,12 +60,12 @@ class ErrorMap():
             error = ground_truth - estimation
             error_norm = np.linalg.norm(error)
 
-            if error_norm < 0.2:
-                self.ax.scatter(x, y, z, color=colors[0], marker=markers[0])
-            elif error_norm < 0.5:
-                self.ax.scatter(x, y, z, color=colors[1], marker=markers[1])
+            if error_norm < 0.3:
+                self.ax.scatter(x, y, z, c=colors[0], marker=markers[0])
+            elif error_norm < 0.6:
+                self.ax.scatter(x, y, z, c=colors[1], marker=markers[1])
             else:
-                self.ax.scatter(x, y, z, color=colors[2], marker=markers[2])
+                self.ax.scatter(x, y, z, c=colors[2], marker=markers[2])
             print "ploting"
             r.sleep()
         print "plot data"
