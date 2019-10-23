@@ -84,7 +84,7 @@ def main():
     r = rospy.Rate(30)
     while not rospy.is_shutdown():
         if (drone_optipose is not None) and (gate_optipose is not None) :
-            vector = drone_optipose - gate_optipose
+            vector = gate_optipose - drone_optipose
             gate_msg = PoseStamped()
             gate_msg.header.stamp = rospy.Time.now()
             gate_msg.pose.position.x = vector[0]
