@@ -41,16 +41,19 @@ class IROSGateDetector():
         # This params must be initialized with the best performing values
         self.dilate_iter = 2
         self.erode_iter = 4
-        self.canny_k = 5
+        self.saturation_low = 50
         self.epsilon = 0.1  # should be between 0.02 to 0.15
         self.gauss_k = 5  # should be 3 or 5, but no more
+        self.vue_low = 40
+        self.blue_low = 93
+        self.blue_high = 131
 
         # For how to decide HSV color boundaries, look
         # https://stackoverflow.com/questions/10948589/choosing-the-correct-upper-and-lower-hsv-boundaries-for-color-detection-withcv
         self.HSVboundaries = [ #([165, 100, 40], [180, 255, 255]), #red upper range
                                #([0, 100, 40], [15, 255, 255]),    # red lower range
                                #([40, 50, 40], [80, 255, 255]),  # green range
-                               ([100, 30, 40],[145, 255, 255])]  # blue range
+                               ([self.blue_low, self.saturation_low, self.vue_low],[self.blue_high, 255, 255])]  # blue range
 
 
         # Define corners of 3D Model's bounding cube
@@ -83,21 +86,30 @@ class IROSGateDetector():
             axdilate = self.fig.add_axes([0.1, 0.05, 0.8, 0.01], facecolor=axcolor)
             axerode = self.fig.add_axes([0.1, 0.07, 0.8, 0.01], facecolor=axcolor)
             axgaussk = self.fig.add_axes([0.1, 0.09, 0.8, 0.01], facecolor=axcolor)
-            axcannyk = self.fig.add_axes([0.1, 0.11, 0.8, 0.01], facecolor=axcolor)
-            axepsilon = self.fig.add_axes([0.1, 0.13, 0.8, 0.01], facecolor=axcolor)
+            axsaturation_low = self.fig.add_axes([0.1, 0.13, 0.8, 0.01], facecolor=axcolor)
+            axepsilon = self.fig.add_axes([0.1, 0.11, 0.8, 0.01], facecolor=axcolor)
+            axvue_low = self.fig.add_axes([0.1, 0.15, 0.8, 0.01], facecolor = axcolor)
+            axblue_low = self.fig.add_axes([0.1, 0.17, 0.8, 0.01], facecolor = axcolor)
+            axblue_high = self.fig.add_axes([0.1, 0.19, 0.8, 0.01], facecolor = axcolor)
 
             self.dilate_iter_slider = Slider(axdilate, 'dilate iter', 0, 15, valinit=self.dilate_iter, valstep=1)
             self.erode_iter_slider = Slider(axerode, 'erode iter', 0, 15, valinit=self.erode_iter, valstep=1)
-            self.gauss_k_slider = Slider(axgaussk, 'Gaussian K', 3, 21, valinit=5, valstep=2)
-            self.canny_k_slider = Slider(axcannyk, 'canny K', 3, 30, valinit=5, valstep=2)
-            self.epsilon_slider = Slider(axepsilon, 'epsilon', 0.02, 1.0, valinit=0.1)
+            self.gauss_k_slider = Slider(axgaussk, 'Gaussian K', 3, 21, valinit=self.gauss_k, valstep=2)
+            self.saturation_low_slider = Slider(axsaturation_low, 'saturation_low', 0, 255, valinit=self.saturation_low, valstep=1)
+            self.epsilon_slider = Slider(axepsilon, 'epsilon', 0.02, 1.0, valinit=self.epsilon)
+            self.vue_low_slider = Slider(axvue_low, 'vue low', 0, 255, valinit = self.vue_low, valstep = 1)
+            self.blue_low_slider = Slider(axblue_low, 'blue low', 0, 255, valinit = self.blue_low, valstep = 1)
+            self.blue_high_slider = Slider(axblue_high, 'blue high', 0, 255, valinit = self.blue_high, valstep = 1)
             # self.maxRadius_slider = Slider(axmaxRadius, '*',0.0,100,valinit=70)
 
             self.dilate_iter_slider.on_changed(self.update)
             self.erode_iter_slider.on_changed(self.update)
             self.gauss_k_slider.on_changed(self.update)
-            self.canny_k_slider.on_changed(self.update)
+            self.saturation_low_slider.on_changed(self.update)
             self.epsilon_slider.on_changed(self.update)
+            self.vue_low_slider.on_changed(self.update)
+            self.blue_low_slider.on_changed(self.update)
+            self.blue_high_slider.on_changed(self.update)
             # self.maxRadius_slider.on_changed(self.update)
 
     def update(self, val):
@@ -107,9 +119,18 @@ class IROSGateDetector():
         """
         self.dilate_iter = int(self.dilate_iter_slider.val)
         self.erode_iter = int(self.erode_iter_slider.val)
-        self.canny_k = int(self.canny_k_slider.val)
+        self.saturation_low = int(self.saturation_low_slider.val)
         self.epsilon = self.epsilon_slider.val
         self.gauss_k = int(self.gauss_k_slider.val)
+        self.vue_low = int(self.vue_low_slider.val)
+        self.blue_low = int(self.blue_low_slider.val)
+        self.blue_high = int(self.blue_high_slider.val)
+
+        # Update HSV Boundaries
+        self.HSVboundaries = [ #([165, 100, 40], [180, 255, 255]), #red upper range
+                               #([0, 100, 40], [15, 255, 255]),    # red lower range
+                               #([40, 50, 40], [80, 255, 255]),  # green range
+                               ([self.blue_low, self.saturation_low, self.vue_low],[self.blue_high, 255, 255])]  # blue range
 
         R, t, R_exp, cnt, mask, cnts = self.detect(self.img.copy(), self.max_size)
         print("Translation: ", t)
@@ -118,6 +139,10 @@ class IROSGateDetector():
         if (cnt is not None):
             img = self.draw_frame(self.img.copy(), (cnt[0][0], cnt[0][1]), R_exp, t)
             img = cv2.drawContours(img, [cnt[1:]], -1, (0, 0, 255), 1)
+            corners = cnt[1:]
+            for i, corner in enumerate(corners):
+                img = cv2.putText(img, str(i), (corner[0], corner[1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 2)
+
         else:
             print("No Countours found")
             img = self.img
@@ -125,6 +150,7 @@ class IROSGateDetector():
         output = cv2.bitwise_and(self.img.copy(), img, mask=mask)
         if (self.color_space == 'BGR'):
             self.ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            self.ax.set_title("Gate Position -openCV camera frame-\nx: {:.3f} y: {:.3f} z: {:.3f}".format(t[0][0], t[1][0], t[2][0]))
             # self.ax2.imshow(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
             self.ax2.imshow(cv2.cvtColor(cv2.drawContours(output, cnts, -1, (0, 255, 0), 1), cv2.COLOR_BGR2RGB))
         else:
@@ -270,7 +296,7 @@ class IROSGateDetector():
         cy = centroid[0][1]
 
         px = corners2D[2][0] - corners2D[0][0]
-        py = corners2D[2][1] - corners2D[0][1]
+        py = corners2D[3][1] - corners2D[0][1]
 
         dx = self.gate_width * (cx - self.image_width / 2) / px
         dy = self.gate_height * (cy - self.image_height / 2) / py
@@ -282,9 +308,10 @@ class IROSGateDetector():
         y = -dx
         z = -dy
 
-        x = self.lpf1.low_pass_filter(x)
+        x = self.lpf1.low_pass_filter(dz)
 
-        return np.array([x,y,z]).reshape(3,-1)
+        # comply with expected return format (opencv camera frame)
+        return np.array([dx,dy,dz]).reshape(3,-1)
 
     def verifyArea(self, w, h, square):
         """
@@ -381,11 +408,14 @@ class IROSGateDetector():
         Taken from: https://docs.opencv.org/master/d7/d53/tutorial_py_pose.html
         """
         # corner = tuple(corners[0].ravel())
-        imgpts, jac = cv2.projectPoints(self.axis, R_exp, t, self.K, self.distCoeffs)
+        try:
+            imgpts, jac = cv2.projectPoints(self.axis, R_exp, t, self.K, self.distCoeffs)
+            img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (255, 0, 0), 2)
+            img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0, 255, 0), 2)
+            img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (0, 0, 255), 2)
+        except:
+            pass
 
-        img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (255, 0, 0), 2)
-        img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0, 255, 0), 2)
-        img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (0, 0, 255), 2)
         return img
 
 def main(args):

@@ -79,12 +79,13 @@ def main():
     rospy.Subscriber("/mavros/local_position/pose", PoseStamped, mavros_state)
     rospy.Subscriber("/riseq/perception/computed_position", PoseStamped, gate_monopose)
 
-    gate_pose = np.array([4.45, 0.0, 0.82])
+    camera_drone_vector = np.array([0.17, 0.0, 0.0])
 
     r = rospy.Rate(30)
     while not rospy.is_shutdown():
         if (drone_optipose is not None) and (gate_optipose is not None) :
-            vector = gate_optipose - drone_optipose
+
+            vector = -(drone_optipose + camera_drone_vector) + gate_optipose
             gate_msg = PoseStamped()
             gate_msg.header.stamp = rospy.Time.now()
             gate_msg.pose.position.x = vector[0]
