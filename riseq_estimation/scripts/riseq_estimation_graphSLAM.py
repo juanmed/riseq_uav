@@ -4,7 +4,7 @@ author:  Eugene Auh
 version: 0.1.0
 brief: Graph-based SLAM for IROS2019 ADR Competition. From the location of the gate, compensates drifts of VIO.
       Algorithm and code are based on PythonRobotics Pose Optimization SLAM 2D by Atsushi Sakai.
-                                    (https://hithub.com/AtsushiSakai/PythonRobotics#pose-optimization-slam-2d)
+                                    (https://github.com/AtsushiSakai/PythonRobotics#pose-optimization-slam-2d)
 
 MIT License
 
@@ -71,7 +71,7 @@ class Optimizer2D:
         self.r = rospy.Rate(self.frequency)
 
         # Set Graph-SLAM parameters
-        self.max_iter = 20
+        self.max_iter = 50
         self.min_iter = 3
         self.verbose = True
         self.animation = True
@@ -81,14 +81,14 @@ class Optimizer2D:
         self.dim = 3  # state dimension
 
         # Initialize nodes and edge with gate's pose and drone's initial pose, drift
-        self.min_node = 5
+        self.min_node = 10
         self.nodes, self.consts = [], []
         self.gate1_pose = Pose2D(3.7, 0.0, 0.0)
         self.gate1_id = 0
         self.nodes.append(self.gate1_pose)
         self.nodes.append(Pose2D(0.0, 0.0, 0.0))
-        self.consts.append(Constraint2D(1, 0, self.gate1_pose, np.array([[self.init_w, 0.0, 0.0],
-                                                                         [0.0, self.init_w, 0.0],
+        self.consts.append(Constraint2D(1, 0, self.gate1_pose, np.array([[10.0, 1.0, 0.0],
+                                                                         [1.0, 10.0, 0.0],
                                                                          [0.0, 0.0, self.init_w]])))
         self.x_drift = 0.0
         self.y_drift = 0.0
@@ -120,10 +120,9 @@ class Optimizer2D:
             final_nodes = self.optimize_path(self.nodes, self.consts, self.max_iter, self.min_iter)
             self.x_drift = self.last_pose.pose.position.x - final_nodes[len(final_nodes)-1].x
             self.y_drift = self.last_pose.pose.position.y - final_nodes[len(final_nodes)-1].y
-
             rospy.loginfo("Drift: %.3f %.3f", self.x_drift, self.y_drift)
-            
-            self.r.sleep()
+
+        self.r.sleep()
 
     def pose_cb(self, msg):
         # Add pose-pose node and contrant, Update the last pose to calculate odometry information
@@ -132,8 +131,8 @@ class Optimizer2D:
             id1 = self.cur_id
             id2 = self.cur_id + 1
             t = Pose2D(msg.pose.position.x - self.last_pose.pose.position.x, msg.pose.position.y - self.last_pose.pose.position.y, 0.0)
-            info_mat = np.array([[1.0, 0.0, 0.0],
-                                 [0.0, 1.0, 0.0],
+            info_mat = np.array([[10.0, 1.0, 0.0],
+                                 [1.0, 10.0, 0.0],
                                  [0.0, 0.0, self.init_w]])
             self.consts.append(Constraint2D(id1, id2, t, info_mat))
             self.cur_id += 1
@@ -161,21 +160,20 @@ class Optimizer2D:
             id1 = self.cur_id
             id2 = self.cur_id + 1
             t = Pose2D(self.cur_pose.pose.position.x - self.last_pose.pose.position.x, self.cur_pose.pose.position.y - self.last_pose.pose.position.y, 0.0)
-            info_mat = np.array([[1.0, 0.0, 0.0],
-                                 [0.0, 1.0, 0.0],
+            info_mat = np.array([[10.0, 1.0, 0.0],
+                                 [1.0, 10.0, 0.0],
                                  [0.0, 0.0, self.init_w]])
             self.consts.append(Constraint2D(id1, id2, t, info_mat))
+            self.cur_id += 1
 
             # Add pose node and landmark constraint
             id1 = self.cur_id
             id2 = self.gate1_id
             t = Pose2D(msg.pose.position.x - self.cur_pose.pose.position.x, msg.pose.position.y - self.cur_pose.pose.position.x, 0.0)
-            info_mat = np.array([[1.0, 0.0, 0.0],
-                                 [0.0, 1.0, 0.0],
+            info_mat = np.array([[10.0, 1.0, 0.0],
+                                 [1.0, 10.0, 0.0],
                                  [0.0, 0.0, self.init_w]])
             self.consts.append(Constraint2D(id1, id2, t, info_mat))
-
-            self.cur_id += 1
             self.last_gate_time = rospy.Time.now()
             self.last_pose_time = rospy.Time.now()
             self.last_pose.pose.position.x = self.cur_pose.pose.position.x
@@ -241,8 +239,8 @@ class Optimizer2D:
             bf[idb * self.dim: idb * self.dim + 3] += np.dot(trJbInfo, r)
 
         # Fix first node
-        # for k in indlist:
-        #     tripletList.push_back(k, k, self.init_w)
+        for k in indlist:
+            tripletList.push_back(k, k, self.init_w)
 
         for i in range(self.dim * numnodes):
             tripletList.push_back(i, i, self.p_lambda)
@@ -255,7 +253,8 @@ class Optimizer2D:
             u_i = i * self.dim
             pos = Pose2D(graph_nodes[i].x + x[u_i],
                          graph_nodes[i].y + x[u_i + 1],
-                         graph_nodes[i].theta + x[u_i + 2])
+                         graph_nodes[i].theta)
+                         #graph_nodes[i].theta + x[u_i + 2])
             out_nodes.append(pos)
 
         cost = self.calc_global_cost(out_nodes, constraints)
