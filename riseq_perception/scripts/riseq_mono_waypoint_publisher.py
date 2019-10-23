@@ -251,6 +251,10 @@ class MonoWaypointDetector():
                     img = self.ig.draw_frame(img, (cnt[0][0],cnt[0][1]), R_exp, t)
                     img = cv2.circle(img, (cnt[0][0],cnt[0][1]), 3, (0,255,0), 3 ) # measurement
                     
+                    corners = cnt[1:]
+                    for i, corner in enumerate(corners):
+                        img = cv2.putText(img, str(i), (corner[0], corner[1]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 2)
+                    
                     # KALMAN FILTER SECTION, NOT USED ANYMORE
                     """
                     cx_measurement = np.array([[cnt[0][0]*1.0]])
