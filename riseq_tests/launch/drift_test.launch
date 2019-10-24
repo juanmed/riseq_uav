@@ -4,7 +4,7 @@
   <!--include file="$(find mavros)/launch/px4.launch" /-->
 
   <node name="riseq_gate_global_pose" pkg="riseq_estimation" type="riseq_estimation_gate_global_pose.py" />
-  <node name="riseq_graphSLAM" pkg="riseq_estimation" type="riseq_estimation_graphSLAM.py" />
+  <node name="riseq_EKF-SLAM" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM.py" />
   <node name="irosgate_detector" pkg="riseq_trajectory" type="irosgate_detector.py" />
 
   <!--include file="$(find vrpn_client_ros)/launch/sample.launch"-->
@@ -13,5 +13,5 @@
   <!--node name="ground_truth" pkg="riseq_tests" type="irosgate_pose.py" /-->
 
   <node name="rosbag_record" pkg="rosbag" type="record"
-	  args="-o graph_slam_test /mavros/local_position/pose /mavros/vision_pose/pose /zed/zed_node/pose /riseq/perception/computed_position /riseq/perception/gate_pose /vrpn_client_node/Fastquad/pose /vrpn_client_node/gate/pose /riseq/gate/lpf_global/global_pose /riseq/estimation/compensated_pose /tf /tf_static" />
+	  args="-o slam_test /mavros/local_position/pose /mavros/vision_pose/pose /zed/zed_node/pose /riseq/perception/computed_position /riseq/perception/gate_pose /vrpn_client_node/Fastquad/pose /vrpn_client_node/gate/pose /riseq/gate/lpf_global/global_pose /riseq/estimation/compensated_pose /riseq/drone/vo_drift /tf /tf_static" />
 </launch>
