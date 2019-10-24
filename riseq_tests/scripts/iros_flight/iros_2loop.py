@@ -111,6 +111,7 @@ if __name__ == "__main__":
     step = 0    # 0 : go to gate, 1 : go 1m, 2 : back 1m, 3 : go origin
     heading = 0
     goal_update = True
+    start_time = rospy.Time.now()
 
     while not rospy.is_shutdown():
         if goal_update:
@@ -136,12 +137,10 @@ if __name__ == "__main__":
                 else:
                     goal_pose.pose.position.x = current_pose.pose.position.x + 0.5
                 print "back to gate"
-            elif step == 3:
-                goal_pose.pose.position.x = 0
-                goal_pose.pose.position.y = 0
-                goal_pose.pose.position.z = 1.5
 
-                heading = heading + np.pi
+		start_time = rospy.Time.now()
+	    elif step == 3:
+		heading = heading + np.pi
                 if heading >= 2 * np.pi:
                     heading = heading - 2 * np.pi
 
@@ -149,27 +148,27 @@ if __name__ == "__main__":
                 goal_pose.pose.orientation.x = q[0]
                 goal_pose.pose.orientation.y = q[1]
                 goal_pose.pose.orientation.z = q[2]
-                goal_pose.pose.orientation.w = q[3]
+                goal_pose.pose.orientation.w = q[3]		
+		print "heading change"
+            elif step == 4:
+                goal_pose.pose.position.x = 0
+                goal_pose.pose.position.y = 0
+                goal_pose.pose.position.z = 1.5
+                print "go origin"
 
-                '''
-                if goal_pose.pose.position.x > 4:
-                    print("x is too big")
-                    break
-                if abs(goal_pose.pose.position.y) > 1:
-                    print("y is too big")
-                    break
-                if goal_pose.pose.position.z > 2.0 or goal_pose.pose.position.z < 0.5:
-                    print("z is out of range")
-                    break
-                '''
             goal_update = False
 
-        if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
-            goal_update = True
-            step = step + 1
-            if step == 4:
-                step = 0
-                loop = loop + 1
+	if step == 3:
+            if (rospy.Time.now() - start_time) >= rospy.Duration(4.0):
+                goal_update = True
+		step = step + 1
+	else:
+            if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
+		goal_update = True
+		step = step + 1
+		if step == 5:
+		    step = 0
+		    loop = loop + 1
 
         if loop == 2:
             break
