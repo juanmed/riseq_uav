@@ -1,11 +1,11 @@
 <launch>
-  <rosparam command="load" file="$(file riseq_common)/config/env/iros_settings.yaml" />
+  <rosparam command="load" file="$(find riseq_common)/config/env/iros_settings.yaml" />
 
   <arg name="rosbag_name" default="test1"/>
   <!--node name="hovering" pkg="riseq_tests" type="hovering_test.py"/-->
   <node name="irosgate_detector" pkg="riseq_trajectory" type="irosgate_detector.py"/>
   <include file="$(find vrpn_client_ros)/launch/sample.launch">
-    <arg name="server" value="192.168.0.150"/>
+    <arg name="server" value="192.168.1.118"/>
   </include>
   <node name="ground_truth" pkg="riseq_tests" type="irosgate_pose.py" />
   <include file="$(find mavros)/launch/px4.launch"/>
