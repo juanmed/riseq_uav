@@ -2,9 +2,7 @@
 """
 author:  Eugene Auh
 version: 0.1.0
-brief: Graph-based SLAM for IROS2019 ADR Competition. From the location of the gate, compensates drifts of VIO.
-      Algorithm and code are based on PythonRobotics Pose Optimization SLAM 2D by Atsushi Sakai.
-                                    (https://github.com/AtsushiSakai/PythonRobotics#pose-optimization-slam-2d)
+brief: EKF-SLAM using VIO and Gate Detection.
 
 MIT License
 
@@ -33,7 +31,7 @@ from geometry_msgs.msg import PoseStamped
 class EKFSLAM:
     def __init__(self):
         # Initialize ROS node
-        rospy.init_node('riseq_estimation_EKF-SLAM')
+        rospy.init_node('riseq_estimation_EKF_SLAM')
         self.frequency = 10.0
         self.r = rospy.Rate(self.frequency)
 
@@ -46,7 +44,6 @@ class EKFSLAM:
                                    [0.0, 0.0, 1.7],
                                    [0.0, 0.0, 1.7]])
         self.init_inf = 1e6
-        self.change_lr = False
         self.gate_observing = -1
 
         self.cur_vo_pose = PoseStamped()
@@ -102,10 +99,10 @@ class EKFSLAM:
         self.R[2:4, 2:4] = np.ones((2, 2)) * gate_cov
 
         # Publisher, Subscriber
+        self.comp_pose_pub = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
         self.drift_pub = rospy.Publisher('/riseq/drone/vo_drift', PoseStamped, queue_size=10)
 
-        #rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
         rospy.Subscriber('/riseq/gate/lpf_global/global_pose', PoseStamped, self.gate_cb)
 
     def loop(self):
@@ -119,34 +116,33 @@ class EKFSLAM:
 
         # Update gate position measurement
         if self.gate_observing == self.gate_v:
-            self.z[2][0] = self.gate_pose[self.gate_v][0]
-            self.z[3][0] = self.gate_pose[self.gate_v][1]
+            self.z[2][0] = self.gate_pose[self.gate_v][0] - self.x_est[0][0]
+            self.z[3][0] = self.gate_pose[self.gate_v][1] - self.x_est[1][0]
         elif self.gate_observing == self.gate_h_l:
-            self.z[2][0] = self.gate_pose[self.gate_h_l][0]
-            self.z[3][0] = self.gate_pose[self.gate_h_l][1]
+            self.z[2][0] = self.gate_pose[self.gate_h_l][0] - self.x_est[0][0]
+            self.z[3][0] = self.gate_pose[self.gate_h_l][1] - self.x_est[1][0]
         elif self.gate_observing == self.gate_h_r:
-            self.z[2][0] = self.gate_pose[self.gate_h_r][0]
-            self.z[3][0] = self.gate_pose[self.gate_h_r][1]
-        self.gate_observing = -1
+            self.z[2][0] = self.gate_pose[self.gate_h_r][0] - self.x_est[0][0]
+            self.z[3][0] = self.gate_pose[self.gate_h_r][1] - self.x_est[1][0]
 
+        ## Kalman Filter
         # Prediction
-        self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)                                                            # x_k+1|k = F*x_k|k + B*u_k
-        self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q                                                   # P_k+1|k = F*P_k|k*F.T + Q
+        self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
+        self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
 
-        # Correction
+        # Correction, Update
         if self.gate_observing == -1:
             H = self.H_full[0:2][:]
             K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.inv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R[0:2, 0:2])])
-        else:
-            H = np.vstack([self.H_full[0:2][:], self.H_full[2*(self.gate_observing+1):2*(self.gate_observing+2)][:]])
-            K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.inv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R)])           # K = P_k+1|k*H.T / (H*P_k+1|k*H.T + R)
-
-        # Update
-        if self.gate_observing == -1:
             self.x_est = self.x_pre + np.dot(K, self.z[0:2][0] - np.dot(H, self.x_pre))
         else:
-            self.x_est = self.x_pre + np.dot(K, self.z - np.dot(H, self.x_pre))                                                     # x_k+1|k+1 = x_k+1|k + K*(z - H*x_k+1|k)
-        self.P_est = np.dot(np.eye(10) - np.dot(K, H), self.P_pre)                                                                  # P_k+1|k+1 = (I-K*H)*P_k+1|k
+            H = np.vstack([self.H_full[0:2, :], self.H_full[2*(self.gate_observing+1):2*(self.gate_observing+2), :]])
+            K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.inv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R)])
+            self.x_est = self.x_pre + np.dot(K, self.z - np.dot(H, self.x_pre))
+        self.P_est = np.dot(np.eye(10) - np.dot(K, H), self.P_pre)
+
+        self.gate_observing = -1
+        ##
 
         # Publish
         drift = PoseStamped()
@@ -156,64 +152,126 @@ class EKFSLAM:
         self.drift_pub.publish(drift)
 
         rospy.loginfo("Gate Positions")
+        print(self.gate_pose)
         print("%.2f, %.2f" % (self.x_est[4][0], self.x_est[5][0]))
         print("%.2f, %.2f" % (self.x_est[6][0], self.x_est[7][0]))
         print("%.2f, %.2f" % (self.x_est[8][0], self.x_est[9][0]))
 
-        if self.change_lr is True:
-            self.x_pre[8:10][0] = self.x_pre[6:8][0]
-            self.x_est[8:10][0] = self.x_est[6:8][0]
-            self.x_pre[6:8][0] = self.gate_pose[self.gate_h_l][0:2]
-            self.x_est[6:8][0] = self.gate_pose[self.gate_h_l][0:2]
-            self.change_lr = False
+        self.r.sleep()
 
-    def pose_cb(self, msg):
+    def vo_pose_cb(self, msg):
         self.cur_vo_pose.header.stamp = rospy.Time.now()
         self.cur_vo_pose.pose.position.x = msg.pose.position.x
         self.cur_vo_pose.pose.position.y = msg.pose.position.y
 
-    def gate_cb(self, msg):
-        # Register gate position
-        if (self.gate_detected[self.gate_v] is False) and (abs(msg.pose.position.z - self.gate_pose[self.gate_v][2]) > 0.5):
-        # Identify vertical gates by its height
-            self.gate_detected[self.gate_v] = True
-            self.gate_pose[self.gate_v][0] = msg.pose.position.x
-            self.gate_pose[self.gate_v][1] = msg.pose.position.y
-            return
-        elif (self.gate_detected[self.gate_h_l] is False) and (self.gate_detected[self.gate_h_r] is False):
-        # Save the position temporally if both positions are uncertain
-            self.gate_detected[self.gate_h_l] = True
-            self.gate_pose[self.gate_h_l][0] = msg.pose.position.x
-            self.gate_pose[self.gate_h_l][1] = msg.pose.position.y
-            return
-        elif (self.gate_detected[self.gate_h_l] is True) and (self.gate_detected[self.gate_h_r] is False):
-        # Compare two horizontal gates' position
-            if self.gate_pose[self.gate_h_l][1] < msg.pose.position.y:
-                self.gate_pose[self.gate_h_r][0] = msg.pose.position.x
-                self.gate_pose[self.gate_h_r][1] = msg.pose.position.y
-            else:
-                self.gate_pose[self.gate_h_l][0] = self.gate_pose[self.gate_h_l][0]
-                self.gate_pose[self.gate_h_l][1] = self.gate_pose[self.gate_h_l][1]
-                self.gate_pose[self.gate_h_l][0] = msg.pose.position.x
-                self.gate_pose[self.gate_h_l][1] = msg.pose.position.y
-                self.change_lr = True
-            self.gate_detected[self.gate_h_r] = True
-            return
+        compensated_pose = PoseStamped()
+        compensated_pose.header.stamp = msg.header.stamp
+        compensated_pose.header.frame_id = msg.header.frame_id
+        compensated_pose.pose.position.x = msg.pose.position.x - self.x_est[2][0]
+        compensated_pose.pose.position.y = msg.pose.position.y - self.x_est[3][0]
+        compensated_pose.pose.position.z = msg.pose.position.z
+        compensated_pose.pose.orientation.x = msg.pose.orientation.x
+        compensated_pose.pose.orientation.y = msg.pose.orientation.y
+        compensated_pose.pose.orientation.z = msg.pose.orientation.z
+        compensated_pose.pose.orientation.w = msg.pose.orientation.w
+        self.comp_pose_pub.publish(compensated_pose)
 
-        # Classify observed gate
-        if (self.gate_detected[self.gate_v] is True) and (np.linalg.norm(self.x_est[4:6][0] - np.array([[msg.pose.position.x], [msg.pose.position.y]])) < 2.5):
-            self.gate_pose[self.gate_v][0] = msg.pose.position.x
-            self.gate_pose[self.gate_v][1] = msg.pose.position.y
-            self.gate_observing = self.gate_v
-        else:
-            if (self.gate_detected[self.gate_h_r] is False) or (np.linalg.norm(self.x_est[6:8][0] - np.array([[msg.pose.position.x], [msg.pose.position.y]])) < np.linalg.norm(self.x_est[8:10][0] - np.array([[msg.pose.position.x], [msg.pose.position.y]]))):
+    def gate_cb(self, msg):
+        ## Register gate position
+        if (self.gate_detected[self.gate_v] == False) and (abs(msg.pose.position.z - self.gate_pose[self.gate_v][2]) > 0.5):
+        # Identify vertical gates by its height
+            print(self.gate_detected)
+            self.gate_detected[self.gate_v] = True
+            print(self.gate_detected)
+            
+            self.x_est[4][0] = msg.pose.position.x
+            self.x_est[5][0] = msg.pose.position.y
+
+        elif (self.gate_detected[self.gate_h_l] == False) and (self.gate_detected[self.gate_h_r] == False):
+        # Save the position temporally if both positions are uncertain
+            print(self.gate_detected)
+            self.gate_detected[self.gate_h_l] = True
+            print(self.gate_detected)
+            
+            self.x_est[6][0] = msg.pose.position.x
+            self.x_est[7][0] = msg.pose.position.y
+
+        elif (self.gate_detected[self.gate_h_l] == True) and (self.gate_detected[self.gate_h_r] == False):
+        # Compare two horizontal gates' position
+            if np.linalg.norm(np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]) - np.array([[msg.pose.position.x], [msg.pose.position.y]])) > 1.0:
+                print(self.gate_detected)
+                self.gate_detected[self.gate_h_r] = True
+                print(self.gate_detected)
+                
+                self.x_est[8][0] = msg.pose.position.x
+                self.x_est[9][0] = msg.pose.position.y
+        ##
+
+        ## Classify detected gate
+        # Calculate between measured data and gates in existence
+        if self.gate_detected[self.gate_v] == True:
+            distance_v = np.linalg.norm(np.array([[self.x_est[4][0]], [self.x_est[5][0]]]) - np.array([[msg.pose.position.x], [msg.pose.position.y]]))
+        if self.gate_detected[self.gate_h_l] == True:
+            distance_h_l = np.linalg.norm(np.array([[self.x_est[6][0]], [self.x_est[7][0]]]) - np.array([[msg.pose.position.x], [msg.pose.position.y]]))
+        if self.gate_detected[self.gate_h_r] == True:
+            distance_h_r = np.linalg.norm(np.array([[self.x_est[8][0]], [self.x_est[9][0]]]) - np.array([[msg.pose.position.x], [msg.pose.position.y]]))
+
+        # Get the nearest gate
+        if (self.gate_detected[self.gate_v] == True) and (self.gate_detected[self.gate_h_l] == True) and (self.gate_detected[self.gate_h_r] == True):
+            if min(distance_v, distance_h_l, distance_h_r) == distance_v:
+                self.gate_pose[self.gate_v][0] = msg.pose.position.x
+                self.gate_pose[self.gate_v][1] = msg.pose.position.y
+                self.gate_observing = self.gate_v
+            elif min(distance_v, distance_h_l, distance_h_r) == distance_h_l:
                 self.gate_pose[self.gate_h_l][0] = msg.pose.position.x
                 self.gate_pose[self.gate_h_l][1] = msg.pose.position.y
                 self.gate_observing = self.gate_h_l
-            else:
+            elif min(distance_v, distance_h_l, distance_h_r) == distance_h_r:
                 self.gate_pose[self.gate_h_r][0] = msg.pose.position.x
                 self.gate_pose[self.gate_h_r][1] = msg.pose.position.y
                 self.gate_observing = self.gate_h_r
+        elif (self.gate_detected[self.gate_v] == True) and (self.gate_detected[self.gate_h_l] == True):
+            if min(distance_v, distance_h_l) == distance_v:
+                self.gate_pose[self.gate_v][0] = msg.pose.position.x
+                self.gate_pose[self.gate_v][1] = msg.pose.position.y
+                self.gate_observing = self.gate_v
+            elif min(distance_v, distance_h_l) == distance_h_l:
+                self.gate_pose[self.gate_h_l][0] = msg.pose.position.x
+                self.gate_pose[self.gate_h_l][1] = msg.pose.position.y
+                self.gate_observing = self.gate_h_l
+        elif self.gate_detected[self.gate_v] == True:
+            self.gate_pose[self.gate_v][0] = msg.pose.position.x
+            self.gate_pose[self.gate_v][1] = msg.pose.position.y
+            self.gate_observing = self.gate_v
+        elif self.gate_detected[self.gate_h_l] == True:
+            self.gate_pose[self.gate_h_l][0] = msg.pose.position.x
+            self.gate_pose[self.gate_h_l][1] = msg.pose.position.y
+            self.gate_observing = self.gate_h_l
+        ##
+
+        ## Identify horizontal gates
+        if (self.gate_detected[self.gate_v] == True) and (self.gate_detected[self.gate_h_l] == True) and (self.gate_detected[self.gate_h_r] == True):
+            distance_l = np.linalg.norm(np.array([[self.x_est[4][0]], [self.x_est[5][0]]]) - np.array([[self.x_est[6][0]], [self.x_est[7][0]]]))
+            distance_r = np.linalg.norm(np.array([[self.x_est[4][0]], [self.x_est[5][0]]]) - np.array([[self.x_est[8][0]], [self.x_est[9][0]]]))
+            if distance_l > distance_r:
+                tmp = self.x_est[6][0]
+                self.x_est[6][0] = self.x_est[8][0]
+                self.x_est[8][0] = tmp
+                tmp = self.x_est[7][0]
+                self.x_est[7][0] = self.x_est[9][0]
+                self.x_est[9][0] = tmp
+                tmp = self.gate_pose[self.gate_h_l][0]
+                self.gate_pose[self.gate_h_l][0] = self.gate_pose[self.gate_h_r][0]
+                self.gate_pose[self.gate_h_r][0] = tmp
+                tmp = self.gate_pose[self.gate_h_r][0]
+                self.gate_pose[self.gate_h_r][0] = self.gate_pose[self.gate_h_l][0]
+                self.gate_pose[self.gate_h_l][0] = tmp
+
+                if self.gate_observing == self.gate_h_l:
+                    self.gate_observing = self.gate_h_r
+                elif self.gate_observing == self.gate_h_r:
+                    self.gate_observing = self.gate_h_l
+        ##
 
 
 if __name__ == "__main__":
