@@ -101,6 +101,7 @@ class EKFSLAM:
         # Publisher, Subscriber
         self.comp_pose_pub = rospy.Publisher('/mavros/vision_pose/pose', PoseStamped, queue_size=10)
         self.drift_pub = rospy.Publisher('/riseq/drone/vo_drift', PoseStamped, queue_size=10)
+        self.gate_pose_pub = rospy.Publisher('/riseq/gate/pose', PoseStamped, queue_size=10)
 
         rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
         rospy.Subscriber('/riseq/gate/lpf_global/global_pose', PoseStamped, self.gate_cb)
@@ -157,13 +158,26 @@ class EKFSLAM:
         print("%.2f, %.2f" % (self.x_est[6][0], self.x_est[7][0]))
         print("%.2f, %.2f" % (self.x_est[8][0], self.x_est[9][0]))
 
+        gate = PoseStamped()
+        gate.header.stamp = rospy.Time.now()
+        gate.header.frame_id = 'world'
+        gate.pose.orientation.w = 1.0
+        for i in range(0, 3):
+            if self.gate_detected[i] == True:
+                gate.pose.position.x = self.gate_pose[i][0]
+                gate.pose.position.y = self.gate_pose[i][1]
+                gate.pose.position.z = self.gate_pose[i][2]
+                self.gate_pose_pub.publish(gate)
+
         self.r.sleep()
+        plt.close()
 
     def vo_pose_cb(self, msg):
         self.cur_vo_pose.header.stamp = rospy.Time.now()
         self.cur_vo_pose.pose.position.x = msg.pose.position.x
         self.cur_vo_pose.pose.position.y = msg.pose.position.y
 
+        # Publish compensated pose
         compensated_pose = PoseStamped()
         compensated_pose.header.stamp = msg.header.stamp
         compensated_pose.header.frame_id = msg.header.frame_id
@@ -187,7 +201,7 @@ class EKFSLAM:
             self.x_est[4][0] = msg.pose.position.x
             self.x_est[5][0] = msg.pose.position.y
 
-        elif (self.gate_detected[self.gate_h_l] == False) and (self.gate_detected[self.gate_h_r] == False):
+        elif (self.gate_detected[self.gate_h_l] == False) and (self.gate_detected[self.gate_h_r] == False) and (abs(msg.pose.position.z - self.gate_pose[self.gate_v][2]) <= 0.5):
         # Save the position temporally if both positions are uncertain
             print(self.gate_detected)
             self.gate_detected[self.gate_h_l] = True
@@ -195,14 +209,14 @@ class EKFSLAM:
             
             self.x_est[6][0] = msg.pose.position.x
             self.x_est[7][0] = msg.pose.position.y
-
-        elif (self.gate_detected[self.gate_h_l] == True) and (self.gate_detected[self.gate_h_r] == False):
+        
+        elif (self.gate_detected[self.gate_h_l] == True) and (self.gate_detected[self.gate_h_r] == False) and (abs(msg.pose.position.z - self.gate_pose[self.gate_v][2]) <= 0.5):
         # Compare two horizontal gates' position
             if np.linalg.norm(np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]) - np.array([[msg.pose.position.x], [msg.pose.position.y]])) > 1.0:
                 print(self.gate_detected)
                 self.gate_detected[self.gate_h_r] = True
                 print(self.gate_detected)
-                
+        
                 self.x_est[8][0] = msg.pose.position.x
                 self.x_est[9][0] = msg.pose.position.y
         ##
