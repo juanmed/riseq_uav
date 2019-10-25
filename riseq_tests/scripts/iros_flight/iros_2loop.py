@@ -38,17 +38,6 @@ def computed_gate_cb(msg):
     """
     global computed_gate_pose
     computed_gate_pose = msg
-    #print "computed: %f" %msg.pose.position.x
-
-
-def solvepnp_gate_cb(msg):
-    """
-    callback function to receive gate x y z position
-    :param msg: gate position
-    """
-    global solvepnp_gate_pose
-    solvepnp_gate_pose = msg
-    #print "solvepnp: %f" %msg.pose.position.x
 
 
 if __name__ == "__main__":
@@ -61,7 +50,6 @@ if __name__ == "__main__":
     rospy.Subscriber("mavros/state", State, state_cb)
     rospy.Subscriber("mavros/local_position/pose", PoseStamped, pose_cb)
     rospy.Subscriber("/riseq/perception/computed_position", PoseStamped, computed_gate_cb)
-    rospy.Subscriber("/riseq/perception/solvepnp_position", PoseStamped, solvepnp_gate_cb)
     local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
     print("Publisher and Subscriber Created")
 
@@ -116,6 +104,13 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         if goal_update:
             if step == 0:
+                if computed_gate_pose.header.stamp - rospy.Time.now() > rospy.Duration(1.0):
+                    print "Cannot find gate"
+                    goal_pose.pose.position.x = 0
+                    goal_pose.pose.position.y = 0
+                    goal_pose.pose.position.z = 1.5
+                    break
+
                 if loop == 0:
                     goal_pose.pose.position.x = current_pose.pose.position.x + computed_gate_pose.pose.position.x
                     goal_pose.pose.position.y = current_pose.pose.position.y + computed_gate_pose.pose.position.y
@@ -137,10 +132,9 @@ if __name__ == "__main__":
                 else:
                     goal_pose.pose.position.x = current_pose.pose.position.x + 0.5
                 print "back to gate"
-
-		start_time = rospy.Time.now()
-	    elif step == 3:
-		heading = heading + np.pi
+                start_time = rospy.Time.now()
+            elif step == 3:
+                heading = heading + np.pi
                 if heading >= 2 * np.pi:
                     heading = heading - 2 * np.pi
 
@@ -149,7 +143,7 @@ if __name__ == "__main__":
                 goal_pose.pose.orientation.y = q[1]
                 goal_pose.pose.orientation.z = q[2]
                 goal_pose.pose.orientation.w = q[3]		
-		print "heading change"
+                print "heading change"
             elif step == 4:
                 goal_pose.pose.position.x = 0
                 goal_pose.pose.position.y = 0
@@ -158,20 +152,19 @@ if __name__ == "__main__":
 
             goal_update = False
 
-	if step == 3:
+        if step == 3:
             if (rospy.Time.now() - start_time) >= rospy.Duration(4.0):
                 goal_update = True
-		step = step + 1
-	else:
+                step = step + 1
+        else:
             if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
-		goal_update = True
-		step = step + 1
-		if step == 5:
-		    step = 0
-		    loop = loop + 1
-
-        if loop == 2:
-            break
+                goal_update = True
+                step = step + 1
+                if step == 5:
+                    step = 0
+                    loop = loop + 1
+                    if loop == 2:
+                        break
 
         goal_pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(goal_pose)
