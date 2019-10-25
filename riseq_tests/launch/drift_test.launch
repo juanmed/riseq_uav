@@ -4,7 +4,7 @@
   <!--include file="$(find mavros)/launch/px4.launch" /-->
 
   <node name="riseq_gate_global_pose" pkg="riseq_estimation" type="riseq_estimation_gate_global_pose.py" />
-  <node name="riseq_EKF-SLAM" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM.py" />
+  <node name="riseq_EKF_SLAM" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM.py" />
   <node name="irosgate_detector" pkg="riseq_trajectory" type="irosgate_detector.py" />
 
   <!--include file="$(find vrpn_client_ros)/launch/sample.launch"-->

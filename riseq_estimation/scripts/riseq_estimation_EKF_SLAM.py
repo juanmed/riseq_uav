@@ -160,7 +160,7 @@ class EKFSLAM:
 
         gate = PoseStamped()
         gate.header.stamp = rospy.Time.now()
-        gate.header.frame_id = 'world'
+        gate.header.frame_id = 'map'
         gate.pose.orientation.w = 1.0
         for i in range(0, 3):
             if self.gate_detected[i] == True:
@@ -180,7 +180,7 @@ class EKFSLAM:
         # Publish compensated pose
         compensated_pose = PoseStamped()
         compensated_pose.header.stamp = msg.header.stamp
-        compensated_pose.header.frame_id = msg.header.frame_id
+        compensated_pose.header.frame_id = 'map'
         compensated_pose.pose.position.x = msg.pose.position.x - self.x_est[2][0]
         compensated_pose.pose.position.y = msg.pose.position.y - self.x_est[3][0]
         compensated_pose.pose.position.z = msg.pose.position.z
