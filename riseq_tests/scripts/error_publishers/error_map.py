@@ -20,7 +20,7 @@ class ErrorMap():
         rospy.Subscriber("/vrpn_client_node/gatedown/pose", PoseStamped, self.gate_down_cb)
         rospy.Subscriber("/riseq/perception/computed_position", PoseStamped, self.gate_computed_cb)
 
-        while self.gate_down is None or self.distance_computed is None:
+        while self.gate_down is None or self.drone_pose is None or self.distance_computed is None:
             print "waiting"
             rospy.sleep(0.1)
 
