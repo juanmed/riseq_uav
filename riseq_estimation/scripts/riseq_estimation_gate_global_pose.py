@@ -26,7 +26,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 
-from eugene_kinematics import q2r
+from scipy.spatial.transform import Rotation
 
 
 class GateGlobal:
@@ -54,10 +54,9 @@ class GateGlobal:
         self.cur_pose_pub = rospy.Publisher('/riseq/drone/cur_pose', PoseStamped, queue_size=10)
         self.gate_pose_pub = rospy.Publisher('/riseq/gate/raw/global_pose', PoseStamped, queue_size=10)
         self.gate_global_pose_pub = rospy.Publisher('/riseq/gate/lpf_global/global_pose', PoseStamped, queue_size=10)
+        self.gate_camera_pose_pub = rospy.Publisher('/riseq/gate/lpf_global/camera_pose', PoseStamped, queue_size=10)
 
-        #rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.pose_cb)
-        #rospy.Subscriber('/riseq/perception/solvepnp_position', PoseStamped, self.gate_cb)
+        rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/riseq/perception/computed_position', PoseStamped, self.gate_cb)
 
     def loop(self):
@@ -75,8 +74,8 @@ class GateGlobal:
         self.cur_pose_pub.publish(self.cur_pose)
 
     def gate_cb(self, msg):
-        # Raw
-        R = q2r(self.cur_pose.pose.orientation.w, self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z)
+        # Raw data conversion
+        R = Rotation.from_quat([self.cur_pose.pose.orientation.x, self.cur_pose.pose.orientation.y, self.cur_pose.pose.orientation.z, self.cur_pose.pose.orientation.w]).as_dcm()
         p = np.dot(R, np.array([[msg.pose.position.x + self.camera_on_body[0]], [msg.pose.position.y + self.camera_on_body[1]], [msg.pose.position.z + self.camera_on_body[2]]]))
         gate_global_pose = PoseStamped()
         gate_global_pose.header.stamp = rospy.Time.now()
@@ -85,7 +84,7 @@ class GateGlobal:
         gate_global_pose.pose.position.z = p[2][0] + self.cur_pose.pose.position.z
         gate_global_pose.pose.orientation.w = 1.0
 
-        # Global LPF
+        # LPF on global coordinate
         if (rospy.Time.now().to_sec() - self.last_time.to_sec()) > 1.0:
             self.gate_global.pose.position.x = gate_global_pose.pose.position.x
             self.gate_global.pose.position.y = gate_global_pose.pose.position.y
@@ -95,10 +94,22 @@ class GateGlobal:
             self.gate_global.pose.position.y = (1-self.alpha)*self.gate_global.pose.position.y + self.alpha*gate_global_pose.pose.position.y
             self.gate_global.pose.position.z = (1-self.alpha)*self.gate_global.pose.position.z + self.alpha*gate_global_pose.pose.position.z
 
+        # Publish data
         gate_global_pose.header.stamp = rospy.Time.now()
+        gate_global_pose.header.frame_id = 'map'
         self.gate_pose_pub.publish(gate_global_pose)
+
         self.gate_global.header.stamp = rospy.Time.now()
+        self.gate_global.header.frame_id = 'map'
         self.gate_global_pose_pub.publish(self.gate_global)
+
+        gate_camera = PoseStamped()
+        gate_camera.header.stamp = rospy.Time.now()
+        gate_camera.pose.position.x = self.gate_global.pose.position.x - self.cur_pose.pose.position.x
+        gate_camera.pose.position.y = self.gate_global.pose.position.y - self.cur_pose.pose.position.y
+        gate_camera.pose.position.z = self.gate_global.pose.position.z - self.cur_pose.pose.position.z
+        gate_camera.pose.orientation.w = 1.0
+        self.gate_camera_pose_pub.publish(gate_camera)
 
         self.last_time = rospy.Time.now()
 
