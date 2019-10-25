@@ -20,6 +20,7 @@ solvepnp_gate_pose = PoseStamped()
 def state_cb(msg):
     global current_state
     current_state = msg
+    print "callback"
 
 
 def pose_cb(msg):
@@ -41,6 +42,9 @@ def computed_gate_cb(msg):
 
 
 if __name__ == "__main__":
+    global current_state
+    global current_pose
+    global computed_gate_pose
     rospy.init_node('iros_node', anonymous=True)
 
     # Create Subscriber
@@ -57,6 +61,7 @@ if __name__ == "__main__":
     rate = rospy.Rate(20)
 
     while not current_state.connected:
+        print(current_state.connected)
         rate.sleep()
 
     print("Creating pose")
@@ -66,10 +71,13 @@ if __name__ == "__main__":
     goal_pose.pose.position.y = 0
     goal_pose.pose.position.z = 1.5
 
-    print("OFFBOARD")
-    for i in range(100):
+    for i in range(50):
         local_pos_pub.publish(goal_pose)
         rate.sleep()
+    print("OFFBOARD")
+    #for i in range(100):
+    #    local_pos_pub.publish(goal_pose)
+    #    rate.sleep()
 
     print("Creating Objects for services")
     offb_set_mode = SetMode()
@@ -77,12 +85,14 @@ if __name__ == "__main__":
     arm_cmd = CommandBool()
     arm_cmd.value = True
 
-    while current_state.mode != "OFFBOARD" or not current_state.armed:
-        print "not arming"
+    resp1 = set_mode_client(0, offb_set_mode.custom_mode)
+    arm_client_1 = arming_client(arm_cmd.value)
 
-        rospy.sleep(1.0)
+    #while current_state.mode != "OFFBOARD" or not current_state.armed:
+    #    print "not arming"
+    #    rospy.sleep(1.0)
 
-    for i in range(100):
+    for i in range(200):
         local_pos_pub.publish(goal_pose)
         rate.sleep()
 
@@ -90,6 +100,7 @@ if __name__ == "__main__":
     step = 0    # 0 : go to gate, 1 : go 1m, 2 : back 1m, 3 : go origin
     heading = 0
     goal_update = True
+    start_time = rospy.Time.now()
 
     while not rospy.is_shutdown():
         if goal_update:
@@ -105,22 +116,20 @@ if __name__ == "__main__":
                 print "go to gate"
             elif step == 1:
                 if loop == 0:
-                    goal_pose.pose.position.x = current_pose.pose.position.x + 1
+                    goal_pose.pose.position.x = current_pose.pose.position.x + 0.5
                 else:
-                    goal_pose.pose.position.x = current_pose.pose.position.x - 1
+                    goal_pose.pose.position.x = current_pose.pose.position.x - 0.5
                 print "pass gate"
             elif step ==2:
                 if loop == 0:
-                    goal_pose.pose.position.x = current_pose.pose.position.x - 1
+                    goal_pose.pose.position.x = current_pose.pose.position.x - 0.5
                 else:
-                    goal_pose.pose.position.x = current_pose.pose.position.x + 1
+                    goal_pose.pose.position.x = current_pose.pose.position.x + 0.5
                 print "back to gate"
-            elif step == 3:
-                goal_pose.pose.position.x = 0
-                goal_pose.pose.position.y = 0
-                goal_pose.pose.position.z = 1.5
 
-                heading = heading + np.pi
+		start_time = rospy.Time.now()
+	    elif step == 3:
+		heading = heading + np.pi
                 if heading >= 2 * np.pi:
                     heading = heading - 2 * np.pi
 
@@ -128,31 +137,32 @@ if __name__ == "__main__":
                 goal_pose.pose.orientation.x = q[0]
                 goal_pose.pose.orientation.y = q[1]
                 goal_pose.pose.orientation.z = q[2]
-                goal_pose.pose.orientation.w = q[3]
+                goal_pose.pose.orientation.w = q[3]		
+		print "heading change"
+            elif step == 4:
+                goal_pose.pose.position.x = 0
+                goal_pose.pose.position.y = 0
+                goal_pose.pose.position.z = 1.5
+                print "go origin"
 
-                '''
-                if goal_pose.pose.position.x > 4:
-                    print("x is too big")
-                    break
-                if abs(goal_pose.pose.position.y) > 1:
-                    print("y is too big")
-                    break
-                if goal_pose.pose.position.z > 2.0 or goal_pose.pose.position.z < 0.5:
-                    print("z is out of range")
-                    break
-                '''
             goal_update = False
 
-        if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
-            goal_update = True
-            step = step + 1
-            if step == 4:
-                step = 0
-                loop = loop + 1
+	if step == 3:
+            if (rospy.Time.now() - start_time) >= rospy.Duration(4.0):
+                goal_update = True
+		step = step + 1
+	else:
+            if np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y)) < 0.2:
+		goal_update = True
+		step = step + 1
+		if step == 5:
+		    step = 0
+		    loop = loop + 1
 
         if loop == 2:
             break
 
+        goal_pose.header.stamp = rospy.Time.now()
         local_pos_pub.publish(goal_pose)
         rate.sleep()
 

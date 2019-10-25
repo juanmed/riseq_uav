@@ -83,13 +83,17 @@ class Optimizer2D:
         # Initialize nodes and edge with gate's pose and drone's initial pose, drift
         self.min_node = 10
         self.nodes, self.consts = [], []
-        self.gate1_pose = Pose2D(3.7, 0.0, 0.0)
-        self.gate1_id = 0
-        self.nodes.append(self.gate1_pose)
-        self.nodes.append(Pose2D(0.0, 0.0, 0.0))
-        self.consts.append(Constraint2D(1, 0, self.gate1_pose, np.array([[10.0, 1.0, 0.0],
-                                                                         [1.0, 10.0, 0.0],
-                                                                         [0.0, 0.0, self.init_w]])))
+
+        self.gate_updown_detected = False
+        self.gate_updown_id = 0
+        self.gate_updown_pose = Pose2D(0.0, 0.0, 0.0)
+        self.gate_left_detected = False
+        self.gate_left_id = 0
+        self.gate_left_pose = Pose2D(0.0, 0.0, 0.0)
+        self.gate_right_detected = False
+        self.gate_right_id = 0
+        self.gate_right_pose = Pose2D(0.0, 0.0, 0.0)
+
         self.x_drift = 0.0
         self.y_drift = 0.0
 
@@ -154,6 +158,21 @@ class Optimizer2D:
         self.pose_pub.publish(comp_pose)
 
     def gate_cb(self, msg):
+        # Classify gates
+        if (self.gate_updown_detected is False) and (abs(msg.pose.position.z - 1.9) > 0.5):
+            self.gate_updown_id = self.cur_id + 2
+        elif (self.gate_left_detected is False) and (self.gate_right_detected is False):
+            self.gate_left_id = self.cur_id + 2
+        
+
+        # Identify gate No.
+        if (self.gate_updown_detected is True) and gateDistance(self.gate_updown_id, Pose2D(msg.pose.position.x, msg.pose.position.y, 0.0)):
+            gate_id = self.gate_updown_id
+        elif (self.gate_left_detected is True) and gateDistance(self.gate_left_id, Pose2D(msg.pose.position.x, msg.pose.position.y, 0.0)):
+            gate_id = self.gate_left_id
+        elif (self.gate_right_detected is True) and gateDistance(self.gate_right_id, Pose2D(msg.pose.position.x, msg.pose.position.y, 0.0)):
+            gate_id = self.gate_right_id
+
         # Add pose-pose node and contraint, Update the last pose to calculate odometry information
         if (rospy.Time.now().to_sec() - self.last_gate_time.to_sec()) >= (1.0/self.frequency):
             self.nodes.append(Pose2D(self.cur_pose.pose.position.x, self.cur_pose.pose.position.y, 0.0))
@@ -168,7 +187,7 @@ class Optimizer2D:
 
             # Add pose node and landmark constraint
             id1 = self.cur_id
-            id2 = self.gate1_id
+            id2 = gate_id
             t = Pose2D(msg.pose.position.x - self.cur_pose.pose.position.x, msg.pose.position.y - self.cur_pose.pose.position.x, 0.0)
             info_mat = np.array([[10.0, 1.0, 0.0],
                                  [1.0, 10.0, 0.0],
@@ -314,6 +333,9 @@ def plot_nodes(nodes, color ="-r", label = ""):
         x.append(n.x)
         y.append(n.y)
     plt.plot(x, y, color, label=label)
+
+def gateDistance(pose1, pose2):
+    return 
 
 
 if __name__ == "__main__":
