@@ -122,15 +122,15 @@ if __name__ == "__main__":
                 print "go to gate"
             elif step == 1:
                 if loop == 0:
-                    goal_pose.pose.position.x = current_pose.pose.position.x + 0.5
+                    goal_pose.pose.position.x = goal_pose.pose.position.x + 0.5
                 else:
-                    goal_pose.pose.position.x = current_pose.pose.position.x - 0.5
+                    goal_pose.pose.position.x = goal_pose.pose.position.x - 0.5
                 print "pass gate"
             elif step ==2:
                 if loop == 0:
-                    goal_pose.pose.position.x = current_pose.pose.position.x - 0.5
+                    goal_pose.pose.position.x = goal_pose.pose.position.x - 0.5
                 else:
-                    goal_pose.pose.position.x = current_pose.pose.position.x + 0.5
+                    goal_pose.pose.position.x = goal_pose.pose.position.x + 0.5
                 print "back to gate"
                 start_time = rospy.Time.now()
             elif step == 3:
