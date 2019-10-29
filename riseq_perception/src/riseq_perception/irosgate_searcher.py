@@ -3,6 +3,7 @@
 import rospy
 import numpy as np
 import irosgate_focallength_detector
+from cv_bridge import CvBridge
 
 import tf
 from sensor_msgs.msg import Image
@@ -12,9 +13,11 @@ from geometry_msgs.msg import PoseStamped
 
 class IROSGateSearcher:
     def __init__(self):
+        self.bridge = CvBridge()
+
         self.initial_yaw = 0
         self.yaw = 0
-        self.theta = rospy.get_param("/riseq/perception/yaw_size", 30)
+        self.theta = rospy.get_param("/perception/yaw_size", 30)
 
         self.dilate_iter = 2
         self.erode_iter = 4
@@ -25,7 +28,12 @@ class IROSGateSearcher:
 
         self.K = None
         self.D = None
-        rospy.Subscriber("/zed/zed_node/left/camera_info", CameraInfo, self.init_param)
+
+        environment = rospy.get_param("environment", "real")
+        if environment == "real":
+            rospy.Subscriber("/zed/zed_node/left/camera_info", CameraInfo, self.init_param)
+        elif environment == "simulator":
+            rospy.Subscriber("/stereo/left/camera_info", CameraInfo, self.init_param)
         while self.K is None or self.D is None:
             rospy.sleep(0.1)
         self.irosgate_detector.K = self.K
@@ -35,12 +43,16 @@ class IROSGateSearcher:
         self.irosgate_detector.dilate_iter = self.dilate_iter
         self.irosgate_detector.erode_iter = self.erode_iter
 
-        rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.detect)
+        if environment == "real":
+            rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.detect)
+        elif environment == "simulator":
+            rospy.Subscriber("/stereo/left/image_rect_color", Image, self.detect)
+
         self.wp_pub = rospy.Publisher("/riseq/perception/local_waypoint", PoseStamped, queue_size=10)
 
     def detect(self, msg):
-        self.irosgate_detector.detect(msg, None)
-        R, t, R_exp, cnt, mask, cnts = self.irosgate_detector.detect(msg, None)
+        img = self.bridge.imgmsg_to_cv2(msg, "rgb8")
+        R, t, R_exp, cnt, mask, cnts = self.irosgate_detector.detect(img, None)
 
         if t is not None:
             wp = PoseStamped()
@@ -63,8 +75,9 @@ class IROSGateSearcher:
             self.erode_iter = 4
 
     def search_gate(self):
+        print "search gate"
         if self.yaw < self.initial_yaw + 2 * np.pi:
-            self.yaw = self.yaw + self.theta * 180 / np.pi
+            self.yaw = self.yaw + self.theta / 180.0 * np.pi
         else:
             self.yaw = self.initial_yaw
             if self.erode_iter > self.erode_min:
