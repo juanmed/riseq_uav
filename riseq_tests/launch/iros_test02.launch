@@ -1,0 +1,15 @@
+<launch>
+  <rosparam command="load" file="$(find riseq_common)/config/env/iros_settings.yaml" />
+
+  <arg name="rosbag_name" default="test1"/>
+  <!--node name="hovering" pkg="riseq_tests" type="hovering_test.py"/-->
+  <node name="irosgate_detector" pkg="riseq_trajectory" type="irosgate_detector.py"/>
+  <include file="$(find vrpn_client_ros)/launch/sample.launch">
+    <arg name="server" value="192.168.1.118"/>
+  </include>
+  <node name="ground_truth" pkg="riseq_tests" type="irosgate_pose.py" />
+  <include file="$(find mavros)/launch/px4.launch"/>
+  <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/>
+  <node name="rosbag_record" pkg="rosbag" type="record"
+        args="-o $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left/camera_info /zed/zed_node/left/image_rect_color /riseq/perception/computed_position /riseq/perception/solvepnp_position riseq/perception/uav_image_with_detections /riseq/perception/gate_down_pose_gt /riseq/perception/gate_right_pose_gt /vrpn_client_node/Fastquad/pose /vrpn_client_node/gatedown/pose /vrpn_client_node/gateright/pose /mavros/setpoint_position/local"/>
+</launch>
