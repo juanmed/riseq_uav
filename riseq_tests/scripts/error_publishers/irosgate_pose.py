@@ -75,7 +75,7 @@ def main():
     gatepose_pub = rospy.Publisher("/riseq/perception/gate_pose_computed", PoseStamped, queue_size = 10)
     rospy.Subscriber("/zed/zed_node/odom", Odometry, zedpose_cb)
     rospy.Subscriber("/vrpn_client_node/Fastquad/pose", PoseStamped, optitrack_cb)
-    rospy.Subscriber("/vrpn_client_node/gate/pose", PoseStamped, optitrack_gate_cb)
+    rospy.Subscriber("/vrpn_client_node/gatedown/pose", PoseStamped, optitrack_gate_cb)
     rospy.Subscriber("/mavros/local_position/pose", PoseStamped, mavros_state)
     rospy.Subscriber("/riseq/perception/computed_position", PoseStamped, gate_monopose)
 
@@ -93,6 +93,7 @@ def main():
             gatepose_pub.publish(gate_msg)
             drone_pose = None
             gate_pose_mono = None
+            print("**Drone pose: {}, Gate Pose Mono: {}".format(drone_pose, gate_pose_mono))
         else:
             print("Drone pose: {}, Gate Pose Mono: {}".format(drone_pose, gate_pose_mono))
         r.sleep()

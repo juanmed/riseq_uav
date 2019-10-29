@@ -295,7 +295,7 @@ class IROSGateDetector():
         cx = centroid[0][0]
         cy = centroid[0][1]
 
-        px = corners2D[2][0] - corners2D[0][0]
+        px = corners2D[1][0] - corners2D[0][0]
         py = corners2D[3][1] - corners2D[0][1]
 
         dx = self.gate_width * (cx - self.image_width / 2) / px
