@@ -62,11 +62,11 @@ class EKFSLAM:
                                [self.gate_pose[self.gate_h_l][1]],
                                [self.gate_pose[self.gate_h_r][0]],  # horizontal right gate position in local frame
                                [self.gate_pose[self.gate_h_r][1]]])
-        self.P_pre = np.zeros((10, 10))
-        self.P_est = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                               [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                               [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                               [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        self.P_pre = np.eye(10) * 1e-2
+        self.P_est = np.array([[1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                               [0.0, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                               [0.0, 0.0, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                               [0.0, 0.0, 0.0, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0, 0.0, self.init_inf, 0.0, 0.0, 0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0, 0.0, 0.0, self.init_inf, 0.0, 0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.init_inf, 0.0, 0.0, 0.0],
@@ -79,23 +79,23 @@ class EKFSLAM:
         self.B[1][1] = 1.0
         self.u = np.zeros((2, 1))                                   # odometry(traveled distance) as input. B*u=I*(v*dt)
         self.Q = np.zeros((10, 10))
-        self.Q[0:4, 0:4] = np.eye(4) * 1e-2
+        # self.Q[0:4, 0:4] = np.eye(4) * 1e-4
 
         self.z = np.array([[0.0],                                   # VO position. real position + drift
                            [0.0],
                            [0.0],                                   # distance to the gate in local frame
                            [0.0]])
         self.H_full = np.array([[1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                               [0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                               [-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                               [0.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-                               [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-                               [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                               [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-                               [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]])
-        gate_cov = 0.5**2
+                                [0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                                [-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                                [0.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                                [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                                [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]])
+        gate_cov = 0.1**2
         self.R = np.zeros((4, 4))
-        self.R[0:2, 0:2] = np.eye(2) * 1e-2
+        self.R[0:2, 0:2] = np.eye(2) * 1e-4
         self.R[2:4, 2:4] = np.ones((2, 2)) * gate_cov
 
         # Publisher, Subscriber
@@ -110,8 +110,8 @@ class EKFSLAM:
         # Update VO measurements
         self.z[0][0] = self.last_vo_pose.pose.position.x
         self.z[1][0] = self.last_vo_pose.pose.position.y
-        self.u[0][0] = self.cur_vo_pose.pose.position.x - self.last_vo_pose.pose.position.x
-        self.u[1][0] = self.cur_vo_pose.pose.position.y - self.last_vo_pose.pose.position.y
+        # self.u[0][0] = self.cur_vo_pose.pose.position.x - self.last_vo_pose.pose.position.x
+        # self.u[1][0] = self.cur_vo_pose.pose.position.y - self.last_vo_pose.pose.position.y
         self.last_vo_pose.pose.position.x = self.cur_vo_pose.pose.position.x
         self.last_vo_pose.pose.position.y = self.cur_vo_pose.pose.position.y
 
@@ -138,7 +138,7 @@ class EKFSLAM:
             self.x_est = self.x_pre + np.dot(K, self.z[0:2][0] - np.dot(H, self.x_pre))
         else:
             H = np.vstack([self.H_full[0:2, :], self.H_full[2*(self.gate_observing+1):2*(self.gate_observing+2), :]])
-            K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.inv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R)])
+            K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.pinv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R)])
             self.x_est = self.x_pre + np.dot(K, self.z - np.dot(H, self.x_pre))
         self.P_est = np.dot(np.eye(10) - np.dot(K, H), self.P_pre)
 
@@ -146,21 +146,19 @@ class EKFSLAM:
         ##
 
         # Publish
+        print(self.gate_observing)
+        print(self.z)
+        print(self.x_est)
+        
         drift = PoseStamped()
         drift.header.stamp = rospy.Time.now()
         drift.pose.position.x = self.x_est[2][0]
         drift.pose.position.y = self.x_est[3][0]
         self.drift_pub.publish(drift)
 
-        rospy.loginfo("Gate Positions")
-        print(self.gate_pose)
-        print("%.2f, %.2f" % (self.x_est[4][0], self.x_est[5][0]))
-        print("%.2f, %.2f" % (self.x_est[6][0], self.x_est[7][0]))
-        print("%.2f, %.2f" % (self.x_est[8][0], self.x_est[9][0]))
-
         gate = PoseStamped()
         gate.header.stamp = rospy.Time.now()
-        gate.header.frame_id = 'world'
+        gate.header.frame_id = 'map'
         gate.pose.orientation.w = 1.0
         for i in range(0, 3):
             if self.gate_detected[i] == True:
@@ -180,7 +178,7 @@ class EKFSLAM:
         # Publish compensated pose
         compensated_pose = PoseStamped()
         compensated_pose.header.stamp = msg.header.stamp
-        compensated_pose.header.frame_id = msg.header.frame_id
+        compensated_pose.header.frame_id = 'map'
         compensated_pose.pose.position.x = msg.pose.position.x - self.x_est[2][0]
         compensated_pose.pose.position.y = msg.pose.position.y - self.x_est[3][0]
         compensated_pose.pose.position.z = msg.pose.position.z
