@@ -1,21 +1,27 @@
+#!/usr/bin/env python
+
+import tf.transformations as tt
 import rospy
 import sys
-import numpy as numpy
+import numpy as np
 
 from mavros_msgs.srv import CommandBool
 from mavros_msgs.srv import SetMode
 from mavros_msgs.srv import CommandTOL
 from mavros_msgs.msg import State 
+from geometry_msgs.msg import PoseStamped, TwistStamped
 
-from statemachine import StateMachine, State	
+
+from statemachine import StateMachine
+from statemachine import State as _State_
 
 class IROS_StateMachine(StateMachine):
 
-    Landed = State('Land', initial=True)
-    Hovering = State('Hovering')
-    Search = State('Search')
-    Fly = State('Flying to Gate')
-    Turn_Advance = State('Turn Around and advance')
+    Landed = _State_('Land', initial=True)
+    Hovering = _State_('Hovering')
+    Search = _State_('Search')
+    Fly = _State_('Flying to Gate')
+    Turn_Advance = _State_('Turn Around and advance')
 
     take_off = Landed.to(Hovering)
     gate_not_found = Hovering.to(Search)
@@ -24,63 +30,90 @@ class IROS_StateMachine(StateMachine):
     repeat = Turn_Advance.to(Hovering)
 
     def on_take_off(self):
-    	print("Taking off...")
+        print("Taking off...")
 
     def on_gate_not_found(self):
-    	print("Gate Not Found. Searching...")
+        print("Gate Not Found. Searching...")
 
     def on_gate_found(self):
-    	print("Gate Found! Flying to Gate...")
+        print("Gate Found! Flying to Gate...")
 
     def on_gate_pass(self):
-    	print("Gate Passed!")
+        print("Gate Passed!")
 
     def on_repeat(self):
-    	print("Going for next Gate")
-
-
-
+        print("Going for next Gate")
 
 class IROS_Coordinator():
 
-	def __init__(self):
+    def __init__(self):
+        # 
+        self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
 
-
-
-		self.machine = IROS_StateMachine()
+        self.machine = IROS_StateMachine()
 
         # PX4 related
-        self.state = Odometry()
+        self.state = PoseStamped()
         self.command_pose = PoseStamped()
         self.home_pose = PoseStamped()
         self.home_pose_set = False
         self.setup_mavros()
 
-
-
-
     def main_process(self):
         while not rospy.is_shutdown():
-	    	if self.machine.is_Landed:
 
-	    		self.connect_arm_offboard()
-	    		self.take_off(1.0)
-	    		self.machine.take_off()
+            if self.machine.is_Landed:
+                self.connect_arm_offboard()
+                self.take_off(1.0)
+                self.machine.take_off()
 
-	    	if self.machine.is_Hovering:
-	    		if self.gate_found:
-	    			if self.gate_classified:
-	    				self.fly_global()
-	    			else:
+            elif self.machine.is_Hovering:
+                self.machine.gate_not_found()
 
-	    		else:
+            elif self.machine.is_Search:
+                if self.gate_found():
+                    if self.gate_classified():
+                        self.fly_global_coordinates()
+                    else:
+                        self.fly_local_coordinates()
+                    self.machine.gate_found()
+                else:
+                    # keep searching
+                    pass
+            
+            elif self.machine.is_Fly:
+                if self.fly_global_coordinates():
+                    # do drift correction and fly to gate
+                    self.go_position([1,0,self.hover_height])
+                else:
+                    # fly in local coordinates
+                    self.go_position([1,0,self.hover_height])
+                self.machine.gate_pass()
 
-
-
+            elif self.machine.is_Turn_Advance:
+                self.go_position([2,2,self.hover_height])
+                self.yaw_rotate(90)
+                self.machine.repeat()
+            else:
+                print("Current machine state is not supported: {}".format(self.machine.current_state))
 
 
         sys.exit(0)
+
+    def fly_global_coordinates(self):
+        return True
+
+    def fly_local_coordinates(self):
+        return 0
+
+    def gate_classified(self):
+        return False
+
+    def gate_found(self):
+        return True
+
     def vo_drift_cb(self, drift):
+        return True
 
     def setup_mavros(self):
 
@@ -95,12 +128,12 @@ class IROS_Coordinator():
 
         self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_status_cb)        
         self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
-        self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
+        #self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
 
-        self.state.pose.pose.orientation.x = 0.0
-        self.state.pose.pose.orientation.y = 0.0
-        self.state.pose.pose.orientation.z = 0.0
-        self.state.pose.pose.orientation.w = 1.0
+        self.state.pose.orientation.x = 0.0
+        self.state.pose.orientation.y = 0.0
+        self.state.pose.orientation.z = 0.0
+        self.state.pose.orientation.w = 1.0
 
         self.command_pose.pose.orientation.w = 1.0
 
@@ -192,14 +225,14 @@ class IROS_Coordinator():
             self.home_pose.pose.position.z = pos.pose.position.z
             self.home_pose_set = True
 
-        self.state.pose.pose.position.x = pos.pose.position.x
-        self.state.pose.pose.position.y = pos.pose.position.y
-        self.state.pose.pose.position.z = pos.pose.position.z
+        self.state.pose.position.x = pos.pose.position.x
+        self.state.pose.position.y = pos.pose.position.y
+        self.state.pose.position.z = pos.pose.position.z
 
-        self.state.pose.pose.orientation.x = pos.pose.orientation.x
-        self.state.pose.pose.orientation.y = pos.pose.orientation.y
-        self.state.pose.pose.orientation.z = pos.pose.orientation.z
-        self.state.pose.pose.orientation.w = pos.pose.orientation.w
+        self.state.pose.orientation.x = pos.pose.orientation.x
+        self.state.pose.orientation.y = pos.pose.orientation.y
+        self.state.pose.orientation.z = pos.pose.orientation.z
+        self.state.pose.orientation.w = pos.pose.orientation.w
 
     def velocity_cb(self, vel):
 
@@ -214,17 +247,52 @@ class IROS_Coordinator():
     def take_off(self, height):
         self.command_pose.pose.position.z = height
         rate = rospy.Rate(20)
-        while not (self.state.pose.pose.position.z >= height*0.95 ):
+        while not (self.state.pose.position.z >= height*0.95 ):
             self.command_pose.header.stamp = rospy.Time.now()
             self.local_pos_pub.publish(self.command_pose)
             rate.sleep()
+
+    def yaw_rotate(self, angle):
+        yaw = angle*np.pi/180.
+        print("YAW90")
+        start = rospy.get_time()
+        q90 = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
+        self.command_pose.pose.orientation.x = q90[0]
+        self.command_pose.pose.orientation.y = q90[1]
+        self.command_pose.pose.orientation.z = q90[2]
+        self.command_pose.pose.orientation.w = q90[3]
+        rate = rospy.Rate(20)
+        while( (rospy.get_time() - start) < 5):
+            self.command_pose.header.stamp = rospy.Time.now()
+            self.local_pos_pub.publish(self.command_pose)
+            rate.sleep()  
+
+    def go_position(self,position):
+
+        self.command_pose.pose.position.x = position[0]     
+        self.command_pose.pose.position.y = position[1]
+        self.command_pose.pose.position.z = position[2]
+
+        rate = rospy.Rate(20)
+        while (self.position_error(self.command_pose, self.state) >= 0.2 ):
+            self.command_pose.header.stamp = rospy.Time.now()
+            self.local_pos_pub.publish(self.command_pose)
+            rate.sleep()
+
+        return True
+
+    def position_error(self, v1, v2):
+        v1 = np.array([v1.pose.position.x, v1.pose.position.y, v1.pose.position.z])
+        v2 = np.array([v2.pose.position.x, v2.pose.position.y, v2.pose.position.z])
+        e = np.linalg.norm(v1 - v2)
+        return e
 
 if __name__ == '__main__':
     try:
         rospy.init_node('riseq_iros_state_machine', anonymous = True)
 
-        helix_mission = State_Machine()
-        helix_mission.run()        
+        iros_mission = IROS_Coordinator()
+        iros_mission.main_process()        
 
         rospy.loginfo('IROS RISEQ STATE MACHINE STARTED')
         rospy.spin()

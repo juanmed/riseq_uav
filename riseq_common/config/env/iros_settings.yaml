@@ -8,6 +8,8 @@ perception:
     cutoff: 0.001
     camera: left_rect
     theta: 30  # degree
+drone:
+    hover_height: 1.5 #m
 
 environment: "simulator"  # real
     

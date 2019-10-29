@@ -82,7 +82,7 @@
     <arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/pipe/pipe.sdf"/>
   </include>
 
-  <include file="$(find riseq_gazebo)/launch/spawn_arena.launch"/>
+  <!--include file="$(find riseq_gazebo)/launch/spawn_arena.launch"/-->
 
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
@@ -99,5 +99,5 @@
     <remap from="/zed/zed_node/left_raw/image_raw_color" to="/iris/camera_nadir/image_raw" />
     <remap from="/zed/zed_node/left_raw/camera_info" to="/iris/camera_nadir/camera_info" />
   </node-->
-  <node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/>
+  <!--node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/-->
 </launch>
