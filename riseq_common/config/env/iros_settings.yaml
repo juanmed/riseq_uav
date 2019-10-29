@@ -7,4 +7,5 @@ perception:
     colors: 'rgb'
     cutoff: 0.001
     camera: left_rect
+    theta: 30  # degree
     

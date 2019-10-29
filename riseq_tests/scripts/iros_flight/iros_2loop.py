@@ -126,7 +126,7 @@ if __name__ == "__main__":
                 else:
                     goal_pose.pose.position.x = current_pose.pose.position.x - 0.5
                 print "pass gate"
-            elif step ==2:
+            elif step == 2:
                 if loop == 0:
                     goal_pose.pose.position.x = current_pose.pose.position.x - 0.5
                 else:
