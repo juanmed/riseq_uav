@@ -23,8 +23,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation
 import rospy
+from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 
 
@@ -45,13 +46,13 @@ class EKFSLAM:
                                    [-1.75, 0.7, 1.7]])
         self.init_inf = 1e6
         self.gate_observing = -1
-
-        self.cur_vo_pose = PoseStamped()
+        self.gate_last = -1
+        self.gate_first = self.gate_v
 
         # State
         self.F = np.eye(4)
         self.x_pre = np.zeros((4, 1))
-        self.x_est = np.array([[0.0],                               # drone real position
+        self.x_est = np.array([[0.0],                               # drone gate_global_pose position
                                [0.0],
                                [0.0],                               # drone VO drift
                                [0.0]])
@@ -66,9 +67,9 @@ class EKFSLAM:
         self.B[1][1] = 1.0
         self.u = np.zeros((2, 1))                                   # odometry(traveled distance) as input. B*u=I*(v*dt)
         self.Q = np.zeros((4, 4))
-        self.Q[0:4, 0:4] = np.eye(4) * 1e-6
+        self.Q[0:4, 0:4] = np.eye(4) * 1e-5
 
-        self.z = np.array([[0.0],                                   # VO position. real position + drift
+        self.z = np.array([[0.0],                                   # VO position. gate_global_pose position + drift
                            [0.0],
                            [0.0],                                   # distance to the gate in local frame
                            [0.0]])
@@ -79,12 +80,17 @@ class EKFSLAM:
         self.R = np.eye(4) * 1e-4
         self.R[2:4, 2:4] = np.eye(2) * 1e-4
 
+        self.local_pose = PoseStamped()
+        self.cur_vo_pose = PoseStamped()
+
         # Publisher, Subscriber
-        self.comp_pose_pub = rospy.Publisher('/mavros/drone/pose', PoseStamped, queue_size=10)
+        self.comp_pose_pub = rospy.Publisher('/riseq/drone/pose', PoseStamped, queue_size=10)
         self.drift_pub = rospy.Publisher('/riseq/drone/vo_drift', PoseStamped, queue_size=10)
         self.gate_pose_pub = rospy.Publisher('/riseq/gate/pose', PoseStamped, queue_size=10)
+        self.gate_seeing_pub = rospy.Publisher('/riseq/gate/observing', PoseStamped, queue_size=10)
 
         rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
+        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.local_pose_cb)
         rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.vo_pose_cb)
         rospy.Subscriber('/riseq/gate/lpf_global/camera_pose', PoseStamped, self.gate_cb)
 
@@ -94,25 +100,28 @@ class EKFSLAM:
         self.z[1][0] = self.cur_vo_pose.pose.position.y
 
         ## Kalman Filter
-        # Prediction
-        self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
-        self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
-
-        # Correction, Update
         if self.gate_observing == -1:
-            self.P_pre[2:4, 2:4] = np.eye(2) * 1e-4
-            H = self.H_full[0:2, :]
-            K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.inv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R[0:2, 0:2])])
-            self.x_est = self.x_pre + np.dot(K, self.z[0:2, :] - np.dot(H, self.x_pre))
+            # Gate not detected
+            # self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
+            # self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
+            # self.P_pre[2:4, 2:4] = np.eye(2) * 1e-4
+            # H = self.H_full[0:2, :]
+            # K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.inv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R[0:2, 0:2])])
+            # self.x_est = self.x_pre + np.dot(K, self.z[0:2, :] - np.dot(H, self.x_pre))
+            # self.P_est = np.dot(np.eye(4) - np.dot(K, H), self.P_pre)
+            self.x_est[0:2, :] = self.z[0:2, :] - self.x_est[2:4, :]
         else:
-            self.P_pre[2:4, 2:4] = np.eye(2) * 1e1
+            # Gate detected
+            self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
+            self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
+            # self.P_pre[2:4, 2:4] = np.eye(2) * 1e1
             H = self.H_full
             K = np.linalg.multi_dot([self.P_pre, H.T, np.linalg.pinv(np.linalg.multi_dot([H, self.P_pre, H.T]) + self.R)])
             self.x_est = self.x_pre + np.dot(K, self.z - (np.array([[0.0],
                                                                     [0.0],
                                                                     [self.gate_pose[self.gate_observing][0]],
                                                                     [self.gate_pose[self.gate_observing][1]]]) + np.dot(H, self.x_pre)))
-        self.P_est = np.dot(np.eye(4) - np.dot(K, H), self.P_pre)
+            self.P_est = np.dot(np.eye(4) - np.dot(K, H), self.P_pre)
         ##
 
         self.gate_observing = -1
@@ -138,9 +147,19 @@ class EKFSLAM:
                 gate.pose.position.x = self.gate_pose[i][0]
                 gate.pose.position.y = self.gate_pose[i][1]
                 gate.pose.position.z = self.gate_pose[i][2]
-        self.gate_pose_pub.publish(gate)
+                self.gate_pose_pub.publish(gate)
 
         self.r.sleep()
+
+    def local_pose_cb(self, msg):
+        self.local_pose.header.stamp = msg.header.stamp
+        self.local_pose.pose.position.x = msg.pose.position.x
+        self.local_pose.pose.position.y = msg.pose.position.y
+        self.local_pose.pose.position.z = msg.pose.position.z
+        self.local_pose.pose.orientation.x = msg.pose.orientation.x
+        self.local_pose.pose.orientation.y = msg.pose.orientation.y
+        self.local_pose.pose.orientation.z = msg.pose.orientation.z
+        self.local_pose.pose.orientation.w = msg.pose.orientation.w
 
     def vo_pose_cb(self, msg):
         self.cur_vo_pose.header.stamp = msg.header.stamp
@@ -161,26 +180,63 @@ class EKFSLAM:
         self.comp_pose_pub.publish(comp_pose)
 
     def gate_cb(self, msg):
-        self.gate_detected[0] = True
-        self.gate_detected[1] = True
-        self.gate_detected[2] = True
+        self.gate_detected[self.gate_v] = True
+        self.gate_detected[self.gate_h_l] = True
+        self.gate_detected[self.gate_h_r] = True
 
-        real = self.x_est[0:2, :] + np.array([[msg.pose.position.x], [msg.pose.position.y]]) #np.array([[self.cur_vo_pose.pose.position.x + msg.pose.position.x], [self.cur_vo_pose.pose.position.y + msg.pose.position.y]])
-        dist_v = np.linalg.norm(real - np.array([[self.gate_pose[self.gate_v][0]], [self.gate_pose[self.gate_v][1]]]))
-        dist_h_l = np.linalg.norm(real - np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]))
-        dist_h_r = np.linalg.norm(real - np.array([[self.gate_pose[self.gate_h_r][0]], [self.gate_pose[self.gate_h_r][1]]]))
-        if min(dist_v, dist_h_l, dist_h_r) == dist_v:
-            self.gate_observing = self.gate_v
-        elif min(dist_v, dist_h_l, dist_h_r) == dist_h_l:
-            self.gate_observing = self.gate_h_l
-        elif min(dist_v, dist_h_l, dist_h_r) == dist_h_r:
-            self.gate_observing = self.gate_h_r
+        gate_seeing = String()
+        gate_global_pose = np.array([[self.x_est[0][0] + msg.pose.position.x], [self.x_est[1][0] + msg.pose.position.y], [self.local_pose.pose.position.z + msg.pose.position.z]])
+
+        dist_v = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_v][0]], [self.gate_pose[self.gate_v][1]]]))
+        dist_h_l = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]))
+        dist_h_r = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_h_r][0]], [self.gate_pose[self.gate_h_r][1]]]))
+
+        yaw = Rotation.from_quat([self.local_pose.pose.orientation.x, self.local_pose.pose.orientation.y, self.local_pose.pose.orientation.z, self.local_pose.pose.orientation.w]).as_euler('zyx', degrees=True)[2]
+        if abs(yaw) < 45:
+            if self.gate_first == self.gate_v:
+                self.gate_observing = self.gate_v
+            else:
+                if (dist_h_l > 1.0) and (dist_h_r > 1.0):
+                    gate_seeing.data = 'unknown'
+                elif dist_h_l < dist_h_r:
+                    self.gate_observing = self.gate_h_l
+                    gate_seeing.data = 'left'
+                else:
+                    self.gate_observing = self.gate_h_r
+                    gate_seeing.data = 'right'
+        elif abs(yaw) > 135:
+            if self.gate_first == self.gate_v:
+                if (dist_h_l > 1.0) and (dist_h_r > 1.0):
+                    gate_seeing.data = 'unknown'
+                elif dist_h_l < dist_h_r:
+                    self.gate_observing = self.gate_h_l
+                    gate_seeing.data = 'left'
+                else:
+                    self.gate_observing = self.gate_h_r
+                    gate_seeing.data = 'right'
+            else:
+                self.gate_observing = self.gate_v
+        else:
+            if (dist_v < 1.0 ) or (abs(gate_global_pose[3][0] - self.gate_pose[self.gate_v][2]) > 0.45):
+                self.gate_observing = self.gate_v
+                gate_seeing.data = 'vertical'
+            elif abs(gate_global_pose[3][0] - self.gate_pose[self.gate_h_l][2]) < 0.25:
+                if (dist_h_l > 1.0) and (dist_h_r > 1.0):
+                    gate_seeing.data = 'unknown'
+                elif dist_h_l < dist_h_r:
+                    self.gate_observing = self.gate_h_l
+                    gate_seeing.data = 'left'
+                else:
+                    self.gate_observing = self.gate_h_r
+                    gate_seeing.data = 'right'
 
         print("%.1f %.1f %.1f" % (dist_v, dist_h_l, dist_h_r))
         print(self.gate_observing)
 
         self.z[2][0] = msg.pose.position.x
         self.z[3][0] = msg.pose.position.y
+
+        self.gate_seeing_pub.publish(gate_seeing)
 
 
 if __name__ == "__main__":
