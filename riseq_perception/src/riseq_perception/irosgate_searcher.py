@@ -8,6 +8,7 @@ class IROSGateSearcher:
     def __init__(self, initial_yaw = 0.0):
         self.initial_yaw = initial_yaw
         self.yaw = initial_yaw
+        self.yaw_sum = 0
         self.turn_left = True
         self.turn_right = False
 
@@ -22,26 +23,31 @@ class IROSGateSearcher:
     def search_gate(self):
         print "search gate"
         if self.turn_left:
-            if self.yaw < self.initial_yaw + np.pi/2:
+            if self.yaw_sum < self.initial_yaw + np.pi/2:
                 print "turn left"
-                self.yaw = self.yaw + self.theta / 180.0 * np.pi
+                self.yaw = self.theta / 180.0 * np.pi
+                self.yaw_sum = self.yaw_sum + self.yaw
             else:
+                print "left 90 degree"
                 # if drone rotates over 90 degree, it might detect another gate which drone should not pass.
                 self.turn_left = False
                 self.turn_right = True
-                self.yaw = self.initial_yaw
-
+                self.yaw = -np.pi/2
+                self.yaw_sum = 0
         elif self.turn_right:
-            if self.yaw < self.initial_yaw - np.pi/2:
+            if self.yaw_sum > self.initial_yaw - np.pi/2:
                 print "turn right"
-                self.yaw = self.yaw - self.theta / 180.0 * np.pi
+                self.yaw = -self.theta / 180.0 * np.pi
+                self.yaw_sum = self.yaw_sum + self.yaw
             else:
+                print "right 90 degree"
                 # if drone rotates over 90 degree, it might detect another gate which drone should not pass.
                 self.turn_left = False
                 self.turn_right = False
-                self.yaw = self.initial_yaw
-
+                self.yaw = np.pi/2
+                self.yaw_sum = 0
         else:
+            self.yaw = 0
             if self.erode_iter > self.erode_min:
                 print "erode down"
                 self.erode_iter = self.erode_iter - 1
@@ -56,7 +62,7 @@ class IROSGateSearcher:
                     self.dilate_iter = 2
                     self.erode_iter = 4
                     self.yaw = self.initial_yaw  # This means that there is no more step.
-                    return False,
+                    return False, self.yaw
             self.turn_left = True
             self.turn_right = False
 
