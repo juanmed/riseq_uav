@@ -47,24 +47,17 @@ class IROS_StateMachine(StateMachine):
 class IROS_Coordinator():
 
     def __init__(self):
-        # 
-        self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
 
-        self.machine = IROS_StateMachine()
-
-        # PX4 related
-        self.state = PoseStamped()
-        self.command_pose = PoseStamped()
-        self.home_pose = PoseStamped()
         self.home_pose_set = False
+        self.setup_iros()
         self.setup_mavros()
-
+ 
     def main_process(self):
         while not rospy.is_shutdown():
 
             if self.machine.is_Landed:
                 self.connect_arm_offboard()
-                self.take_off(1.0)
+                self.take_off(self.hover_height)
                 self.machine.take_off()
 
             elif self.machine.is_Hovering:
@@ -95,8 +88,8 @@ class IROS_Coordinator():
                 self.yaw_rotate(90)
                 self.machine.repeat()
             else:
-                print("Current machine state is not supported: {}".format(self.machine.current_state))
-
+                print("FATAL ERROR:\nCurrent machine state is not supported: {}".format(self.machine.current_state))
+                self.return_land_disarm()
 
         sys.exit(0)
 
@@ -117,6 +110,11 @@ class IROS_Coordinator():
 
     def setup_mavros(self):
 
+        self.state_msg = PoseStamped()
+        self.state_msg.pose.orientation.w = 1.0    # avoid weird values if w = 0 when starting
+        self.command_pose_msg = PoseStamped()
+        self.command_pose_msg.pose.orientation.w = 1.0
+
         self.mavros_state = State()
         self.mavros_state.connected = False
 
@@ -130,12 +128,18 @@ class IROS_Coordinator():
         self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
         #self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
 
-        self.state.pose.orientation.x = 0.0
-        self.state.pose.orientation.y = 0.0
-        self.state.pose.orientation.z = 0.0
-        self.state.pose.orientation.w = 1.0
+    def setup_iros(self):
 
-        self.command_pose.pose.orientation.w = 1.0
+        self.machine = IROS_StateMachine()
+
+        self.vo_drift = np.zeros(3)
+        self.state = np.zeros(3)
+        self.command_pose = np.zeros(3)
+        self.home_pose = np.zeros(3)
+
+        self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
+
+        rospy.Subscriber("/riseq/estimation/drift", PoseStamped, self.vo_drift_cb)
 
     def connect_arm_offboard(self):
         self.wait_mavros_connection()
@@ -220,19 +224,19 @@ class IROS_Coordinator():
     def position_cb(self, pos):
 
         if not self.home_pose_set:
-            self.home_pose.pose.position.x = pos.pose.position.x
-            self.home_pose.pose.position.y = pos.pose.position.y
-            self.home_pose.pose.position.z = pos.pose.position.z
+            self.home_pose[0] = pos.pose.position.x
+            self.home_pose[1] = pos.pose.position.y
+            self.home_pose[2] = pos.pose.position.z
             self.home_pose_set = True
 
-        self.state.pose.position.x = pos.pose.position.x
-        self.state.pose.position.y = pos.pose.position.y
-        self.state.pose.position.z = pos.pose.position.z
+        self.state[0] = pos.pose.position.x
+        self.state[1] = pos.pose.position.y
+        self.state[2] = pos.pose.position.z
 
-        self.state.pose.orientation.x = pos.pose.orientation.x
-        self.state.pose.orientation.y = pos.pose.orientation.y
-        self.state.pose.orientation.z = pos.pose.orientation.z
-        self.state.pose.orientation.w = pos.pose.orientation.w
+        #self.state.pose.orientation.x = pos.pose.orientation.x
+        #self.state.pose.orientation.y = pos.pose.orientation.y
+        #self.state.pose.orientation.z = pos.pose.orientation.z
+        #self.state.pose.orientation.w = pos.pose.orientation.w
 
     def velocity_cb(self, vel):
 
@@ -245,47 +249,72 @@ class IROS_Coordinator():
         self.state.twist.twist.angular.z = vel.twist.angular.z
 
     def take_off(self, height):
-        self.command_pose.pose.position.z = height
+        self.command_pose[2] = height
         rate = rospy.Rate(20)
-        while not (self.state.pose.position.z >= height*0.95 ):
-            self.command_pose.header.stamp = rospy.Time.now()
-            self.local_pos_pub.publish(self.command_pose)
+        while (self.state[2] < height*0.95 ):
+            self.publish_command(self.command_pose)
             rate.sleep()
 
     def yaw_rotate(self, angle):
         yaw = angle*np.pi/180.
-        print("YAW90")
+        print("YAWing")
         start = rospy.get_time()
         q90 = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
-        self.command_pose.pose.orientation.x = q90[0]
-        self.command_pose.pose.orientation.y = q90[1]
-        self.command_pose.pose.orientation.z = q90[2]
-        self.command_pose.pose.orientation.w = q90[3]
+        self.command_pose_msg.pose.orientation.x = q90[0]
+        self.command_pose_msg.pose.orientation.y = q90[1]
+        self.command_pose_msg.pose.orientation.z = q90[2]
+        self.command_pose_msg.pose.orientation.w = q90[3]
         rate = rospy.Rate(20)
         while( (rospy.get_time() - start) < 5):
-            self.command_pose.header.stamp = rospy.Time.now()
-            self.local_pos_pub.publish(self.command_pose)
+            self.command_pose_msg.header.stamp = rospy.Time.now()
+            self.local_pos_pub.publish(self.command_pose_msg)
             rate.sleep()  
 
     def go_position(self,position):
 
-        self.command_pose.pose.position.x = position[0]     
-        self.command_pose.pose.position.y = position[1]
-        self.command_pose.pose.position.z = position[2]
+        self.command_pose[0] = position[0]     
+        self.command_pose[1] = position[1]
+        self.command_pose[2] = position[2]
 
         rate = rospy.Rate(20)
         while (self.position_error(self.command_pose, self.state) >= 0.2 ):
-            self.command_pose.header.stamp = rospy.Time.now()
-            self.local_pos_pub.publish(self.command_pose)
+            self.publish_command(self.command_pose)
             rate.sleep()
 
         return True
 
     def position_error(self, v1, v2):
-        v1 = np.array([v1.pose.position.x, v1.pose.position.y, v1.pose.position.z])
-        v2 = np.array([v2.pose.position.x, v2.pose.position.y, v2.pose.position.z])
-        e = np.linalg.norm(v1 - v2)
-        return e
+        return np.linalg.norm(v1 - v2)
+        
+    def return_land_disarm(self):
+        
+        # Return home
+        print("Returning home.")
+        rate = rospy.Rate(20)
+        start_time = rospy.get_time()
+        while ((rospy.get_time() - start_time) < 10.0):  # give 20s to go back home
+            self.command_pose = self.home_pose
+            self.publish_command(self.command_pose)
+            rate.sleep()
+
+        # Land
+        print("Landing.")
+        self.landing_client(0.0, 0.0, 0.0, 0.0, 0.0)
+        rospy.sleep(5)        
+
+        # disarm
+        print("Disarm.")
+        arm_cmd = CommandBool()
+        arm_cmd.value = False
+        arm_client_1 = self.arming_client(arm_cmd.value)
+
+    def publish_command(self, command):
+
+        self.command_pose_msg.header.stamp = rospy.Time.now()
+        self.command_pose_msg.pose.position.x = command[0]
+        self.command_pose_msg.pose.position.y = command[1]
+        self.command_pose_msg.pose.position.z = command[2]
+        self.local_pos_pub.publish(self.command_pose_msg)
 
 if __name__ == '__main__':
     try:
