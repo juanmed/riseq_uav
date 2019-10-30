@@ -23,7 +23,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation
 import rospy
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
@@ -47,6 +47,7 @@ class EKFSLAM:
         self.init_inf = 1e6
         self.gate_observing = -1
         self.gate_last = -1
+        self.gate_first = self.gate_v
 
         # State
         self.F = np.eye(4)
@@ -190,25 +191,44 @@ class EKFSLAM:
         dist_h_l = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]))
         dist_h_r = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_h_r][0]], [self.gate_pose[self.gate_h_r][1]]]))
 
-        if (dist_v < 1.0 ) or (abs(gate_global_pose[3][0] - self.gate_pose[self.gate_v][2]) > 0.45):
-            self.gate_observing = self.gate_v
-            gate_seeing.data = 'vertical'
-        elif abs(gate_global_pose[3][0] - self.gate_pose[self.gate_h_l][2]) < 0.25:
-            if (dist_h_l > 1.0) and (dist_h_r > 1.0):
-                gate_seeing.data = 'unknown'
-            elif dist_h_l < dist_h_r:
-                self.gate_observing = self.gate_h_l
-                gate_seeing.data = 'left'
+        yaw = Rotation.from_quat([self.local_pose.pose.orientation.x, self.local_pose.pose.orientation.y, self.local_pose.pose.orientation.z, self.local_pose.pose.orientation.w]).as_euler('zyx', degrees=True)[2]
+        if abs(yaw) < 45:
+            if self.gate_first == self.gate_v:
+                self.gate_observing = self.gate_v
             else:
-                self.gate_observing = self.gate_h_r
-                gate_seeing.data = 'right'
-
-        # if min(dist_v, dist_h_l, dist_h_r) == dist_v:
-        #     self.gate_observing = self.gate_v
-        # elif min(dist_v, dist_h_l, dist_h_r) == dist_h_l:
-        #     self.gate_observing = self.gate_h_l
-        # elif min(dist_v, dist_h_l, dist_h_r) == dist_h_r:
-        #     self.gate_observing = self.gate_h_r
+                if (dist_h_l > 1.0) and (dist_h_r > 1.0):
+                    gate_seeing.data = 'unknown'
+                elif dist_h_l < dist_h_r:
+                    self.gate_observing = self.gate_h_l
+                    gate_seeing.data = 'left'
+                else:
+                    self.gate_observing = self.gate_h_r
+                    gate_seeing.data = 'right'
+        elif abs(yaw) > 135:
+            if self.gate_first == self.gate_v:
+                if (dist_h_l > 1.0) and (dist_h_r > 1.0):
+                    gate_seeing.data = 'unknown'
+                elif dist_h_l < dist_h_r:
+                    self.gate_observing = self.gate_h_l
+                    gate_seeing.data = 'left'
+                else:
+                    self.gate_observing = self.gate_h_r
+                    gate_seeing.data = 'right'
+            else:
+                self.gate_observing = self.gate_v
+        else:
+            if (dist_v < 1.0 ) or (abs(gate_global_pose[3][0] - self.gate_pose[self.gate_v][2]) > 0.45):
+                self.gate_observing = self.gate_v
+                gate_seeing.data = 'vertical'
+            elif abs(gate_global_pose[3][0] - self.gate_pose[self.gate_h_l][2]) < 0.25:
+                if (dist_h_l > 1.0) and (dist_h_r > 1.0):
+                    gate_seeing.data = 'unknown'
+                elif dist_h_l < dist_h_r:
+                    self.gate_observing = self.gate_h_l
+                    gate_seeing.data = 'left'
+                else:
+                    self.gate_observing = self.gate_h_r
+                    gate_seeing.data = 'right'
 
         print("%.1f %.1f %.1f" % (dist_v, dist_h_l, dist_h_r))
         print(self.gate_observing)
