@@ -1,6 +1,4 @@
 gates:
-    gate_vertical: [5,-1,2]
-    gate_horizontal: [-5,1,2]
     drone_init: [0,-1,0]
     detection_thresholds: [15,5,5]
 perception:
@@ -20,12 +18,12 @@ drone:
 
 environment: "simulator"  # real
 
-#gates:
-#    gate_vertical:
-#        up: [, , 2.6]
-#        down: [, , 1.2]
-#    gate_horizontal:
-#        left [, , 1.7]
-#        right: [, , 1.7]
+gates:
+    gate_vertical:
+        up: [6, 0.0, 2.7]
+        down: [6, 0.0, 2.7]
+    gate_horizontal:
+        left: [-4, 0.0, 2]
+        right: [-4, 1.4, 2]
 #    drone_init: [, , ]
 #    detection_thresholds: [, , ]

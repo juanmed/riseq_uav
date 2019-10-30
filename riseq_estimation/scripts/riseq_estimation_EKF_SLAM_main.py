@@ -46,9 +46,9 @@ class EKFSLAM:
         self.gate_observing = -1
         self.gate_last = -1
         self.gate_first = self.gate_v
-        self.gate_pose = np.array([rospy.get_param('/gates/gate_vertical/up', [3.85, 0.0, 1.9]),
-                                   rospy.get_param('/gates/gate_horizontal/left', [-1.75, -0.7, 1.7]),
-                                   rospy.get_param('/gates/gate_horizontal/right', [-1.75, 0.7, 1.7])])
+        self.gate_pose = np.array([rospy.get_param('/gates/gate_vertical/up', [6, 0.0, 2.7]),
+                                   rospy.get_param('/gates/gate_horizontal/left', [-4, 0.0, 2]),
+                                   rospy.get_param('/gates/gate_horizontal/right', [-4, 1.4, 2])])
         self.gate_pose[0][2] = 1.9
 
         # State

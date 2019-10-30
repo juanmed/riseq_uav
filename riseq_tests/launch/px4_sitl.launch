@@ -101,5 +101,10 @@
     <remap from="/zed/zed_node/left/camera_info" to="/iris/camera_nadir/camera_info" />
   </node>
 
+  <node name="gate_global_pose" pkg="riseq_estimation" type="riseq_estimation_gate_global_pose.py"/>
+  <node name="drift_estimator" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM_main.py">
+    <remap from="/zed/zed_node/pose" to="/mavros/local_position/pose"/>
+  </node>
+
   <!--node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/-->
 </launch>
