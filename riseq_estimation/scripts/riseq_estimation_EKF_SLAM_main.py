@@ -40,14 +40,16 @@ class EKFSLAM:
         self.gate_v = 0
         self.gate_h_l = 1
         self.gate_h_r = 2
-        self.gate_detected = np.array([False, False, False])
-        self.gate_pose = np.array([[3.85, 0.0, 1.9],
-                                   [-1.75, -0.7, 1.7],
-                                   [-1.75, 0.7, 1.7]])
-        self.init_inf = 1e6
+        # self.gate_pose = np.array([[3.85, 0.0, 1.9],
+        #                            [-1.75, -0.7, 1.7],
+        #                            [-1.75, 0.7, 1.7]])
         self.gate_observing = -1
         self.gate_last = -1
         self.gate_first = self.gate_v
+        self.gate_pose = np.array([rospy.get_param('/gates/gate_vertical/up', [3.85, 0.0, 1.9]),
+                                   rospy.get_param('/gates/gate_horizontal/left', [-1.75, -0.7, 1.7]),
+                                   rospy.get_param('/gates/gate_horizontal/right', [-1.75, 0.7, 1.7])])
+        self.gate_pose[0][2] = 1.9
 
         # State
         self.F = np.eye(4)
@@ -89,9 +91,9 @@ class EKFSLAM:
         self.gate_pose_pub = rospy.Publisher('/riseq/gate/pose', PoseStamped, queue_size=10)
         self.gate_seeing_pub = rospy.Publisher('/riseq/gate/observing', PoseStamped, queue_size=10)
 
-        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
         rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.local_pose_cb)
         rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.vo_pose_cb)
+        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
         rospy.Subscriber('/riseq/gate/lpf_global/camera_pose', PoseStamped, self.gate_cb)
 
     def loop(self):
@@ -100,8 +102,7 @@ class EKFSLAM:
         self.z[1][0] = self.cur_vo_pose.pose.position.y
 
         ## Kalman Filter
-        if self.gate_observing == -1:
-            # Gate not detected
+        if self.gate_observing == -1:   # Gate not detected
             # self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
             # self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
             # self.P_pre[2:4, 2:4] = np.eye(2) * 1e-4
@@ -110,8 +111,7 @@ class EKFSLAM:
             # self.x_est = self.x_pre + np.dot(K, self.z[0:2, :] - np.dot(H, self.x_pre))
             # self.P_est = np.dot(np.eye(4) - np.dot(K, H), self.P_pre)
             self.x_est[0:2, :] = self.z[0:2, :] - self.x_est[2:4, :]
-        else:
-            # Gate detected
+        else:   # Gate detected
             self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
             self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
             # self.P_pre[2:4, 2:4] = np.eye(2) * 1e1
@@ -126,14 +126,10 @@ class EKFSLAM:
 
         self.gate_observing = -1
 
-        # Publish
-        print("measurement")
-        print(self.z)
-        print("state\n")
-        print(self.x_est)
-
+        ## Publish data
         drift = PoseStamped()
         drift.header.stamp = rospy.Time.now()
+        drift.header.frame_id = 'map'
         drift.pose.position.x = self.x_est[2][0]
         drift.pose.position.y = self.x_est[3][0]
         self.drift_pub.publish(drift)
@@ -142,12 +138,12 @@ class EKFSLAM:
         gate.header.stamp = rospy.Time.now()
         gate.header.frame_id = 'map'
         gate.pose.orientation.w = 1.0
-        for i in range(0, 3):
-            if self.gate_observing == i:
-                gate.pose.position.x = self.gate_pose[i][0]
-                gate.pose.position.y = self.gate_pose[i][1]
-                gate.pose.position.z = self.gate_pose[i][2]
-                self.gate_pose_pub.publish(gate)
+        if self.gate_observing != -1:
+            gate.pose.position.x = self.gate_pose[self.gate_observing][0]
+            gate.pose.position.y = self.gate_pose[self.gate_observing][1]
+            gate.pose.position.z = self.gate_pose[self.gate_observing][2]
+            self.gate_pose_pub.publish(gate)
+        ##
 
         self.r.sleep()
 
@@ -180,10 +176,6 @@ class EKFSLAM:
         self.comp_pose_pub.publish(comp_pose)
 
     def gate_cb(self, msg):
-        self.gate_detected[self.gate_v] = True
-        self.gate_detected[self.gate_h_l] = True
-        self.gate_detected[self.gate_h_r] = True
-
         gate_seeing = String()
         gate_global_pose = np.array([[self.x_est[0][0] + msg.pose.position.x], [self.x_est[1][0] + msg.pose.position.y], [self.local_pose.pose.position.z + msg.pose.position.z]])
 

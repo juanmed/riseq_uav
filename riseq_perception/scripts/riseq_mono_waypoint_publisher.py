@@ -120,8 +120,32 @@ class MonoWaypointDetector():
 
             img = self.bridge.imgmsg_to_cv2(image_msg, "rgb8")
 
-            if not self.saved and self.frames == 15.:
-                cv2.imwrite(r"gatelow.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            if not self.saved and self.frames == 100.:
+                cv2.imwrite(r"gateright100.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+
+            if not self.saved and self.frames == 200.:
+                cv2.imwrite(r"gateright200.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+
+            if not self.saved and self.frames == 300.:
+                cv2.imwrite(r"gateright300.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+
+            if not self.saved and self.frames == 400.:
+                cv2.imwrite(r"gateright400.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+
+            if not self.saved and self.frames == 500.:
+                cv2.imwrite(r"gateright500.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+
+            if not self.saved and self.frames == 600.:
+                cv2.imwrite(r"gateright600.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                print("Image saved!")
+
+            if not self.saved and self.frames == 700.:
+                cv2.imwrite(r"gateright700.jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
                 print("Image saved!")
                 self.saved = True
 
