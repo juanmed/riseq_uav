@@ -88,21 +88,22 @@ class EKFSLAM:
         self.comp_pose_pub = rospy.Publisher('/riseq/drone/pose', PoseStamped, queue_size=10)
         self.drift_pub = rospy.Publisher('/riseq/drone/vo_drift', PoseStamped, queue_size=10)
         self.gate_pose_pub = rospy.Publisher('/riseq/gate/pose', PoseStamped, queue_size=10)
-        self.gate_seeing_pub = rospy.Publisher('/riseq/gate/observing', PoseStamped, queue_size=10)
+        self.gate_seeing_pub = rospy.Publisher('/riseq/gate/observing', String, queue_size=10)
 
         self.local_pose = PoseStamped()
-        self.cur_vo_pose = PoseStamped()
+        self.local_pose.header.frame_id = 'map'
+        self.local_pose.pose.orientation.w = 1.0
 
-        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.local_pose_cb)
-        rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.vo_pose_cb)
-        rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
+        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.vo_pose_cb)
+        # rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.vo_pose_cb)
+        # rospy.Subscriber('/zed/zed_node/pose', PoseStamped, self.vo_pose_cb)
         rospy.Subscriber('/riseq/gate/lpf_global/camera_pose', PoseStamped, self.gate_cb)
         ##
 
     def loop(self):
         ## Update VO measurements
-        self.z[0][0] = self.cur_vo_pose.pose.position.x
-        self.z[1][0] = self.cur_vo_pose.pose.position.y
+        self.z[0][0] = self.local_pose.pose.position.x
+        self.z[1][0] = self.local_pose.pose.position.y
         ##
 
         ## Kalman Filter
@@ -151,7 +152,7 @@ class EKFSLAM:
 
         self.r.sleep()
 
-    def local_pose_cb(self, msg):
+    def vo_pose_cb(self, msg):
         self.local_pose.header.stamp = msg.header.stamp
         self.local_pose.pose.position.x = msg.pose.position.x
         self.local_pose.pose.position.y = msg.pose.position.y
@@ -160,11 +161,6 @@ class EKFSLAM:
         self.local_pose.pose.orientation.y = msg.pose.orientation.y
         self.local_pose.pose.orientation.z = msg.pose.orientation.z
         self.local_pose.pose.orientation.w = msg.pose.orientation.w
-
-    def vo_pose_cb(self, msg):
-        self.cur_vo_pose.header.stamp = msg.header.stamp
-        self.cur_vo_pose.pose.position.x = msg.pose.position.x
-        self.cur_vo_pose.pose.position.y = msg.pose.position.y
 
         # Publish compensated pose
         comp_pose = PoseStamped()
@@ -184,9 +180,9 @@ class EKFSLAM:
         gate_global_pose = np.array([[self.x_est[0][0] + msg.pose.position.x], [self.x_est[1][0] + msg.pose.position.y], [self.local_pose.pose.position.z + msg.pose.position.z]])
 
         ## Calculate distance to the gates
-        dist_v = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_v][0]], [self.gate_pose[self.gate_v][1]]]))
-        dist_h_l = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]))
-        dist_h_r = np.linalg.norm(gate_global_pose - np.array([[self.gate_pose[self.gate_h_r][0]], [self.gate_pose[self.gate_h_r][1]]]))
+        dist_v = np.linalg.norm(gate_global_pose[0:2][:] - np.array([[self.gate_pose[self.gate_v][0]], [self.gate_pose[self.gate_v][1]]]))
+        dist_h_l = np.linalg.norm(gate_global_pose[0:2][:] - np.array([[self.gate_pose[self.gate_h_l][0]], [self.gate_pose[self.gate_h_l][1]]]))
+        dist_h_r = np.linalg.norm(gate_global_pose[0:2][:] - np.array([[self.gate_pose[self.gate_h_r][0]], [self.gate_pose[self.gate_h_r][1]]]))
         ##
 
         ## Classify observed gate
