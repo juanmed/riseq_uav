@@ -66,6 +66,7 @@ class IROS_Coordinator():
 
             elif self.machine.is_Search:
                 if self.gate_found():
+                    self.gate_searcher.searching = False
                     if self.gate_classified():
                         self.fly_global_coordinates = True
                         self.fly_local_coordinates = False
@@ -77,8 +78,8 @@ class IROS_Coordinator():
                     # keep searching
                     if self.gate_searcher.searching: 
                         cont, yaw = self.gate_searcher.search_gate()
-                        if cont:
-                            self.yaw_rotate(yaw)
+                        if cont: # continue searching?
+                            self.yaw_rotate(yaw*180.0/np.pi)
                         else:
                             print("Gate Not Found")
                             self.return_land_disarm()
@@ -109,8 +110,16 @@ class IROS_Coordinator():
         sys.exit(0)
 
     def Fly_To_Gate(self):
+
+        # align drone with gate in YZ plane
+        gate_position = self.average_gate_position(5) + self.drone_camera_offset_vector
+        Rbw = self.get_body_to_world_matrix()
+        goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
+        goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
+        self.go_position(goal_position_yz)
+
         # fly in local coordinates
-        gate_position_drone_frame = self.average_gate_position(10) + self.drone_camera_offset_vector + self.gate_correction_offset
+        gate_position_drone_frame = self.average_gate_position(5) + self.drone_camera_offset_vector + self.gate_correction_offset
         Rbw = self.get_body_to_world_matrix()
         gate_position_local_frame = self.position + np.dot(Rbw, gate_position_drone_frame.reshape(3,1)).reshape(3)
         self.go_position(gate_position_local_frame)  
@@ -147,7 +156,20 @@ class IROS_Coordinator():
         return Rbw
 
     def average_gate_position(self, samples):
-        return self.gate_position
+
+        avg_position = np.zeros(3)
+        i = self.gate_msgs_count + samples
+        o = self.gate_msgs_count
+        while self.gate_msgs_count < i:
+            if o == self.gate_msgs_count:
+                avg_position = avg_position + self.gate_position
+                o = o + 1
+            else:
+                pass 
+        avg_position = avg_position/samples
+
+
+        return avg_position
 
     def gate_classified(self):
         return False
@@ -200,6 +222,7 @@ class IROS_Coordinator():
         self.time_of_last_gate_position = None
         self.fly_global_coordinates = False
         self.fly_local_coordinates = True    # fly in local coordinates by default
+        self.gate_msgs_count = 0
 
         self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
         self.gate_detection_wait_time = rospy.get_param("/perception/gate_detection_wait_time", 1.0)
@@ -351,7 +374,7 @@ class IROS_Coordinator():
         Rotate around yaw axis by 'angle' degrees from current orientation
         """
         yaw = angle*np.pi/180.
-        print("Yawing: {} degrees".format(angle))
+        print("Yawing: {:.2f} degrees".format(angle))
         start = rospy.get_time()
 
         Rdes = tt.euler_matrix(yaw,0.0,0.0, axes = 'rzyx')  # desired rotation as matrix
@@ -421,6 +444,7 @@ class IROS_Coordinator():
         self.gate_position[1] = msg.pose.position.y
         self.gate_position[2] = msg.pose.position.z
         self.time_of_last_gate_position = msg.header.stamp.secs
+        self.gate_msgs_count = self.gate_msgs_count + 1
 
 if __name__ == '__main__':
     try:
