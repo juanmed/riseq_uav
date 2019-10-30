@@ -10,6 +10,7 @@ from mavros_msgs.srv import SetMode
 from mavros_msgs.srv import CommandTOL
 from mavros_msgs.msg import State 
 from geometry_msgs.msg import PoseStamped, TwistStamped
+from std_msgs.msg import String
 from riseq_perception.irosgate_searcher import IROSGateSearcher
 
 
@@ -89,15 +90,11 @@ class IROS_Coordinator():
                         self.gate_searcher.init_yaw = init_yaw
                         self.gate_searcher.yaw = init_yaw
                         self.gate_searcher.searching = True
-                    pass
             
             elif self.machine.is_Fly:
-                if self.fly_global_coordinates:
-                    # do drift correction and fly to gate
-                    self.go_position([1,0,self.hover_height])
-                else:
-                    self.Fly_To_Gate()
-                self.machine.gate_pass()
+                success = self.Fly_To_Gate()
+                if success:
+                    self.machine.gate_pass()
 
             elif self.machine.is_Turn_Advance:
                 self.Turn_Advance()
@@ -110,20 +107,51 @@ class IROS_Coordinator():
         sys.exit(0)
 
     def Fly_To_Gate(self):
+        if self.fly_global_coordinates:
+            gate_position = self.get_gate_global_position()
+            if gate_position is not None:
+                print("Global Coordinates Flight to: {}".format(self.gate_type))
+                goal_position = gate_position + self.vo_drift   # drift compensation only in XY plane
+                
+                gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
+                Rbw = self.get_body_to_world_matrix()
+                gate_position = np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
 
-        # align drone with gate in YZ plane
-        gate_position = self.average_gate_position(5) + self.drone_camera_offset_vector
-        Rbw = self.get_body_to_world_matrix()
-        goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
-        goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
-        self.go_position(goal_position_yz)
+                goal_position[2] = gate_position[2] 
+                self.go_position(goal_position)
+            else:
+                # try to fly in global coordinates
+                self.fly_global_coordinates = False
+                self.fly_local_coordinates = True
+                print(" Global Coordinates Flight Aborted. Trying Local coordinates...")
+                return False
+        else:
+            # align drone with gate in YZ plane
+            print("Local Coordinates Flight...")
+            gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
+            Rbw = self.get_body_to_world_matrix()
+            goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
+            goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
+            self.go_position(goal_position_yz)
 
-        # fly in local coordinates
-        gate_position_drone_frame = self.average_gate_position(5) + self.drone_camera_offset_vector + self.gate_correction_offset
-        Rbw = self.get_body_to_world_matrix()
-        gate_position_local_frame = self.position + np.dot(Rbw, gate_position_drone_frame.reshape(3,1)).reshape(3)
-        self.go_position(gate_position_local_frame)  
+            # fly in local coordinates
+            gate_position_drone_frame = self.average_gate_position(1) + self.drone_camera_offset_vector + self.gate_correction_offset
+            Rbw = self.get_body_to_world_matrix()
+            gate_position_local_frame = self.position + np.dot(Rbw, gate_position_drone_frame.reshape(3,1)).reshape(3)
+            self.go_position(gate_position_local_frame)  
+
         return True      
+
+    def get_gate_global_position():
+        if self.gate_type == 'left':
+            return self.gate_left   
+        elif self.gate_type == 'right':
+            return self.gate_right
+        elif self.gate_type == 'vertical':
+            return self.gate_up
+        else:
+            print("Gate Type : {} is NOT correct for global coordinate flight".format(self.gate_type))
+            return None
 
     def Turn_Advance(self):
 
@@ -167,12 +195,13 @@ class IROS_Coordinator():
             else:
                 pass 
         avg_position = avg_position/samples
-
-
-        return avg_position
+        return self.gate_position
 
     def gate_classified(self):
-        return False
+        if self.gate_type == 'unknown':
+            return False
+        else:
+            return True
 
     def gate_found(self):
         
@@ -184,9 +213,6 @@ class IROS_Coordinator():
             return False
         else:  
             return True
-
-    def vo_drift_cb(self, drift):
-        return True
 
     def setup_mavros(self):
 
@@ -223,6 +249,7 @@ class IROS_Coordinator():
         self.fly_global_coordinates = False
         self.fly_local_coordinates = True    # fly in local coordinates by default
         self.gate_msgs_count = 0
+        self.gate_type = "unknown"
 
         self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
         self.gate_detection_wait_time = rospy.get_param("/perception/gate_detection_wait_time", 1.0)
@@ -232,14 +259,26 @@ class IROS_Coordinator():
         self.one_block = rospy.get_param("/drone/one_block", 1.4)
         self.two_block = rospy.get_param("/drone/two_block", 2.0)
         self.advance_distance = rospy.get_param("/drone/advance_distance", 5)
+        self.gate_up = rospy.get_param('/gates/gate_vertical/up', [6, 0.0, 2.7])
+        self.gate_left = rospy.get_param('/gates/gate_horizontal/left', [-4, 0.0, 2])
+        self.gate_right = rospy.get_param('/gates/gate_horizontal/right', [-4, 1.4, 2])
 
-        rospy.Subscriber("/riseq/estimation/drift", PoseStamped, self.vo_drift_cb)
+        rospy.Subscriber("/riseq/drone/vo_drift", PoseStamped, self.vo_drift_cb)
+        rospy.Subscriber("/riseq/gate/observing", String, self.gate_classification_cb)
         rospy.Subscriber("/riseq/perception/uav_mono_waypoint", PoseStamped, self.gate_waypoint_cb)
+
+    def vo_drift_cb(self, drift):
+        self.vo_drift[0] = drift.pose.position.x
+        self.vo_drift[1] = drift.pose.position.y
+    
+    def gate_classification_cb(self,msg):
+        self.gate_type = msg.data
+
 
     def connect_arm_offboard(self):
         self.wait_mavros_connection()
         self.last_mavros_request = rospy.Time.now()
-        self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
+        self.enable_sim = rospy.get_param('/drone/auto_arm_offboard', False)
         if(self.enable_sim):
             self.send_setpoints()
             self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_arm_offboard_cb)
