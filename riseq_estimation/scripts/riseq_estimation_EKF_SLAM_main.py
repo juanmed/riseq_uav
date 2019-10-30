@@ -47,6 +47,10 @@ class EKFSLAM:
         self.gate_observing = -1
         self.gate_last = -1
         self.gate_first = rospy.get_param('/gates/at_first', self.gate_v)
+        if self.gate_first != self.gate_v:
+            for i in range(0, 3):
+                for j in range(0, 2):
+                    self.gate_pose[i][j] = -self.gate_pose[i][j]
         ##
 
         ## State
@@ -66,16 +70,15 @@ class EKFSLAM:
         self.B[0][0] = 1.0
         self.B[1][1] = 1.0
         self.u = np.zeros((2, 1))                                   # odometry(traveled distance) as input. B*u=I*(v*dt)
-        self.Q = np.zeros((4, 4))
-        self.Q[0:4, 0:4] = np.eye(4) * 1e-5
+        self.Q = np.eye(4) * 1e-5
 
-        self.z = np.array([[0.0],                                   # VO position. gate_global_pose position + drift
-                           [0.0],
-                           [0.0],                                   # distance to the gate in local frame
-                           [0.0]])
-        self.H_full = np.array([[1.0, 0.0, 1.0, 0.0],
+        self.z = np.array([[0.0],                                   # VO position x
+                           [0.0],                                   #             y
+                           [0.0],                                   # distance to the gate in local frame x(depth)
+                           [0.0]])                                  #                                     y(horizon)
+        self.H_full = np.array([[1.0, 0.0, 1.0, 0.0],               # VO_poseition = real_position + drift
                                 [0.0, 1.0, 0.0, 1.0],
-                                [-1.0, 0.0, 0.0, 0.0],
+                                [-1.0, 0.0, 0.0, 0.0],              # gate_camera_frame = gate_global_frame - drone_global_frame
                                 [0.0, -1.0, 0.0, 0.0]])
         self.R = np.eye(4) * 1e-4
         self.R[2:4, 2:4] = np.eye(2) * 1e-4
@@ -103,7 +106,7 @@ class EKFSLAM:
         ##
 
         ## Kalman Filter
-        if self.gate_observing == -1:   # Gate not detected
+        if self.gate_observing == -1:
             # self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
             # self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
             # self.P_pre[2:4, 2:4] = np.eye(2) * 1e-4
@@ -112,7 +115,7 @@ class EKFSLAM:
             # self.x_est = self.x_pre + np.dot(K, self.z[0:2, :] - np.dot(H, self.x_pre))
             # self.P_est = np.dot(np.eye(4) - np.dot(K, H), self.P_pre)
             self.x_est[0:2, :] = self.z[0:2, :] - self.x_est[2:4, :]
-        else:   # Gate detected
+        else:
             self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
             self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
             # self.P_pre[2:4, 2:4] = np.eye(2) * 1e1
