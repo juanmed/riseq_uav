@@ -45,15 +45,18 @@ class IROSGateSearcher:
             if self.erode_iter > self.erode_min:
                 print "erode down"
                 self.erode_iter = self.erode_iter - 1
+                rospy.set_param("erode_iter", self.erode_iter)
             else:
                 if self.dilate_iter < self.dilate_max:
                     print "dilate up"
                     self.dilate_iter = self.dilate_iter + 1
+                    rospy.set_param("dilate_iter", self.dilate_iter)
                 else:
                     print "cannot find gate..."
                     self.dilate_iter = 2
                     self.erode_iter = 4
-                    return False, self.yaw  # This means that there is no more step.
+                    self.yaw = self.initial_yaw  # This means that there is no more step.
+                    return False,
             self.turn_left = True
             self.turn_right = False
 

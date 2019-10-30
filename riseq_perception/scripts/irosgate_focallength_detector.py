@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+
+import rospy
 import os
 import time
 import numpy as np
@@ -39,8 +43,8 @@ class IROSGateDetector():
         self.image_height = 720
 
         # This params must be initialized with the best performing values
-        self.dilate_iter = 3
-        self.erode_iter = 3
+        self.dilate_iter = 2
+        self.erode_iter = 4
         self.saturation_low = 50
         self.epsilon = 0.1  # should be between 0.02 to 0.15
         self.gauss_k = 5  # should be 3 or 5, but no more
@@ -179,6 +183,9 @@ class IROSGateDetector():
             cnts: list of candidate contours that were evaluated in look for
             squares
         """
+        self.dilate_iter = rospy.get_param("dilate_iter", 2)
+        self.erode_iter = rospy.get_param("erode_iter", 4)
+
         scale = 1.0
         orig_shape = (img.shape[1], img.shape[0])   # need to store them in inverse order (1,0)
                                                     # instead of (0,1) 'cause, weirdly enough, opencv wants it this way

@@ -27,3 +27,4 @@ gates:
         right: [-4, 1.4, 2]
 #    drone_init: [, , ]
 #    detection_thresholds: [, , ]
+#    at_first: 0
