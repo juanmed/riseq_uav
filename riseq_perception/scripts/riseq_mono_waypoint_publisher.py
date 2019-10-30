@@ -93,7 +93,6 @@ class MonoWaypointDetector():
             The detected translation as a 3-vector (np.array, [x,y,z]) and 
             orientation as a quaternion 4-vector(np.array, [x,y,z,w])
         """
-
         r = rospy.Rate(2)
         while not self.camera_info_received:
             rospy.loginfo("Camera Info not yet received. Waiting...")
@@ -123,31 +122,6 @@ class MonoWaypointDetector():
             if not self.saved and self.frames == 100.:
                 cv2.imwrite(r"gateright100.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
                 print("Image saved!")
-
-            if not self.saved and self.frames == 200.:
-                cv2.imwrite(r"gateright200.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-                print("Image saved!")
-
-            if not self.saved and self.frames == 300.:
-                cv2.imwrite(r"gateright300.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-                print("Image saved!")
-
-            if not self.saved and self.frames == 400.:
-                cv2.imwrite(r"gateright400.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-                print("Image saved!")
-
-            if not self.saved and self.frames == 500.:
-                cv2.imwrite(r"gateright500.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-                print("Image saved!")
-
-            if not self.saved and self.frames == 600.:
-                cv2.imwrite(r"gateright600.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-                print("Image saved!")
-
-            if not self.saved and self.frames == 700.:
-                cv2.imwrite(r"gateright700.jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-                print("Image saved!")
-                self.saved = True
 
             #path = Path()
             #path.header.stamp = rospy.Time.now()
