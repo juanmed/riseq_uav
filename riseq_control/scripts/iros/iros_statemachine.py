@@ -66,44 +66,85 @@ class IROS_Coordinator():
             elif self.machine.is_Search:
                 if self.gate_found():
                     if self.gate_classified():
-                        self.fly_global_coordinates()
+                        self.fly_global_coordinates = True
+                        self.fly_local_coordinates = False
                     else:
-                        self.fly_local_coordinates()
+                        self.fly_global_coordinates = False
+                        self.fly_local_coordinates = True
                     self.machine.gate_found()
                 else:
                     # keep searching
+
                     pass
             
             elif self.machine.is_Fly:
-                if self.fly_global_coordinates():
+                if self.fly_global_coordinates:
                     # do drift correction and fly to gate
                     self.go_position([1,0,self.hover_height])
                 else:
                     # fly in local coordinates
-                    self.go_position([1,0,self.hover_height])
+                    gate_position_cam_frame = self.average_gate_position(10) + self.drone_camera_offset_vector + self.gate_correction_offset
+                    Rbw = self.get_body_to_world_matrix()
+                    gate_position = self.position + np.dot(Rbw, gate_position_cam_frame.reshape(3,1)).reshape(3)
+                    self.go_position(gate_position)
                 self.machine.gate_pass()
 
             elif self.machine.is_Turn_Advance:
-                self.go_position([2,2,self.hover_height])
-                self.yaw_rotate(90)
+                self.Turn_Advance()
                 self.machine.repeat()
+
             else:
                 print("FATAL ERROR:\nCurrent machine state is not supported: {}".format(self.machine.current_state))
                 self.return_land_disarm()
 
         sys.exit(0)
 
-    def fly_global_coordinates(self):
-        return True
+    def Turn_Advance(self):
 
-    def fly_local_coordinates(self):
-        return 0
+        if self.fly_global_coordinates:
+            return True
+        else:
+            # Move in local coordinates without knowledge of which gate pass just passed
+
+            # Move two "blocks"
+            Rbw = self.get_body_to_world_matrix()
+            sideways_vector = np.array([[0],[self.two_block],[0]])
+            goal_pose = self.position + np.dot(Rbw, sideways_vector).reshape(3)
+            # Adjust to hover height
+            goal_pose[2] = self.hover_height        
+            self.go_position(goal_pose)
+
+            # Rotate
+            self.yaw_rotate(180)   
+
+            # Advance forward
+            Rbw = self.get_body_to_world_matrix()
+            forward_vector = np.array([[self.advance_distance],[0],[0]])
+            goal_pose = self.position + np.dot(Rbw, forward_vector).reshape(3)
+            self.go_position(goal_pose)
+            return True
+
+    def get_body_to_world_matrix(self):
+        Rwb = tt.quaternion_matrix(self.orientation.tolist())
+        Rbw = Rwb[0:3,0:3].T
+        return Rbw
+
+    def average_gate_position(self, samples):
+        return self.gate_position
 
     def gate_classified(self):
         return False
 
     def gate_found(self):
-        return True
+        
+        if self.time_of_last_gate_position is None:
+            # gate still not found
+            return False
+        elif ( rospy.Time.now().secs - self.time_of_last_gate_position) > self.gate_detection_wait_time :
+            # wait time passed... conclude that gate was not detected
+            return False
+        else:  
+            return True
 
     def vo_drift_cb(self, drift):
         return True
@@ -133,13 +174,26 @@ class IROS_Coordinator():
         self.machine = IROS_StateMachine()
 
         self.vo_drift = np.zeros(3)
-        self.state = np.zeros(3)
+        self.position = np.zeros(3)
+        self.orientation = np.zeros(4)
         self.command_pose = np.zeros(3)
         self.home_pose = np.zeros(3)
+        self.gate_position = np.zeros(3)
+        self.time_of_last_gate_position = None
+        self.fly_global_coordinates = False
+        self.fly_local_coordinates = True    # fly in local coordinates by default
 
         self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
+        self.gate_detection_wait_time = rospy.get_param("/perception/gate_detection_wait_time", 1.0)
+        self.position_error_threshold = rospy.get_param("/drone/position_error_threshold", 0.2)
+        self.drone_camera_offset_vector = np.array(rospy.get_param("/drone/drone_camera_offset_vector",[0.14,0,0]))
+        self.gate_correction_offset = np.array(rospy.get_param("/drone/gate_correction_offset", [1.0,0,0]))
+        self.one_block = rospy.get_param("/drone/one_block", 1.4)
+        self.two_block = rospy.get_param("/drone/two_block", 2.0)
+        self.advance_distance = rospy.get_param("/drone/advance_distance", 5)
 
         rospy.Subscriber("/riseq/estimation/drift", PoseStamped, self.vo_drift_cb)
+        rospy.Subscriber("/riseq/perception/uav_mono_waypoint", PoseStamped, self.gate_waypoint_cb)
 
     def connect_arm_offboard(self):
         self.wait_mavros_connection()
@@ -229,46 +283,72 @@ class IROS_Coordinator():
             self.home_pose[2] = pos.pose.position.z
             self.home_pose_set = True
 
-        self.state[0] = pos.pose.position.x
-        self.state[1] = pos.pose.position.y
-        self.state[2] = pos.pose.position.z
+        self.position[0] = pos.pose.position.x
+        self.position[1] = pos.pose.position.y
+        self.position[2] = pos.pose.position.z
 
-        #self.state.pose.orientation.x = pos.pose.orientation.x
-        #self.state.pose.orientation.y = pos.pose.orientation.y
-        #self.state.pose.orientation.z = pos.pose.orientation.z
-        #self.state.pose.orientation.w = pos.pose.orientation.w
+        self.orientation[0] = pos.pose.orientation.x
+        self.orientation[1] = pos.pose.orientation.y
+        self.orientation[2] = pos.pose.orientation.z
+        self.orientation[3] = pos.pose.orientation.w
 
     def velocity_cb(self, vel):
 
-        self.state.twist.twist.linear.x = vel.twist.linear.x
-        self.state.twist.twist.linear.y = vel.twist.linear.y
-        self.state.twist.twist.linear.z = vel.twist.linear.z
+        self.position.twist.twist.linear.x = vel.twist.linear.x
+        self.position.twist.twist.linear.y = vel.twist.linear.y
+        self.position.twist.twist.linear.z = vel.twist.linear.z
 
-        self.state.twist.twist.angular.x = vel.twist.angular.x
-        self.state.twist.twist.angular.y = vel.twist.angular.y
-        self.state.twist.twist.angular.z = vel.twist.angular.z
+        self.position.twist.twist.angular.x = vel.twist.angular.x
+        self.position.twist.twist.angular.y = vel.twist.angular.y
+        self.position.twist.twist.angular.z = vel.twist.angular.z
 
     def take_off(self, height):
         self.command_pose[2] = height
         rate = rospy.Rate(20)
-        while (self.state[2] < height*0.95 ):
+        while (self.position[2] < height*0.95 ):
             self.publish_command(self.command_pose)
             rate.sleep()
 
-    def yaw_rotate(self, angle):
+    def set_yaw_rotation(self, angle):
         yaw = angle*np.pi/180.
-        print("YAWing")
+        print("Yawing: {} degrees".format(angle))
         start = rospy.get_time()
         q90 = tt.quaternion_from_euler(yaw,0,0.0, axes = 'rzyx')
+
         self.command_pose_msg.pose.orientation.x = q90[0]
         self.command_pose_msg.pose.orientation.y = q90[1]
         self.command_pose_msg.pose.orientation.z = q90[2]
         self.command_pose_msg.pose.orientation.w = q90[3]
+
+
+
         rate = rospy.Rate(20)
-        while( (rospy.get_time() - start) < 5):
+        while( (rospy.get_time() - start) < 1):
             self.command_pose_msg.header.stamp = rospy.Time.now()
             self.local_pos_pub.publish(self.command_pose_msg)
             rate.sleep()  
+
+    def yaw_rotate(self, angle):
+        yaw = angle*np.pi/180.
+        print("Yawing: {} degrees".format(angle))
+        start = rospy.get_time()
+
+        Rdes = tt.euler_matrix(yaw,0.0,0.0, axes = 'rzyx')  # desired rotation as matrix
+        R = tt.quaternion_matrix(self.orientation.tolist()) # current rotation as matrix
+        Rcmd = np.dot(Rdes,R)                               # total rotation as matrix
+        qcmd = tt.quaternion_from_matrix(Rcmd)              # total rotaion as quaternion
+
+        self.command_pose_msg.pose.orientation.x = qcmd[0]
+        self.command_pose_msg.pose.orientation.y = qcmd[1]
+        self.command_pose_msg.pose.orientation.z = qcmd[2]
+        self.command_pose_msg.pose.orientation.w = qcmd[3]
+
+        rate = rospy.Rate(20)
+        while( (rospy.get_time() - start) < 5.0):
+            self.command_pose_msg.header.stamp = rospy.Time.now()
+            self.local_pos_pub.publish(self.command_pose_msg)
+            rate.sleep()
+
 
     def go_position(self,position):
 
@@ -277,7 +357,7 @@ class IROS_Coordinator():
         self.command_pose[2] = position[2]
 
         rate = rospy.Rate(20)
-        while (self.position_error(self.command_pose, self.state) >= 0.2 ):
+        while (self.position_error(self.command_pose, self.position) >= self.position_error_threshold ):
             self.publish_command(self.command_pose)
             rate.sleep()
 
@@ -315,6 +395,12 @@ class IROS_Coordinator():
         self.command_pose_msg.pose.position.y = command[1]
         self.command_pose_msg.pose.position.z = command[2]
         self.local_pos_pub.publish(self.command_pose_msg)
+
+    def gate_waypoint_cb(self, msg):
+        self.gate_position[0] = msg.pose.position.x
+        self.gate_position[1] = msg.pose.position.y
+        self.gate_position[2] = msg.pose.position.z
+        self.time_of_last_gate_position = msg.header.stamp.secs
 
 if __name__ == '__main__':
     try:
