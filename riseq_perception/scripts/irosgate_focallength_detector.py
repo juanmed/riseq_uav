@@ -39,8 +39,8 @@ class IROSGateDetector():
         self.image_height = 720
 
         # This params must be initialized with the best performing values
-        self.dilate_iter = 2
-        self.erode_iter = 4
+        self.dilate_iter = 3
+        self.erode_iter = 3
         self.saturation_low = 50
         self.epsilon = 0.1  # should be between 0.02 to 0.15
         self.gauss_k = 5  # should be 3 or 5, but no more
