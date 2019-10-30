@@ -13,7 +13,7 @@ drone:
     hover_height: 1.5 #m
     position_error_threshold: 0.2 # error threshold for position command
     one_block: 1.4
-    two_block: -2.0
+    two_block: 2.0
     drone_camera_offset_vector: [0.17,0,0]
     gate_correction_offset: [1.0,0,0]
     advance_distance: 5
