@@ -29,3 +29,4 @@ environment: "simulator"  # real
 #        right: [, , 1.7]
 #    drone_init: [, , ]
 #    detection_thresholds: [, , ]
+#    at_first: 0
