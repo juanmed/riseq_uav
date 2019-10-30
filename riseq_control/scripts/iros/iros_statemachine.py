@@ -153,7 +153,6 @@ class IROS_Coordinator():
             print("Gate Type : {} is NOT correct for global coordinate flight".format(self.gate_type))
             return None
 
-
     def Turn_Advance(self):
 
         if self.fly_global_coordinates:
@@ -196,7 +195,7 @@ class IROS_Coordinator():
             else:
                 pass 
         avg_position = avg_position/samples
-        return avg_position
+        return self.gate_position
 
     def gate_classified(self):
         if self.gate_type == 'unknown':
@@ -279,7 +278,7 @@ class IROS_Coordinator():
     def connect_arm_offboard(self):
         self.wait_mavros_connection()
         self.last_mavros_request = rospy.Time.now()
-        self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
+        self.enable_sim = rospy.get_param('/drone/auto_arm_offboard', False)
         if(self.enable_sim):
             self.send_setpoints()
             self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_arm_offboard_cb)

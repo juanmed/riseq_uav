@@ -15,6 +15,7 @@ drone:
     drone_camera_offset_vector: [0.17,0,0]
     gate_correction_offset: [1.0,0,0]
     advance_distance: 5
+    auto_arm_offboard: true
 
 environment: "simulator"  # real
 
