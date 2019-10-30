@@ -10,6 +10,7 @@ from mavros_msgs.srv import SetMode
 from mavros_msgs.srv import CommandTOL
 from mavros_msgs.msg import State 
 from geometry_msgs.msg import PoseStamped, TwistStamped
+from riseq_perception.irosgate_searcher import IROSGateSearcher
 
 
 from statemachine import StateMachine
@@ -74,7 +75,19 @@ class IROS_Coordinator():
                     self.machine.gate_found()
                 else:
                     # keep searching
-
+                    if self.gate_searcher.searching: 
+                        cont, yaw = self.gate_searcher.search_gate()
+                        if cont:
+                            self.yaw_rotate(yaw)
+                        else:
+                            print("Gate Not Found")
+                            self.return_land_disarm()
+                    else:
+                        # 
+                        init_yaw, pitch, roll = tt.euler_from_quaternion(self.orientation.tolist(), axes = 'rzyx')
+                        self.gate_searcher.init_yaw = init_yaw
+                        self.gate_searcher.yaw = init_yaw
+                        self.gate_searcher.searching = True
                     pass
             
             elif self.machine.is_Fly:
@@ -82,11 +95,7 @@ class IROS_Coordinator():
                     # do drift correction and fly to gate
                     self.go_position([1,0,self.hover_height])
                 else:
-                    # fly in local coordinates
-                    gate_position_cam_frame = self.average_gate_position(10) + self.drone_camera_offset_vector + self.gate_correction_offset
-                    Rbw = self.get_body_to_world_matrix()
-                    gate_position = self.position + np.dot(Rbw, gate_position_cam_frame.reshape(3,1)).reshape(3)
-                    self.go_position(gate_position)
+                    self.Fly_To_Gate()
                 self.machine.gate_pass()
 
             elif self.machine.is_Turn_Advance:
@@ -98,6 +107,14 @@ class IROS_Coordinator():
                 self.return_land_disarm()
 
         sys.exit(0)
+
+    def Fly_To_Gate(self):
+        # fly in local coordinates
+        gate_position_drone_frame = self.average_gate_position(10) + self.drone_camera_offset_vector + self.gate_correction_offset
+        Rbw = self.get_body_to_world_matrix()
+        gate_position_local_frame = self.position + np.dot(Rbw, gate_position_drone_frame.reshape(3,1)).reshape(3)
+        self.go_position(gate_position_local_frame)  
+        return True      
 
     def Turn_Advance(self):
 
@@ -172,6 +189,7 @@ class IROS_Coordinator():
     def setup_iros(self):
 
         self.machine = IROS_StateMachine()
+        self.gate_searcher = IROSGateSearcher(initial_yaw = 0)
 
         self.vo_drift = np.zeros(3)
         self.position = np.zeros(3)
@@ -329,6 +347,9 @@ class IROS_Coordinator():
             rate.sleep()  
 
     def yaw_rotate(self, angle):
+        """
+        Rotate around yaw axis by 'angle' degrees from current orientation
+        """
         yaw = angle*np.pi/180.
         print("Yawing: {} degrees".format(angle))
         start = rospy.get_time()
@@ -348,7 +369,6 @@ class IROS_Coordinator():
             self.command_pose_msg.header.stamp = rospy.Time.now()
             self.local_pos_pub.publish(self.command_pose_msg)
             rate.sleep()
-
 
     def go_position(self,position):
 

@@ -12,12 +12,13 @@ from geometry_msgs.msg import PoseStamped
 
 
 class IROSGateSearcher:
-    def __init__(self):
+    def __init__(self, initial_yaw = 0.0):
         self.bridge = CvBridge()
 
-        self.initial_yaw = 0
-        self.yaw = 0
+        self.initial_yaw = initial_yaw
+        self.yaw = initial_yaw
         self.theta = rospy.get_param("/perception/yaw_size", 30)
+        self.searching = False
 
         self.dilate_iter = 2
         self.erode_iter = 4
@@ -94,7 +95,7 @@ class IROSGateSearcher:
                     self.irosgate_detector.erode_iter = self.erode_iter
                     self.irosgate_detector.dilate_iter = self.dilate_iter
                     return False  # This means that there is no more step.
-        return True
+        return True, self.yaw
 
     def init_param(self, msg):
         self.camera_height = msg.height
