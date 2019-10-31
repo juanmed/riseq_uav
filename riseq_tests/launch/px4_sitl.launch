@@ -85,19 +85,25 @@
   <include file="$(find riseq_gazebo)/launch/spawn_arena.launch"/>
 
   <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
+  <rosparam command="load" file="$(find riseq_common)/config/env/iros_settings.yaml"/>
   <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
 
   <!--node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"
         args="/mavros/local_position/pose/pose/position "/-->
 
-  <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O $(arg rosbag_name) riseq/perception/uav_image_with_detections /mavros/global_position/global /mavros/local_position/pose"/>
+  <!--node name="rosbag_record" pkg="rosbag" type="record"
+        args="-O $(arg rosbag_name) riseq/perception/uav_image_with_detections /mavros/global_position/global /mavros/local_position/pose"/-->
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/challenge.rviz"/>
 
-  <!--node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen">
-    <remap from="/zed/zed_node/left_raw/image_raw_color" to="/iris/camera_nadir/image_raw" />
-    <remap from="/zed/zed_node/left_raw/camera_info" to="/iris/camera_nadir/camera_info" />
-  </node-->
-  <node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/>
+  <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen">
+    <remap from="/zed/zed_node/left/image_rect_color" to="/iris/camera_nadir/image_raw" />
+    <remap from="/zed/zed_node/left/camera_info" to="/iris/camera_nadir/camera_info" />
+  </node>
+
+  <node name="gate_global_pose" pkg="riseq_estimation" type="riseq_estimation_gate_global_pose.py"/>
+  <node name="drift_estimator" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM_main.py" output="screen"/>
+
+
+  <!--node name="gate_pose_publisher" pkg="riseq_tests" type="irosgate_pose.py" output="screen"/-->
 </launch>

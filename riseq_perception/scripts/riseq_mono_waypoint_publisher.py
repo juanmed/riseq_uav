@@ -51,8 +51,8 @@ class MonoWaypointDetector():
         self.waypoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint", PoseStamped, queue_size = 10)
         self.img_dect_pub = rospy.Publisher("riseq/perception/uav_image_with_detections", Image, queue_size = 10)
         self.object_centerpoint_pub = rospy.Publisher("riseq/perception/uav_mono_waypoint2d", PoseStamped, queue_size = 10)        
-        self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left_raw/image_raw_color", Image, self.estimate_object_pose)
-        self.frontCamera_Mono_info = rospy.Subscriber("/zed/zed_node/left_raw/camera_info", CameraInfo, self.camera_params)
+        self.frontCamera_Mono = rospy.Subscriber("/zed/zed_node/left/image_rect_color", Image, self.estimate_object_pose)
+        self.frontCamera_Mono_info = rospy.Subscriber("/zed/zed_node/left/camera_info", CameraInfo, self.camera_params)
         #self.frontCamera_Mono = rospy.Subscriber("/iris/camera_nadir/image_raw", Image, self.estimate_object_pose)
         #self.frontCamera_Mono_info = rospy.Subscriber("/iris/camera_nadir/camera_info", CameraInfo, self.camera_params)
         self.bridge = CvBridge()
@@ -93,7 +93,6 @@ class MonoWaypointDetector():
             The detected translation as a 3-vector (np.array, [x,y,z]) and 
             orientation as a quaternion 4-vector(np.array, [x,y,z,w])
         """
-
         r = rospy.Rate(2)
         while not self.camera_info_received:
             rospy.loginfo("Camera Info not yet received. Waiting...")
@@ -120,10 +119,9 @@ class MonoWaypointDetector():
 
             img = self.bridge.imgmsg_to_cv2(image_msg, "rgb8")
 
-            if not self.saved and self.frames == 15.:
-                cv2.imwrite(r"gatelow.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            if not self.saved and self.frames == 100.:
+                cv2.imwrite(r"gateright100.jpg",cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
                 print("Image saved!")
-                self.saved = True
 
             #path = Path()
             #path.header.stamp = rospy.Time.now()

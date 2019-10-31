@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-
-
-import rospy
 import os
 import time
 import numpy as np
@@ -54,13 +50,13 @@ class IROSGateDetector():
 
         # For how to decide HSV color boundaries, look
         # https://stackoverflow.com/questions/10948589/choosing-the-correct-upper-and-lower-hsv-boundaries-for-color-detection-withcv
-        self.HSVboundaries = [ ([165, 100, 40], [180, 255, 255]), #red upper range
-                               ([0, 100, 40], [15, 255, 255]),    # red lower range
-                               ([40, 50, 40], [80, 255, 255]),  # green range
+        self.HSVboundaries = [ #([165, 100, 40], [180, 255, 255]), #red upper range
+                               #([0, 100, 40], [15, 255, 255]),    # red lower range
+                               #([40, 50, 40], [80, 255, 255]),  # green range
                                ([self.blue_low, self.saturation_low, self.vue_low],[self.blue_high, 255, 255])]  # blue range
-        #green = ([60 - 20, 100, 40], [60 + 20, 255, 255])
-        #blue = ([self.blue_low, self.saturation_low, self.vue_low],[self.blue_high, 255, 255])
-        #self.HSVboundaries = [green, blue]
+        green = ([60 - 20, 100, 40], [60 + 20, 255, 255])
+        blue = ([self.blue_low, self.saturation_low, self.vue_low],[self.blue_high, 255, 255])
+        self.HSVboundaries = [green, blue]
 
         # Define corners of 3D Model's bounding cube
         self.corners3D = np.zeros((4, 3))
@@ -183,9 +179,6 @@ class IROSGateDetector():
             cnts: list of candidate contours that were evaluated in look for
             squares
         """
-        self.dilate_iter = rospy.get_param("dilate_iter", 2)
-        self.erode_iter = rospy.get_param("erode_iter", 4)
-
         scale = 1.0
         orig_shape = (img.shape[1], img.shape[0])   # need to store them in inverse order (1,0)
                                                     # instead of (0,1) 'cause, weirdly enough, opencv wants it this way

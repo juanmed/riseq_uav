@@ -122,6 +122,7 @@ def main():
             gate_right_pose_pub.publish(gate_msg)
             drone_pose = None
             gate_pose_mono = None
+            print("**Drone pose: {}, Gate Pose Mono: {}".format(drone_pose, gate_pose_mono))
         else:
             print("Drone pose: {}, Gate Pose Mono: {}".format(drone_pose, gate_pose_mono))
         r.sleep()

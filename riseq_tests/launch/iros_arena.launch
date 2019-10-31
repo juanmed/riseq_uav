@@ -1,4 +1,7 @@
 <launch>
+    <arg name="mav_name" default="iris"/>
+    <rosparam command="load" file="$(find riseq_common)/config/env/iros_settings.yaml" />
+    <rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>
     <!-- vehicle pose -->
     <arg name="x" default="0"/>
     <arg name="y" default="0"/>
@@ -82,5 +85,16 @@
         <remap from="/zed/zed_node/left_raw/camera_info" to="/stereo/left/camera_info" />
     </node>-->
 
+    <!--
+    <node name="gate_detector" pkg="riseq_trajectory" type="irosgate_detector.py">
+        <remap from="/zed/zed_node/left/camera_info" to="/stereo/left/camera_info" />
+        <remap from="/zed/zed_node/left/image_rect_color" to="/stereo/left/image_rect_color" />
+    </node>
+    -->
+
+    <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py" output="screen">
+        <remap from="/zed/zed_node/left/image_rect_color" to="/stereo/left/image_rect_color" />
+        <remap from="/zed/zed_node/left/camera_info" to="/stereo/left/camera_info" />
+    </node>
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find riseq_tests)/launch/iros_arena.rviz"/>
 </launch>
