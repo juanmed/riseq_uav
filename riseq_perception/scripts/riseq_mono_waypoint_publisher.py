@@ -127,7 +127,7 @@ class MonoWaypointDetector():
             #path.header.stamp = rospy.Time.now()
             #path.header.frame_id = ""
 
-            wp = PoseStamped()
+            wp = None
             wp2d = PoseStamped()
 
 

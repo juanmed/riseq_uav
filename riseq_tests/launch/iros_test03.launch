@@ -15,7 +15,7 @@
   <!--node name="drift_estimator" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM_main.py" output="screen"/-->
   <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py"/>
   <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-o $(arg rosbag_name) /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left/camera_info  /riseq/perception/uav_mono_waypoint riseq/perception/uav_image_with_detections /vrpn_client_node/Fastquad/pose /vrpn_client_node/gatedown/pose /vrpn_client_node/gateright/pose /mavros/setpoint_position/local /riseq/drone/pose /riseq/drone/vo_drift /riseq/gate/pose /riseq/gate/observing /riseq/gate/lpf_global/camera_pose /riseq/gate/lpf_global/global_pose" />
+        args="-o $(arg rosbag_name) /tf /tf_static /mavros/local_position/pose /mavros/local_position/velocity_local /zed/zed_node/odom /zed/zed_node/pose_with_covariance /zed/zed_node/left/camera_info  /mavros/imu/data /mavros/imu/data_raw /mavros/imu/diff_pressure /mavros/imu/mag /mavros/px4flow/ground_distance /mavros/px4flow/raw/optical_flow_rad /mavros/px4flow/raw/send /riseq/perception/uav_mono_waypoint riseq/perception/uav_image_with_detections /vrpn_client_node/Fastquad/pose /vrpn_client_node/gatedown/pose /vrpn_client_node/gateright/pose /mavros/setpoint_position/local /riseq/drone/pose /riseq/drone/vo_drift /riseq/gate/pose /riseq/gate/observing /riseq/gate/lpf_global/camera_pose /riseq/gate/lpf_global/global_pose" />
 
   <!-- /zed/zed_node/left/image_rect_color -->
 
