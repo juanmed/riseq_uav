@@ -107,6 +107,14 @@ class IROS_Coordinator():
         sys.exit(0)
 
     def Fly_To_Gate(self):
+        # align drone with gate in YZ plane
+        gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
+        Rbw = self.get_body_to_world_matrix()
+        goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
+        goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
+        self.go_position(goal_position_yz)
+
+
         if self.fly_global_coordinates:
             gate_position = self.get_gate_global_position()
             if gate_position is not None:
@@ -115,9 +123,16 @@ class IROS_Coordinator():
                 
                 gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
                 Rbw = self.get_body_to_world_matrix()
-                gate_position = np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
+                gate_position = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
 
-                goal_position[2] = gate_position[2] 
+                goal_position[2] = gate_position[2] # 
+
+                # add correction offset to ensure gate pass
+                if(goal_position[0]<0):
+                    goal_position[0] = goal_position[0] - self.gate_correction_offset[0]
+                else:
+                    goal_position[0] = goal_position[0] + self.gate_correction_offset[0]
+
                 self.go_position(goal_position)
             else:
                 # try to fly in global coordinates
@@ -126,15 +141,8 @@ class IROS_Coordinator():
                 print(" Global Coordinates Flight Aborted. Trying Local coordinates...")
                 return False
         else:
-            # align drone with gate in YZ plane
-            print("Local Coordinates Flight...")
-            gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
-            Rbw = self.get_body_to_world_matrix()
-            goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
-            goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
-            self.go_position(goal_position_yz)
-
             # fly in local coordinates
+            print("Local Coordinates Flight...")
             gate_position_drone_frame = self.average_gate_position(1) + self.drone_camera_offset_vector + self.gate_correction_offset
             Rbw = self.get_body_to_world_matrix()
             gate_position_local_frame = self.position + np.dot(Rbw, gate_position_drone_frame.reshape(3,1)).reshape(3)
@@ -142,7 +150,7 @@ class IROS_Coordinator():
 
         return True      
 
-    def get_gate_global_position():
+    def get_gate_global_position(self):
         if self.gate_type == 'left':
             return self.gate_left   
         elif self.gate_type == 'right':
@@ -156,27 +164,33 @@ class IROS_Coordinator():
     def Turn_Advance(self):
 
         if self.fly_global_coordinates:
-            return True
+            if self.gate_type == 'vertical' or self.gate_type == 'left':
+                sideways_vector = np.array([[0],[self.one_block],[0]])
+            elif self.gate_type == 'right':
+                sideways_vector = np.array([[0],[self.two_block],[0]])
+            else:
+                # if for some reason the gate type is lost
+                sideways_vector = np.array([[0],[self.two_block],[0]])
         else:
             # Move in local coordinates without knowledge of which gate pass just passed
-
             # Move two "blocks"
-            Rbw = self.get_body_to_world_matrix()
             sideways_vector = np.array([[0],[self.two_block],[0]])
-            goal_pose = self.position + np.dot(Rbw, sideways_vector).reshape(3)
-            # Adjust to hover height
-            goal_pose[2] = self.hover_height        
-            self.go_position(goal_pose)
 
-            # Rotate
-            self.yaw_rotate(180)   
+        Rbw = self.get_body_to_world_matrix()
+        goal_pose = self.position + np.dot(Rbw, sideways_vector).reshape(3)
+        # Adjust to hover height
+        goal_pose[2] = self.hover_height        
+        self.go_position(goal_pose)
 
-            # Advance forward
-            Rbw = self.get_body_to_world_matrix()
-            forward_vector = np.array([[self.advance_distance],[0],[0]])
-            goal_pose = self.position + np.dot(Rbw, forward_vector).reshape(3)
-            self.go_position(goal_pose)
-            return True
+        # Rotate
+        self.yaw_rotate(180)   
+
+        # Advance forward
+        Rbw = self.get_body_to_world_matrix()
+        forward_vector = np.array([[self.advance_distance],[0],[0]])
+        goal_pose = self.position + np.dot(Rbw, forward_vector).reshape(3)
+        self.go_position(goal_pose)
+        return True
 
     def get_body_to_world_matrix(self):
         Rwb = tt.quaternion_matrix(self.orientation.tolist())
