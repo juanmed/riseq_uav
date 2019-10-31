@@ -107,7 +107,7 @@ class EKFSLAM:
         ##
 
         ## Kalman Filter
-        if self.gate_observing == -1:
+        if self.gate_observing < 0:
             # self.x_pre = np.dot(self.F, self.x_est) + np.dot(self.B, self.u)
             # self.P_pre = np.linalg.multi_dot([self.F, self.P_est, self.F.T]) + self.Q
             # self.P_pre[2:4, 2:4] = np.eye(2) * 1e-4
@@ -143,7 +143,7 @@ class EKFSLAM:
         gate.header.stamp = rospy.Time.now()
         gate.header.frame_id = 'map'
         gate.pose.orientation.w = 1.0
-        if self.gate_observing != -1:
+        if self.gate_observing > -1:
             gate.pose.position.x = self.gate_pose[self.gate_observing][0]
             gate.pose.position.y = self.gate_pose[self.gate_observing][1]
             gate.pose.position.z = self.gate_pose[self.gate_observing][2]
