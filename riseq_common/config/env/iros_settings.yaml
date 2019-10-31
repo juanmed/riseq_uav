@@ -11,21 +11,21 @@ drone:
     hover_height: 1.5 #m
     position_error_threshold: 0.2 # error threshold for position command
     one_block: 1.4
-    two_block: 2.0
+    two_block: 2.4
     drone_camera_offset_vector: [0.17,0,0]
-    gate_correction_offset: [1.0,0,0]
-    advance_distance: 5
+    gate_correction_offset: [0.5,0,0]
+    advance_distance: 2
     auto_arm_offboard: true
 
 environment: "simulator"  # real
 
 gates:
     gate_vertical:
-        up: [6, 0.0, 1.9]
-        down: [6, 0.0, 1.9]
+        up: [3.66, -0.1, 1.9]
+        down: [3.66, -0.1, 1.9]
     gate_horizontal:
-        left: [-4, 2.0, 1.7]
-        right: [-4, 3.4, 1.7]
+        right: [-1.63, 1.20, 1.7]
+        left: [-1.63, -0.2, 1.7]
 #    drone_init: [, , ]
 #    detection_thresholds: [, , ]
 #    at_first: 0
