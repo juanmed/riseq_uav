@@ -186,39 +186,53 @@ class EKFSLAM:
         ##
 
         ## Classify observed gate
+        print('gate subscribed')
         yaw = Rotation.from_quat([self.local_pose.pose.orientation.x, self.local_pose.pose.orientation.y, self.local_pose.pose.orientation.z, self.local_pose.pose.orientation.w]).as_euler('zyx', degrees=True)[2]
         if abs(yaw) < 35:
             if self.gate_first == self.gate_v:
                 gate_seeing.data = 'vertical'
+                print 1
             else:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'
+                    print 2
                 elif dist_h_l < dist_h_r:
                     gate_seeing.data = 'left'
+                    print 3
                 else:
                     gate_seeing.data = 'right'
+                    print 4
         elif abs(yaw) > 145:
             if self.gate_first == self.gate_v:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'
+                    print 5
                 elif dist_h_l < dist_h_r:
                     gate_seeing.data = 'left'
+                    print 6
                 else:
                     gate_seeing.data = 'right'
+                    print 7
             else:
                 gate_seeing.data = 'vertical'
+                print 8
         else:
             if (dist_v < 1.0 ) or (abs(gate_global_pose[3][0] - self.gate_pose[self.gate_v][2]) > 0.45):
                 gate_seeing.data = 'vertical'
+                print 9
             elif abs(gate_global_pose[3][0] - self.gate_pose[self.gate_h_l][2]) < 0.25:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'
+                    print 10
                 elif dist_h_l < dist_h_r:
                     gate_seeing.data = 'left'
+                    print 11
                 else:
                     gate_seeing.data = 'right'
+                    print 12
             else:
                 gate_seeing.data = 'unknown'
+                print 13
 
         if gate_seeing.data == 'vertical':
             self.gate_observing = self.gate_v
