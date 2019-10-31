@@ -42,7 +42,7 @@ class EKFSLAM:
         self.gate_h_r = 2
         self.gate_pose = np.array([rospy.get_param('/gates/gate_vertical/up', [6, 0.0, 1.9]),
                                    rospy.get_param('/gates/gate_horizontal/left', [-4, 2.0, 1.7]),
-                                   rospy.get_param('/gates/gate_horizontal/right', [--4, 3.4, 1.7])])
+                                   rospy.get_param('/gates/gate_horizontal/right', [-4, 3.4, 1.7])])
         self.gate_pose[0][2] = 1.9
         self.gate_observing = -1
         self.gate_last = -1
@@ -127,9 +127,9 @@ class EKFSLAM:
                                                                     [self.gate_pose[self.gate_observing][0]],
                                                                     [self.gate_pose[self.gate_observing][1]]]) + np.dot(H, self.x_pre)))
             self.P_est = np.dot(np.eye(4) - np.dot(K, H), self.P_pre)
-        ##
 
         self.gate_observing = -1
+        ##
 
         ## Publish data
         drift = PoseStamped()
@@ -191,48 +191,48 @@ class EKFSLAM:
         if abs(yaw) < 35:
             if self.gate_first == self.gate_v:
                 gate_seeing.data = 'vertical'
-                print(1)
+                print('1-1')
             else:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'
-                    print(2)
+                    print('1-2-1')
                 elif dist_h_l < dist_h_r:
                     gate_seeing.data = 'left'
-                    print(3)
+                    print('1-2-2')
                 else:
                     gate_seeing.data = 'right'
-                    print(4)
+                    print('1-2-3')
         elif abs(yaw) > 145:
             if self.gate_first == self.gate_v:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'
-                    print(5)
+                    print('2-1-1')
                 elif dist_h_l < dist_h_r:
                     gate_seeing.data = 'left'
-                    print(6)
+                    print('2-1-2')
                 else:
                     gate_seeing.data = 'right'
-                    print(7)
+                    print('2-1-3')
             else:
                 gate_seeing.data = 'vertical'
-                print(8)
+                print('2-2')
         else:
             if (dist_v < 1.0 ) or (abs(gate_global_pose[2][0] - self.gate_pose[self.gate_v][2]) > 0.45):
                 gate_seeing.data = 'vertical'
-                print(9)
+                print('3-1')
             elif abs(gate_global_pose[2][0] - self.gate_pose[self.gate_h_l][2]) < 0.25:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'
-                    print(10)
+                    print('3-2-1')
                 elif dist_h_l < dist_h_r:
                     gate_seeing.data = 'left'
-                    print(11)
+                    print('3-2-2')
                 else:
                     gate_seeing.data = 'right'
-                    print(12)
+                    print('3-2-3')
             else:
                 gate_seeing.data = 'unknown'
-                print(13)
+                print('3-3')
 
         if gate_seeing.data == 'vertical':
             self.gate_observing = self.gate_v
@@ -242,8 +242,9 @@ class EKFSLAM:
             self.gate_observing = self.gate_h_r
         elif gate_seeing.data == 'unknown':
             self.gate_observing = -1
+
+        print(gate_seeing.data)
         ##
-        print(self.gate_observing)
 
         # print("%.1f %.1f %.1f" % (dist_v, dist_h_l, dist_h_r))
         # print(self.gate_seeing.data)

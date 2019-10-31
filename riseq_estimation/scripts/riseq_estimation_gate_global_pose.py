@@ -56,7 +56,7 @@ class GateGlobal:
         self.gate_global_pose_pub = rospy.Publisher('/riseq/gate/lpf_global/global_pose', PoseStamped, queue_size=10)
         self.gate_camera_pose_pub = rospy.Publisher('/riseq/gate/lpf_global/camera_pose', PoseStamped, queue_size=10)
 
-        rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/riseq/perception/uav_mono_waypoint', PoseStamped, self.gate_cb)
 
     def loop(self):
