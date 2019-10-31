@@ -3,7 +3,7 @@
   <arg name="rosbag_name" default="test1"/>
   <include file="$(find mavros)/launch/px4.launch"/>
   <include file="$(find vrpn_client_ros)/launch/sample.launch">
-     <arg name="server" value="192.168.0.150"/>
+     <arg name="server" value="192.168.1.118"/>
   </include>
   <!--include file="$(find zed_wrapper)/launch/zedm.launch"/-->
   <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/>
