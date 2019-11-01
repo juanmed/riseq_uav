@@ -112,7 +112,7 @@ class IROS_Coordinator():
 
     def Fly_To_Gate(self):
         # align drone with gate in YZ plane
-	"""
+	
         print("Align Drone with Gate: Start")
         gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
         Rbw = self.get_body_to_world_matrix()
@@ -120,7 +120,6 @@ class IROS_Coordinator():
         goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
         self.go_position(goal_position_yz)
         print("Align Drone with Gate: Finish")
-	"""
 
         if self.fly_global_coordinates:
             gate_position = self.get_gate_global_position()
@@ -139,10 +138,11 @@ class IROS_Coordinator():
                     goal_position[0] = goal_position[0] - self.gate_correction_offset[0]
                 else:
                     goal_position[0] = goal_position[0] + self.gate_correction_offset[0]
-
+                
+                print("Flying to: {}".format(goal_position))
                 self.go_position(goal_position)
                 self.enable_gate_type_change = True  # reenable update of gate type
-                print("Global Coordinates Flight to: {} : Start".format(self.gate_type))
+                print("Global Coordinates Flight to: {} : Finish".format(self.gate_type))
             else:
                 # try to fly in global coordinates
                 self.fly_global_coordinates = False
@@ -155,6 +155,7 @@ class IROS_Coordinator():
             gate_position_drone_frame = self.average_gate_position(1) + self.drone_camera_offset_vector + self.gate_correction_offset
             Rbw = self.get_body_to_world_matrix()
             gate_position_local_frame = self.position + np.dot(Rbw, gate_position_drone_frame.reshape(3,1)).reshape(3)
+            print("Flying to: {}".format(gate_position_local_frame))
             self.go_position(gate_position_local_frame) 
             print("Local Coordinates Flight: Finish") 
 
@@ -203,9 +204,14 @@ class IROS_Coordinator():
         self.go_position(goal_pose)
         print("Move forward/backward: Finish")
 
+        print("Go to hover height: Start")
+        goal_pose[2] = self.hover_height
+        self.go_position(goal_pose)
+        print("Go to hover height: Finished")
+
         # Rotate
         print("Yaw Rotate: Start")
-        self.yaw_rotate(180)
+        self.yaw_rotate_step(180)
         print("Yaw Rotate: Finish")
 
         return True
@@ -297,6 +303,9 @@ class IROS_Coordinator():
         self.gate_left = rospy.get_param('/gates/gate_horizontal/left', [-4, 0.0, 2])
         self.gate_right = rospy.get_param('/gates/gate_horizontal/right', [-4, 1.4, 2])
         self.goal_wait_time = rospy.get_param('/drone/goal_wait_time',5.0)
+        self.rotation_wait_time = rospy.get_param('/drone/rotation_wait_time',5.0)      
+        self.rotation_step = int(rospy.get_param('/drone/rotation_step', 30))
+        self.wait_steady_time = rospy.get_param('/drone/wait_steady_time', 2.0)
 
         rospy.Subscriber("/riseq/drone/vo_drift", PoseStamped, self.vo_drift_cb)
         rospy.Subscriber("/riseq/gate/observing", String, self.gate_classification_cb)
@@ -442,7 +451,20 @@ class IROS_Coordinator():
         while( (rospy.get_time() - start) < 1):
             self.command_pose_msg.header.stamp = rospy.Time.now()
             self.local_pos_pub.publish(self.command_pose_msg)
-            rate.sleep()  
+            rate.sleep() 
+
+    def yaw_rotate_step(self, angle):
+        angle = np.abs(int(angle))    # TODO: include negative angles and angles not multiples of self.rotation_step
+        current_angle = 0
+        while current_angle < angle:
+	    current_angle = current_angle + self.rotation_step
+            self.yaw_rotate(self.rotation_step)  
+            self.wait_steady(self.wait_steady_time)
+    
+    def wait_steady(self, time):
+        start_time = rospy.Time.now()
+        while ((rospy.Time.now() - start_time) < rospy.Duration(time)):
+            self.publish_command(self.command_pose)
 
     def yaw_rotate(self, angle):
         """
@@ -463,7 +485,7 @@ class IROS_Coordinator():
         self.command_pose_msg.pose.orientation.w = qcmd[3]
 
         rate = rospy.Rate(20)
-        while( (rospy.get_time() - start) < 5.0):
+        while( (rospy.get_time() - start) < self.rotation_wait_time):
             self.command_pose_msg.header.stamp = rospy.Time.now()
             self.local_pos_pub.publish(self.command_pose_msg)
             rate.sleep()

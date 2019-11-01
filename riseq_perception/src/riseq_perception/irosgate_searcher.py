@@ -61,6 +61,8 @@ class IROSGateSearcher:
                     print "cannot find gate..."
                     self.dilate_iter = 2
                     self.erode_iter = 4
+                    rospy.set_param("erode_iter", self.erode_iter)
+                    rospy.set_param("dilate_iter", self.dilate_iter)
                     self.yaw = self.initial_yaw  # This means that there is no more step.
                     return False, self.yaw
             self.turn_left = True
