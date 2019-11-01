@@ -306,6 +306,7 @@ class IROS_Coordinator():
         self.rotation_wait_time = rospy.get_param('/drone/rotation_wait_time',5.0)      
         self.rotation_step = int(rospy.get_param('/drone/rotation_step', 30))
         self.wait_steady_time = rospy.get_param('/drone/wait_steady_time', 2.0)
+        self.gate_detection_limits = rospy.get_param('/perception/gate_detection_limits', [13,5,4])
 
         rospy.Subscriber("/riseq/drone/vo_drift", PoseStamped, self.vo_drift_cb)
         rospy.Subscriber("/riseq/gate/observing", String, self.gate_classification_cb)
@@ -538,11 +539,24 @@ class IROS_Coordinator():
         self.local_pos_pub.publish(self.command_pose_msg)
 
     def gate_waypoint_cb(self, msg):
-        self.gate_position[0] = msg.pose.position.x
-        self.gate_position[1] = msg.pose.position.y
-        self.gate_position[2] = msg.pose.position.z
-        self.time_of_last_gate_position = msg.header.stamp.secs
-        self.gate_msgs_count = self.gate_msgs_count + 1
+        if self.check_gate_measurement(msg):
+            self.gate_position[0] = msg.pose.position.x
+            self.gate_position[1] = msg.pose.position.y
+            self.gate_position[2] = msg.pose.position.z
+            self.time_of_last_gate_position = msg.header.stamp.secs
+            self.gate_msgs_count = self.gate_msgs_count + 1
+        else:
+            a = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
+            print("Gate position estimation larger than thresholds: {}".format(a))
+
+    def check_gate_measurement(self,msg):
+        if np.abs(msg.pose.position.x) < self.gate_detection_limits[0]:
+            if np.abs(msg.pose.position.y) < self.gate_detection_limits[1]:
+                if np.abs(msg.pose.position.z) < self.gate_detection_limits[2]:
+                    return True
+
+        return False
+        
 
 if __name__ == '__main__':
     try:

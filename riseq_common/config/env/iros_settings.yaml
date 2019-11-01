@@ -7,6 +7,7 @@ perception:
     camera: left_rect
     theta: 30  # degree
     gate_detection_wait_time: 1.0
+    gate_detection_limits: [8,3,4]  # maximum distance in x,y,z axis at which any gate can be
 drone:
     hover_height: 1.7 #m
     position_error_threshold: 0.2 # error threshold for position command
@@ -28,6 +29,6 @@ gates:
         up: [3.66, -0.1, 1.9]
         down: [3.66, -0.1, 1.9]
     gate_horizontal:
-        right: [-1.63, 1.4 1.7]
+        right: [-1.63, -1.4, 1.7]
         left: [-1.63, 0.0, 1.7]
-    at_first: 0			# 0: vertical, 1: horizontal left, 2: horizontal right 
+    at_first: 0 # 0: vertical, 1: horizontal left, 2: horizontal right 
