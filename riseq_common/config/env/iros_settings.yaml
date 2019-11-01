@@ -30,6 +30,4 @@ gates:
     gate_horizontal:
         right: [-1.63, 1.4 1.7]
         left: [-1.63, 0.0, 1.7]
-#    drone_init: [, , ]
-#    detection_thresholds: [, , ]
-#    at_first: 0
+    at_first: 0			# 0: vertical, 1: horizontal left, 2: horizontal right 
