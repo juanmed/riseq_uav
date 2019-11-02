@@ -113,11 +113,11 @@ class IROS_Coordinator():
     def Fly_To_Gate(self):
         # align drone with gate in YZ plane
 	
-        print("Align Drone with Gate: Start")
         gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
         Rbw = self.get_body_to_world_matrix()
         goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
         goal_position_yz[0] = self.position[0]  # only move in YZ plane, so make X coordinate the same as current
+        print("Align Drone with Gate at : Start {}".format(goal_position_yz))
         self.go_position(goal_position_yz)
         print("Align Drone with Gate: Finish")
 

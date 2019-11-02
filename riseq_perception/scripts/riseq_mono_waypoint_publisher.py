@@ -73,7 +73,7 @@ class MonoWaypointDetector():
         self.frames = 0.
         self.success = 0.
         self.saved = False
-
+        self.gate_detection_limits=rospy.get_param("/perception/gate_detection_limits", [8,3,4])
 
         # ADR Gate Detector
         #cfg_file = rospy.get_param("riseq/gate_pose_nn_cfg")
@@ -304,8 +304,12 @@ class MonoWaypointDetector():
                 rospy.loginfo("Monocular Object Detector mode non-existent.")
 
             #path.poses = [wp]  
-            if wp is not None:        
-                self.waypoint_pub.publish(wp)
+            if wp is not None:
+                if self.verify_measurement(wp):        
+                    self.waypoint_pub.publish(wp)
+                    print("Good Estimation")
+                else:
+                    print("Got strange gate estimation: {}".format(wp))
             if wp2d is not None:
                 self.object_centerpoint_pub.publish(wp2d)
 
@@ -334,6 +338,13 @@ class MonoWaypointDetector():
 
 
         #rospy.loginfo(waypoints)
+
+    def verify_measurement(self, msg):
+        if np.abs(msg.pose.position.x) < self.gate_detection_limits[0]:
+            if np.abs(msg.pose.position.y) < self.gate_detection_limits[1]:
+                if np.abs(msg.pose.position.z) < self.gate_detection_limits[2]:
+                    return True
+        return False
 
     def camera_params(self, params):
         """
