@@ -26,9 +26,9 @@ environment: "simulator"  # real
 
 gates:
     gate_vertical:
-        up: [3.0, -0.7, 1.9]
-        down: [3.0, -0.7, 1.9]
+        up: [3.0, -1.4, 1.9]
+        down: [3.0, -1.4, 1.9]
     gate_horizontal:
-        right: [-3.0, 2.1, 1.7]
-        left: [-3.0, 0.7, 1.7]
+        right: [-3.0, 1.4, 1.7]
+        left: [-3.0, 0.0, 1.7]
     at_first: 1 # 0: vertical, 1: horizontal left, 2: horizontal right 
