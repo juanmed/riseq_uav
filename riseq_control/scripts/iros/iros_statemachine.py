@@ -61,10 +61,10 @@ class IROS_Coordinator():
                 self.connect_arm_offboard()
                 self.take_off(self.hover_height)
                 self.machine.take_off()
-
+                print("Hovering Finish")
             elif self.machine.is_Hovering:
                 self.machine.gate_not_found()
-
+                
             elif self.machine.is_Search:
                 if self.gate_found():
                     if self.gate_searcher.searching:
@@ -439,7 +439,7 @@ class IROS_Coordinator():
 
     def take_off(self, height):
         self.command_pose[2] = height
-        self.go_hovering(self.command_pose)
+        self.go_hovering(height)
 
         #rate = rospy.Rate(20)
         #while (self.position[2] < height*0.95 ):
