@@ -291,6 +291,7 @@ class IROS_Coordinator():
         self.gate_msgs_count = 0
         self.gate_type = "unknown"
         self.enable_gate_type_change = True
+        self.gate_v = 0
 
         self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
         self.gate_detection_wait_time = rospy.get_param("/perception/gate_detection_wait_time", 1.0)
@@ -308,6 +309,13 @@ class IROS_Coordinator():
         self.rotation_step = int(rospy.get_param('/drone/rotation_step', 30))
         self.wait_steady_time = rospy.get_param('/drone/wait_steady_time', 2.0)
         self.gate_detection_limits = rospy.get_param('/perception/gate_detection_limits', [13,5,4])
+        self.gate_first = rospy.get_param('/gates/at_first', self.gate_v)
+        
+        if self.gate_first != self.gate_v:
+            for gate in [self.gate_up, self.gate_left, self.gate_right]:
+                gate[0] = -gate[0]
+                gate[1] = -gate[1]
+
 
         rospy.Subscriber("/riseq/drone/vo_drift", PoseStamped, self.vo_drift_cb)
         rospy.Subscriber("/riseq/gate/observing", String, self.gate_classification_cb)
@@ -502,13 +510,10 @@ class IROS_Coordinator():
 
         rate = rospy.Rate(20)
 	start_time = rospy.Time.now()
-        while (self.position_error(self.command_pose, self.position) >= self.position_error_threshold ) or ((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time)):
+        while (self.position_error2(self.command_pose, self.position) >= self.position_error_threshold ) or ((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time)):
 
-            if ((self.position_error(self.command_pose, self.position) >= self.position_error_threshold )):
-                print("Position error: {:.4f} still larger than: {:.4f}".format(self.position_error(self.command_pose, self.position), self.position_error_threshold) )
-
-            if (((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time))):
-                print("Time passed: {} < {}".format((rospy.Time.now().to_sec() - start_time.to_sec()), self.goal_wait_time))
+            if ((self.position_error2(self.command_pose, self.position) >= self.position_error_threshold )):
+                print("Position error: {:.4f} > {:.4f}".format(self.position_error2(self.command_pose, self.position), self.position_error_threshold) )
 
             self.publish_command(self.command_pose)
             rate.sleep()
@@ -518,8 +523,8 @@ class IROS_Coordinator():
     def position_error(self, v1, v2):
         return np.linalg.norm(v1 - v2)
 
-    def position_error2(self, v1, v2)
-        return np.linalg.norm((current_pose.pose.position.x - goal_pose.pose.position.x, current_pose.pose.position.y - goal_pose.pose.position.y))
+    def position_error2(self, v1, v2):
+        return np.linalg.norm((v1[0] - v2[0], v1[1] - v2[1]))
         
     def return_land_disarm(self):
         
