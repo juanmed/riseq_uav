@@ -11,7 +11,7 @@
   <include file="$(find mavros)/launch/px4.launch"/>
 
   <include file="$(find riseq_estimation)/launch/riseq_zedm_wrapper.launch"/>
-  <node name="gate_global_pose" pkg="riseq_estimation" type="riseq_estimation_gate_global_pose.py"/>
+  <!--node name="gate_global_pose" pkg="riseq_estimation" type="riseq_estimation_gate_global_pose.py"/-->
   <!--node name="drift_estimator" pkg="riseq_estimation" type="riseq_estimation_EKF_SLAM_main.py" output="screen"/-->
   <node name="monocular_cv" pkg="riseq_perception" type="riseq_mono_waypoint_publisher.py"/>
   <node name="rosbag_record" pkg="rosbag" type="record"

@@ -35,7 +35,7 @@ class IROS_StateMachine(StateMachine):
         print("Taking off...")
 
     def on_gate_not_found(self):
-        print("Gate Not Found. Searching...")
+        print("Hovering...")
 
     def on_gate_found(self):
         print("Gate Found! Flying to Gate...")
@@ -112,7 +112,7 @@ class IROS_Coordinator():
 
     def Fly_To_Gate(self):
         # align drone with gate in YZ plane
-	
+	"""
         gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
         Rbw = self.get_body_to_world_matrix()
         goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
@@ -120,6 +120,7 @@ class IROS_Coordinator():
         print("Align Drone with Gate at : Start {}".format(goal_position_yz))
         self.go_position(goal_position_yz)
         print("Align Drone with Gate: Finish")
+        """
 
         if self.fly_global_coordinates:
             gate_position = self.get_gate_global_position()
@@ -222,7 +223,7 @@ class IROS_Coordinator():
         return Rbw
 
     def average_gate_position(self, samples):
-
+        return self.gate_position
         avg_position = np.zeros(3)
         i = self.gate_msgs_count + samples
         o = self.gate_msgs_count

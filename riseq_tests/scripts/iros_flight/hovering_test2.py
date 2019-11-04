@@ -63,7 +63,7 @@ if __name__ == "__main__":
     pose.header.stamp = rospy.Time.now()
     pose.pose.position.x = 0
     pose.pose.position.y = 0
-    pose.pose.position.z = 1
+    pose.pose.position.z = 1.9
 
     for i in range(100):
         pose.header.stamp = rospy.Time.now()
@@ -90,6 +90,7 @@ if __name__ == "__main__":
         rate.sleep()
         #print("Sending pose: {}".format(pose))
     
+	
         if rospy.Time.now() - start_time > rospy.Duration(10.0):
             pose.pose.position.x=1.0
         if rospy.Time.now() - start_time > rospy.Duration(20.0):
@@ -98,9 +99,10 @@ if __name__ == "__main__":
             pose.pose.position.x = 0.0
             pose.pose.position.y = 0.0
         if rospy.Time.now() - start_time > rospy.Duration(40.0):
-        
-        #if rospy.Time.now() - start_time > rospy.Duration(10.0):
             break
+        
+        #if rospy.Time.now() - start_time > rospy.Duration(20.0):
+        #    break
 
     print("Return")
     pose.header.stamp = rospy.Time.now()
