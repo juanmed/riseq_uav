@@ -501,9 +501,13 @@ class IROS_Coordinator():
         rate = rospy.Rate(20)
 	start_time = rospy.Time.now()
         while (self.position_error(self.command_pose, self.position) >= self.position_error_threshold ) or ((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time)):
+            if ((self.position_error(self.command_pose, self.position) >= self.position_error_threshold )):
+                print("Position error: {:.4f} still larger than: {:.4f}".format(self.position_error(self.command_pose, self.position), self.position_error_threshold) )
+            if (((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time))):
+                print("Time passed: {} < {}".format((rospy.Time.now() - start_time), self.goal_wait_time))
             self.publish_command(self.command_pose)
             rate.sleep()
-
+        print("Finish ")
         return True
 
     def position_error(self, v1, v2):
