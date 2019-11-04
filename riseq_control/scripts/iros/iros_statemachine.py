@@ -206,8 +206,8 @@ class IROS_Coordinator():
         print("Move forward/backward: Finish")
 
         print("Go to hover height: Start")
-        goal_pose[2] = self.hover_height
-        self.go_position(goal_pose)
+        #goal_pose[2] = self.hover_height
+        self.go_hovering(self.hover_height)
         print("Go to hover height: Finished")
 
         # Rotate
@@ -439,7 +439,7 @@ class IROS_Coordinator():
 
     def take_off(self, height):
         self.command_pose[2] = height
-        self.go_position(self.command_pose)
+        self.go_hovering(self.command_pose)
 
         #rate = rospy.Rate(20)
         #while (self.position[2] < height*0.95 ):
@@ -519,6 +519,19 @@ class IROS_Coordinator():
             rate.sleep()
         print("Finish ")
         return True
+
+    def go_hovering(self, height):
+        self.command_pose[2] = height
+        
+        rate = rospy.Rate(20)
+        start_time = rospy.Time.now()
+        while (self.hovering_error(self.command_pose, self.position) > self.position_error_threshold ) or ((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time)):
+            self.publish_command(self.command_pose)
+            rate.sleep()
+        return True
+
+    def hovering_error(self,v1,v2):
+        return np.abs(v1[2] - v2[2])
 
     def position_error(self, v1, v2):
         return np.linalg.norm(v1 - v2)
