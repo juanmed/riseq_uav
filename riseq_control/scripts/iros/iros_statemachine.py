@@ -126,7 +126,7 @@ class IROS_Coordinator():
             gate_position = self.get_gate_global_position()
             if gate_position is not None:
                 print("Global Coordinates Flight to: {} : Start".format(self.gate_type))
-                goal_position = gate_position + self.vo_drift   # drift compensation only in XY plane
+                goal_position = gate_position  # drift compensation only in XY plane
                 
                 gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
                 Rbw = self.get_body_to_world_matrix()
@@ -271,8 +271,19 @@ class IROS_Coordinator():
         self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
 
         self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_status_cb)        
-        self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
+        self.pos_sub = rospy.Subscriber('/riseq/drone/pose', PoseStamped, self.position_cb)
+        self.vision_pose_sub = rospy.Subscriber('/mavros/vision_pose/pose', PoseStamped,  self.vision_pose_cb)
         #self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
+
+    def vision_pose_cb(self, msg):
+        self.vision_pose[0] = msg.pose.position.x
+        self.vision_pose[1] = msg.pose.position.y
+        self.vision_pose[2] = msg.pose.position.z
+        
+        Rbw = self.get_body_to_world_matrix()
+        self.vision_pose = self.vision_pose - np.dot(Rbw, self.drone_camera_offset_vector.reshape(3,1)).reshape(3)
+        
+        
 
     def setup_iros(self):
 
@@ -281,6 +292,7 @@ class IROS_Coordinator():
 
         self.vo_drift = np.zeros(3)
         self.position = np.zeros(3)
+        self.vision_pose = np.zeros(3)
         self.orientation = np.zeros(4)
         self.command_pose = np.zeros(3)
         self.home_pose = np.zeros(3)
@@ -502,11 +514,17 @@ class IROS_Coordinator():
             self.local_pos_pub.publish(self.command_pose_msg)
             rate.sleep()
 
-    def go_position(self,position):
+    def go_position(self,desired_goal):
 
-        self.command_pose[0] = position[0]     
-        self.command_pose[1] = position[1]
-        self.command_pose[2] = position[2]
+        # compensate using drift and vision position
+        goal_position = np.zeros(3)
+        goal_position[0] = desired_goal[0] + (self.position[0] - self.vision_pose[0])
+        goal_position[1] = desired_goal[1] + (self.position[1] - self.vision_pose[1]) 
+        goal_position[2] = desired_goal[2]
+
+        self.command_pose[0] = goal_position[0]     
+        self.command_pose[1] = goal_position[1]
+        self.command_pose[2] = goal_position[2]
 
         rate = rospy.Rate(20)
 	start_time = rospy.Time.now()
