@@ -112,7 +112,7 @@ class IROS_Coordinator():
 
     def Fly_To_Gate(self):
         # align drone with gate in YZ plane
-	"""
+	
         gate_position = self.average_gate_position(1) + self.drone_camera_offset_vector
         Rbw = self.get_body_to_world_matrix()
         goal_position_yz = self.position + np.dot(Rbw, gate_position.reshape(3,1)).reshape(3)
@@ -120,7 +120,7 @@ class IROS_Coordinator():
         print("Align Drone with Gate at : Start {}".format(goal_position_yz))
         self.go_position(goal_position_yz)
         print("Align Drone with Gate: Finish")
-        """
+        
 
         if self.fly_global_coordinates:
             gate_position = self.get_gate_global_position()
@@ -336,7 +336,7 @@ class IROS_Coordinator():
         self.enable_sim = rospy.get_param('/drone/auto_arm_offboard', False)
         if(self.enable_sim):
             self.send_setpoints()
-            self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_arm_offboard_cb)
+            self.status_timer = rospy.Timer(rospy.Duration(0.05), self.mavros_arm_offboard_cb)
 
         armed = self.mavros_state.armed
         mode = self.mavros_state.mode
@@ -570,7 +570,7 @@ class IROS_Coordinator():
         self.local_pos_pub.publish(self.command_pose_msg)
 
     def gate_waypoint_cb(self, msg):
-        if self.check_gate_measurement(msg):
+        if True: #self.check_gate_measurement(msg):
             self.gate_position[0] = msg.pose.position.x
             self.gate_position[1] = msg.pose.position.y
             self.gate_position[2] = msg.pose.position.z
