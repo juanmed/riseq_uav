@@ -188,7 +188,7 @@ class EKFSLAM:
         ## Classify observed gate
         yaw = Rotation.from_quat([self.local_pose.pose.orientation.x, self.local_pose.pose.orientation.y, self.local_pose.pose.orientation.z, self.local_pose.pose.orientation.w]).as_euler('zyx', degrees=True)[0]
         print(yaw)
-        if abs(yaw) < 35:
+        if abs(yaw) < 80:
             if self.gate_first == self.gate_v:
                 gate_seeing.data = 'vertical'
                 print('1-1')
@@ -202,7 +202,7 @@ class EKFSLAM:
                 else:
                     gate_seeing.data = 'right'
                     print('1-2-3')
-        elif abs(yaw) > 145:
+        elif abs(yaw) > 100:
             if self.gate_first == self.gate_v:
                 if (dist_h_l > 1.0) and (dist_h_r > 1.0):
                     gate_seeing.data = 'unknown'

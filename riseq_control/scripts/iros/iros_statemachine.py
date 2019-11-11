@@ -304,6 +304,7 @@ class IROS_Coordinator():
         self.gate_type = "unknown"
         self.enable_gate_type_change = True
         self.gate_v = 0
+        self.px4_position = np.zeros(3)
 
         self.hover_height = rospy.get_param("/drone/hover_height", 1.5)
         self.gate_detection_wait_time = rospy.get_param("/perception/gate_detection_wait_time", 1.0)
@@ -332,6 +333,7 @@ class IROS_Coordinator():
         rospy.Subscriber("/riseq/drone/vo_drift", PoseStamped, self.vo_drift_cb)
         rospy.Subscriber("/riseq/gate/observing", String, self.gate_classification_cb)
         rospy.Subscriber("/riseq/perception/uav_mono_waypoint", PoseStamped, self.gate_waypoint_cb)
+        rospy.Subscriber("/mavros/local_position/pose", PoseStamped, self.px4_position_cb)
 
     def vo_drift_cb(self, drift):
         self.vo_drift[0] = drift.pose.position.x
@@ -514,6 +516,11 @@ class IROS_Coordinator():
             self.local_pos_pub.publish(self.command_pose_msg)
             rate.sleep()
 
+    def px4_position_cb(self, msg):
+        self.px4_position[0] = msg.pose.position.x
+        self.px4_position[1] = msg.pose.position.y
+        self.px4_position[2] = msg.pose.position.z
+
     def go_position(self,desired_goal):
 
         # compensate using drift and vision position
@@ -528,10 +535,10 @@ class IROS_Coordinator():
 
         rate = rospy.Rate(20)
 	start_time = rospy.Time.now()
-        while (self.position_error2(self.command_pose, self.position) >= self.position_error_threshold ) or ((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time)):
+        while (self.position_error2(self.command_pose, self.px4_position) >= self.position_error_threshold ) or ((rospy.Time.now() - start_time) < rospy.Duration(self.goal_wait_time)):
 
-            if ((self.position_error2(self.command_pose, self.position) >= self.position_error_threshold )):
-                print("Position error: {:.4f} > {:.4f}".format(self.position_error2(self.command_pose, self.position), self.position_error_threshold) )
+            if ((self.position_error2(self.command_pose, self.px4_position) >= self.position_error_threshold )):
+                print("Position error: {:.4f} > {:.4f}".format(self.position_error2(self.command_pose, self.px4_position), self.position_error_threshold) )
 
             self.publish_command(self.command_pose)
             rate.sleep()

@@ -14,8 +14,8 @@ drone:
     one_block: 1.4
     two_block: 1.5
     drone_camera_offset_vector: [0.17,0,0]
-    gate_correction_offset: [0.0,0,0]
-    advance_distance: -1.5
+    gate_correction_offset: [0.5,0,0]
+    advance_distance: -1.0
     auto_arm_offboard: true
     goal_wait_time: 5.0
     rotation_wait_time: 5.0
@@ -31,4 +31,4 @@ gates:
     gate_horizontal:
         right: [-3.0, 1.4, 1.7]
         left: [-3.0, 0.0, 1.7]
-    at_first: 0 # 0: vertical, 1: horizontal left, 2: horizontal right 
+    at_first: 1 # 0: vertical, 1: horizontal left, 2: horizontal right 
