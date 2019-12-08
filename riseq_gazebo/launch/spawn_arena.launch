@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<launch>
+	<include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+		<arg name="robot_name" default=""/>
+		<arg name="x" default="-2.2" />
+		<arg name="y" default="2.0" />
+        <arg name="z" default="0"/>
+        <arg name="roll" default="0.0"/>
+		<arg name="pitch" default="0.0"/>
+		<arg name="yaw" default="-1.57"/>
+		<arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/iros_wall2/model.sdf"/>
+	</include>
+
+	<include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+		<arg name="robot_name" default=""/>
+		<arg name="x" default="6.0" />
+		<arg name="y" default="0" />
+        <arg name="z" default="1.2"/>
+        <arg name="roll" default="0.0"/>
+		<arg name="pitch" default="0.0"/>
+		<arg name="yaw" default="1.57"/>
+		<arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/iros_gate/iros_gate2.sdf"/>
+	</include>
+
+	<include file="$(find riseq_gazebo)/launch/spawn_sdf.launch">
+		<arg name="robot_name" default=""/>
+		<arg name="x" default="-4.0" />
+		<arg name="y" default="2.0" />
+        <arg name="z" default="1.7"/>
+        <arg name="roll" default="0.0"/>
+		<arg name="pitch" default="0.0"/>
+		<arg name="yaw" default="1.57"/>
+		<arg name="sdf_robot_file" default="$(find riseq_gazebo)/models/iros_gate/iros_gate2.sdf"/>
+	</include>
+</launch>

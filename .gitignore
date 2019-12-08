@@ -12,6 +12,7 @@
 .torch_test/*
 zed-ros-wrapper/*
 darknet_ros/*
+riseq_perception/scripts/test_images/*
 # Created by https://www.gitignore.io/api/pycharm
 # Edit at https://www.gitignore.io/?templates=pycharm
 

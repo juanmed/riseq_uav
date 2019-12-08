@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 2.80.75 commit date:2019-07-29, commit time:14:47, hash:f6cb5f54494e</authoring_tool>
+    </contributor>
+    <created>2019-10-01T20:05:51</created>
+    <modified>2019-10-01T20:05:51</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_effects>
+    <effect id="Material_001-effect">
+      <profile_COMMON>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <color sid="diffuse">0.8 0.8 0.8 1</color>
+            </diffuse>
+            <reflectivity>
+              <float sid="specular">0.5</float>
+            </reflectivity>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_images/>
+  <library_materials>
+    <material id="Material_001-material" name="Material.001">
+      <instance_effect url="#Material_001-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="Gate-mesh" name="Gate">
+      <mesh>
+        <source id="Gate-mesh-positions">
+          <float_array id="Gate-mesh-positions-array" count="72">0 70 286 0 70 146 2 70 286 2 70 146 0 -70 146 2 -70 146 0 -70 286 2 -70 286 0 70 142 0 70 2 2 70 142 2 70 2 0 -70 2 2 -70 2 0 -70 142 2 -70 142 0 72 288 0 -72 288 2 72 288 2 -72 288 0 72 0 2 72 0 0 -72 0 2 -72 0</float_array>
+          <technique_common>
+            <accessor source="#Gate-mesh-positions-array" count="24" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Gate-mesh-normals">
+          <float_array id="Gate-mesh-normals-array" count="18">0 -1 0 0 0 1 0 1 0 0 0 -1 -1 0 0 1 0 0</float_array>
+          <technique_common>
+            <accessor source="#Gate-mesh-normals-array" count="6" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Gate-mesh-vertices">
+          <input semantic="POSITION" source="#Gate-mesh-positions"/>
+        </vertices>
+        <triangles material="Material_001-material" count="52">
+          <input semantic="VERTEX" source="#Gate-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Gate-mesh-normals" offset="1"/>
+          <p>0 0 1 0 2 0 2 0 1 0 3 0 1 1 4 1 3 1 3 1 4 1 5 1 4 2 6 2 5 2 5 2 6 2 7 2 6 3 0 3 7 3 7 3 0 3 2 3 8 0 9 0 10 0 10 0 9 0 11 0 9 1 12 1 11 1 11 1 12 1 13 1 12 2 14 2 13 2 13 2 14 2 15 2 14 3 8 3 15 3 15 3 8 3 10 3 16 1 17 1 18 1 18 1 17 1 19 1 20 2 16 2 21 2 21 2 16 2 18 2 22 3 20 3 23 3 23 3 20 3 21 3 17 0 22 0 19 0 19 0 22 0 23 0 0 4 16 4 1 4 1 4 16 4 20 4 1 4 20 4 8 4 8 4 20 4 9 4 9 4 20 4 22 4 9 4 22 4 12 4 12 4 22 4 14 4 14 4 22 4 17 4 14 4 17 4 4 4 4 4 17 4 6 4 6 4 17 4 0 4 0 4 17 4 16 4 14 4 4 4 8 4 8 4 4 4 1 4 3 5 18 5 2 5 2 5 18 5 19 5 2 5 19 5 7 5 7 5 19 5 5 5 5 5 19 5 23 5 5 5 23 5 15 5 15 5 23 5 13 5 13 5 23 5 11 5 11 5 23 5 21 5 11 5 21 5 10 5 10 5 21 5 18 5 10 5 18 5 3 5 10 5 3 5 15 5 15 5 3 5 5 5</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="Gate" name="Gate" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <instance_geometry url="#Gate-mesh" name="Gate">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Material_001-material" target="#Material_001-material"/>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>

@@ -29,7 +29,7 @@ class WindowDetector():
         self.max_size = 460
         self.img = 0
         self.window_width = 1.4 #m
-        self.window_height = 2.2 #m 
+        self.window_height = 1.4 #m 
 
         # This params must be initialized with the best performing values
         self.canny_lt = 75
@@ -40,10 +40,10 @@ class WindowDetector():
 
         #Define corners of 3D Model's bounding cube
         self.corners3D = np.zeros((4,3))
-        self.corners3D[0] = np.array([0.0, self.window_width/2, self.window_height/2])
-        self.corners3D[1] = np.array([0.0, -self.window_width/2, self.window_height/2])
-        self.corners3D[2] = np.array([0.0, -self.window_width/2, -self.window_height/2])
-        self.corners3D[3] = np.array([0.0, self.window_width/2, -self.window_height/2]) 
+        self.corners3D[0] = np.array([ self.window_width/2,  0.0, self.window_height/2])
+        self.corners3D[1] = np.array([ -self.window_width/2, 0.0, self.window_height/2])
+        self.corners3D[2] = np.array([ -self.window_width/2, 0.0, -self.window_height/2])
+        self.corners3D[3] = np.array([ self.window_width/2,  0.0, -self.window_height/2]) 
         #self.corners3D[4] = np.array([0.0, 0.0, 0.0]) #center
 
         # camera intrinsic matrix
@@ -52,7 +52,7 @@ class WindowDetector():
         self.K[1, 1], self.K[1, 2] = 241.42682359130833, 240.5
         self.K[2, 2] = 1.     
         self.distCoeffs = np.zeros((8, 1), dtype='float32')  
-        self.axis = np.float32([[0.1,0,0], [0,0.1,0], [0,0,-0.1]]).reshape(-1,3) 
+        self.axis = np.float32([[0.5,0,0], [0,0.5,0], [0,0,-0.5]]).reshape(-1,3) 
                
         if (mode == "test"):
             self.fig = plt.figure(figsize=(20,10))
@@ -115,7 +115,7 @@ class WindowDetector():
         else:
             gray = img.copy()
 
-        blur = cv2.GaussianBlur(gray, (self.gauss_k, self.gauss_k), 0)
+        blur = cv2.GaussianBlur(img, (self.gauss_k, self.gauss_k), 0)
         #blur = cv2.bilateralFilter(gray, self.gauss_k, 7, 7, borderType=cv2.BORDER_REPLICATE)
         edges = cv2.Canny(blur.copy(), self.canny_lt, self.canny_ht, self.canny_k)
         dilate = cv2.dilate(edges, None, iterations = 1)
@@ -146,42 +146,45 @@ class WindowDetector():
             if (len(approx) == 4):
                 squares.append(approx)
 
-        square_couples = []
-        for i, square_i in enumerate(squares):
+            """
+            square_couples = []
+            for i, square_i in enumerate(squares):
 
-            m = cv2.moments(square_i)
-            try:
-                cx = int( m["m10"] / m["m00"] )
-                cy = int( m["m01"] / m["m00"] )
-            except ZeroDivisionError:
-                continue
-
-            centroid_i = np.array([[cx],[cy]])
-
-            for j in range(len(squares)):
-
-                if (i == j):
+                m = cv2.moments(square_i)
+                try:
+                    cx = int( m["m10"] / m["m00"] )
+                    cy = int( m["m01"] / m["m00"] )
+                except ZeroDivisionError:
                     continue
-                else:
-                    square_j = squares[j]
 
-                    m = cv2.moments(square_j)
-                    try:
-                        cx_j = int( m["m10"] / m["m00"] )
-                        cy_j = int( m["m01"] / m["m00"] )
-                    except ZeroDivisionError:
+                centroid_i = np.array([[cx],[cy]])
+
+                for j in range(len(squares)):
+
+                    if (i == j):
                         continue
+                    else:
+                        square_j = squares[j]
 
-                    centroid_j = np.array([[cx_j],[cy_j]])
+                        m = cv2.moments(square_j)
+                        try:
+                            cx_j = int( m["m10"] / m["m00"] )
+                            cy_j = int( m["m01"] / m["m00"] )
+                        except ZeroDivisionError:
+                            continue
 
-                    dist = np.linalg.norm(centroid_i - centroid_j)
-                    if dist < 10:
-                        square_couples.append([square_i, square_j, dist])
+                        centroid_j = np.array([[cx_j],[cy_j]])
 
-        square_couples.sort(key=(lambda x: x[2]), reverse = True)
+                        dist = np.linalg.norm(centroid_i - centroid_j)
+                        if dist < 10:
+                            square_couples.append([square_i, square_j, dist])
 
-        if len(square_couples) > 0:
-            screenCnt = square_couples[0][0].reshape((-1,2))
+            square_couples.sort(key=(lambda x: x[2]), reverse = True)
+            """
+
+        if len(squares) > 0:
+
+            screenCnt =  squares[0].reshape((-1,2)) #square_couples[0][0].reshape((-1,2))
             screenCnt = (screenCnt*(1.0/scale)).astype('float32')
                 
 

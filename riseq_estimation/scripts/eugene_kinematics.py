@@ -41,7 +41,7 @@ def rotation2quaternion(R):
     """
     Put 3x3 rotation matrix, then calculate quatrenion angle
     """
-    qw = sqrt(1 + R[0][0] + R[1][1] + R[2][2]) / 2
+    qw = np.sqrt(1 + R[0][0] + R[1][1] + R[2][2]) / 2
     qx = (R[2][1] - R[1][2]) / (4*qw)
     qy = (R[0][2] - R[2][0]) / (4*qw)
     qz = (R[1][0] - R[0][1]) / (4*qw)
@@ -58,7 +58,7 @@ def rotation2euler(R):
     return phi, theta, psi
 
 
-def euler2quaternion(pi, theta, psi):
+def euler2quaternion(phi, theta, psi):
     """
     Put Euler angles, then calculate quatrenion angle
     """

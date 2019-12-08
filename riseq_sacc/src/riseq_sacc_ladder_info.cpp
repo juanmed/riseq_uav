@@ -29,9 +29,9 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   cv_bridge::CvImagePtr cv_ptr;
   cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1);
   cv::Mat depth_img = cv_ptr->image;
-  
+
   /*create threshold image (grayscale)*/
-  float threshold_meter = 8; 
+  float threshold_meter = 8;
   cv::Mat thr_img;
   cv::threshold(depth_img, thr_img, threshold_meter, 255, cv::THRESH_BINARY_INV);
   thr_img.convertTo(thr_img, CV_8UC1);
@@ -47,7 +47,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
 
   /*create display image*/
   cv::Mat display_img = thr_img;
-  
+
   /*labeling*/
   cv::Mat labels, stats, centroids;
   int n = cv::connectedComponentsWithStats(thr_img, labels, stats, centroids, 8);
@@ -63,11 +63,11 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
           height_max = height;
           i_max = i;
       }
-  } 
+  }
 
   float count = 0;
   float sum_dist = 0.0;
-  float avgdist; 
+  float avgdist;
   /* if found ladder*/
   if(i_max != -1){
     center_x = centroids.at<double>(i_max,0);
@@ -77,14 +77,14 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     width = stats.at<int>(i_max,cv::CC_STAT_WIDTH);
     height = stats.at<int>(i_max,cv::CC_STAT_HEIGHT);
     cv::rectangle(display_img, cv::Point(left,top), cv::Point(left+width,top+height),100,3);
-    
-    /* calculate average depth */  
+
+    /* calculate average depth */
     for(int y = top; y <= top + height; y++){
       float* row_pointer = depth_img.ptr<float>(y);
       for(int x = left; x <= left + width; x++){
         if((row_pointer[x] < threshold_meter) && std::isfinite(row_pointer[x])){
            count = count + 1;
-           sum_dist += row_pointer[x]; 
+           sum_dist += row_pointer[x];
         }
       }
     }
@@ -101,15 +101,14 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
 
 
   }
-  /* if not found ladder */ 
+  /* if not found ladder */
   else{
     avgdist = -1;
   }
 
-  // Output the measure 
-  //cv::imshow("depth", display_img);
-  //cv::waitKey(1);
-
+  // Output the measure
+  cv::imshow("depth", display_img);
+  cv::waitKey(1);
 }
 
 int main(int argc, char **argv){

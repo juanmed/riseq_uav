@@ -1,7 +1,12 @@
+#include <ros/ros.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/State.h>
+
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
@@ -35,6 +40,7 @@ int height_23 = 240 - offset;
 
 int front_count = 0;
 int right_count = 0;
+
 
 cv::Rect left_box(0, height_13, width_13, height_23 - height_13);
 cv::Rect right_box(width_23, height_13, 640 - width_23 , height_23 - height_13);
@@ -87,12 +93,14 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
   up_obstacle = (up < updown_thr) ? false : true; 
   down_obstacle = (down < updown_thr) ? false : true; 
   front_obstacle = (front < front_thr) ? false : true;
+
 //  
   if(front_count < 32 ){ 
 
     // Move Right  
-    if((left_obstacle || right_obstacle || front_obstacle) == true && right_count < 10){      
+    if((left_obstacle || right_obstacle || front_obstacle) == true && right_count < 10){
       // stop, right
+      ROS_INFO("stop");
       if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
         past_lon = target_lon;
         past_lat = target_lat;
@@ -124,6 +132,7 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
 
     else{
       //go
+      ROS_INFO("go");
       if(pow((cur_lat-target_lat)/0.00001129413,2)+pow((cur_lon-target_lon)/0.00000895247,2) < 1){
         past_lon = target_lon;
         past_lat = target_lat;
@@ -146,15 +155,16 @@ void DepthCallback(const sensor_msgs::Image::ConstPtr& msg) {
     }
   } 
 
-  if(sw == true){  
-    point.header.stamp = ros::Time::now();
-    point.longitude = target_lon;
-    point.latitude = target_lat;
-    point.altitude = 2;
-    point.yaw = 0.534942408493;
-    avoidance_point_pub.publish(point);
-  }
-  std::cout<<front_count<<std::endl;
+
+  point.header.stamp = ros::Time::now();
+  point.longitude = target_lon;
+  point.latitude = target_lat;
+  point.altitude = 25.065700531;
+  point.yaw = 0.534942408493;
+  avoidance_point_pub.publish(point);
+
+  ROS_INFO("frond_count: %d", front_count);
+
   cv::line(display_img, cv::Point(0,height_13),cv::Point(width, height_13), cv::Scalar(0,0,255),1);
   cv::line(display_img, cv::Point(0,height_23),cv::Point(width, height_23), cv::Scalar(0,0,255),1);
   cv::line(display_img, cv::Point(width_13,height_13),cv::Point(width_13,height_23), cv::Scalar(0,0,255),1);
@@ -176,7 +186,7 @@ int main(int argc, char **argv){
     ros::Subscriber gps_sub = n1.subscribe("/mavros/global_position/global",1, gpsCallback);
     image_transport::Subscriber Depth  = it.subscribe("/zed/zed_node/depth/depth_registered", 1, DepthCallback);
     avoidance_point_pub = n3.advertise<mavros_msgs::GlobalPositionTarget>("/setpoint_avoidance",1);
- 
+
     if (!ros::ok()){
         cv::destroyAllWindows();
         ros::shutdown();

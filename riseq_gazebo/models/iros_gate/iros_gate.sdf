@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="iros_gate">
+      <static>1</static>
+      <link name="link">
+        <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>1.0</ixx>
+            <ixy>000000</ixy>
+            <ixz>0.000000</ixz>
+            <iyy>1.0</iyy>
+            <iyz>0.000000</iyz>
+            <izz>1.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://iros_gate/meshes/iros_gate.dae</uri>
+                <scale>.01 .01 .01</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://iros_gate/meshes/iros_gate.dae</uri>
+                <scale>0.01 0.01 0.01</scale>
+            </mesh>
+          </geometry>
+          <material> <!-- LED material -->
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+            <specular>0 0 0 0</specular>
+            <emissive>0 1 0 1</emissive>
+          </material> <!-- End LED material -->
+        </visual>
+      </link>
+    </model>
+</sdf>

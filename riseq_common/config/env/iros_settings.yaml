@@ -1,0 +1,34 @@
+gates:
+    drone_init: [0,-1,0]
+    detection_thresholds: [15,5,5]
+perception:
+    colors: 'rgb'
+    cutoff: 0.001
+    camera: left_rect
+    theta: 30  # degree
+    gate_detection_wait_time: 1.0
+    gate_detection_limits: [6,3,3]  # maximum distance in x,y,z axis at which any gate can be
+drone:
+    hover_height: 1.9 #m
+    position_error_threshold: 0.2 # error threshold for position command
+    one_block: 1.4
+    two_block: 1.5
+    drone_camera_offset_vector: [0.17,0,0]
+    gate_correction_offset: [0.5,0,0]
+    advance_distance: -1.0
+    auto_arm_offboard: true
+    goal_wait_time: 5.0
+    rotation_wait_time: 5.0
+    rotation_step: 90
+    wait_steady_time: 2.0
+
+environment: "simulator"  # real
+
+gates:
+    gate_vertical:
+        up: [3.0, -1.4, 1.9]
+        down: [3.0, -1.4, 1.9]
+    gate_horizontal:
+        right: [-3.0, 1.4, 1.7]
+        left: [-3.0, 0.0, 1.7]
+    at_first: 1 # 0: vertical, 1: horizontal left, 2: horizontal right 

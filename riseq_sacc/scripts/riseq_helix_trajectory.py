@@ -268,7 +268,6 @@ class State_Machine():
         lon = delta_lon + self.global_home.longitude
         return lat, lon
 
-
     def compute_yaw2(self, ladder_position):
         drone_position = np.array([self.state.pose.pose.position.x,self.state.pose.pose.position.y])
         drone_to_ladder = ladder_position - drone_position
