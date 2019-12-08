@@ -58,7 +58,7 @@ def rotation2euler(R):
     return phi, theta, psi
 
 
-def euler2quaternion(pi, theta, psi):
+def euler2quaternion(phi, theta, psi):
     """
     Put Euler angles, then calculate quatrenion angle
     """
@@ -67,6 +67,16 @@ def euler2quaternion(pi, theta, psi):
     qy = sin(phi/2)*cos(theta/2)*sin(psi/2) + cos(phi/2)*sin(theta/2)*cos(psi/2)
     qz = cos(phi/2)*cos(theta/2)*sin(psi/2) - sin(phi/2)*sin(theta/2)*cos(psi/2)
     return qw, qx, qy, qz
+
+
+def q2r(qw, qx, qy, qz):
+    """
+    Put quaternion angle, then calculate rotation matrix
+    """
+    R = np.array([[1-2*qy**2-2*qz**2, 2*qx*qy-2*qz*qw, 2*qz*qx+2*qy*qw],
+                  [2*qx*qy+2*qz*qw, 1-2*qz**2-2*qx**2, 2*qy*qz-2*qx*qw],
+                  [2*qz*qx-2*qy*qw, 2*qy*qz+2*qx*qw, 1-2*qx**2-w*qy**2]])
+    return R
 
 
 def pseudoInverseMatrixL(A):
