@@ -32,7 +32,7 @@ class Trajectory_Generator2():
         # Compute trajectory waypoints #
         # ---------------------------- #
 
-        self.waypoints = self.get_goal_waypoint( 3.5, 0 ,1.67)
+        self.waypoints = self.get_goal_waypoint( 10, 0 ,10)
         #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9)
         print("Waypoints: ")
         print(self.waypoints)

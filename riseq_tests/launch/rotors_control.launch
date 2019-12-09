@@ -44,7 +44,7 @@
   </node>
   <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/>
   <node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/>
-  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/>
+  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot" args = "/pelican/odometry_sensor1/odometry/pose/pose/position /pelican/imu/linear_acceleration" />
   <node name="rviz" pkg="rviz" type="rviz"/>
 
 </launch>
