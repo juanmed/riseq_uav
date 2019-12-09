@@ -30,7 +30,7 @@ def get_poly_waypoints(t,n, init_pos = (0,0,0)):
     waypoints_t = np.linspace(0, t, n)
     k1 = 0.01
     k2 = 0.01
-    k3 = 1.0
+    k3 = 2.0
     x0, y0, z0 = init_pos
     
     x = (k1*waypoints_t) + x0

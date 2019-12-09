@@ -126,20 +126,21 @@ class uav_High_Level_Controller():
             print(' The only possible types are: euler_angle_controller, geometric_controller')
             self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
         
-        # PX4 SITL 
-        self.mavros_state = State()
-        self.mavros_state.connected = False
-        self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)
-        self.arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
-        self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
-        self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        self.wait_mavros_connection()
-        self.last_mavros_request = rospy.Time.now()
+        # PX4 SITL
+        if False: 
+            self.mavros_state = State()
+            self.mavros_state.connected = False
+            self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)
+            self.arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
+            self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
+            self.local_pos_pub = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=10)
+            self.wait_mavros_connection()
+            self.last_mavros_request = rospy.Time.now()
 
-        self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
-        if(self.enable_sim):
-            self.send_setpoints()
-            self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
+            self.enable_sim = rospy.get_param('/riseq/enable_sim', False)
+            if(self.enable_sim):
+                self.send_setpoints()
+                self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
 
 
     def euler_angle_controller(self, timer):
@@ -181,8 +182,8 @@ class uav_High_Level_Controller():
         state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]  # p, v, a, j, s, orientation
         ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
-        #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
-        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+        self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
+        #self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
 
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
@@ -198,9 +199,9 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity.x = angular_velocity[0][0]
         hlc_msg.angular_velocity.y = angular_velocity[1][0]
         hlc_msg.angular_velocity.z = angular_velocity[2][0]
-        hlc_msg.angular_velocity_des.x = 0.1*w_des[0][0]
-        hlc_msg.angular_velocity_des.y = 0.1*w_des[1][0]
-        hlc_msg.angular_velocity_des.z = 0.1*w_des[2][0]
+        hlc_msg.angular_velocity_des.x = w_des[0][0]
+        hlc_msg.angular_velocity_des.y = w_des[1][0]
+        hlc_msg.angular_velocity_des.z = w_des[2][0]
         hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
@@ -220,8 +221,8 @@ class uav_High_Level_Controller():
         px4_msg.body_rate.x = 20*w_des[0][0]
         px4_msg.body_rate.y = 20*w_des[1][0]
         px4_msg.body_rate.z = 20*w_des[2][0]
-        px4_msg.thrust =  np.min([1.0, 0.06*self.T])   #0.05715
-        self.px4_pub.publish(px4_msg)
+        px4_msg.thrust =  np.min([1.0, 0.06*self.T])   #0.057153
+        #self.px4_pub.publish(px4_msg)
         
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
         """

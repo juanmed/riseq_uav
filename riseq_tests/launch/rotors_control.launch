@@ -118,9 +118,9 @@
     <remap from="riseq/trajectory/uav_reference_trajectory" to="riseq/trajectory/uav_trajectory"/>
   </node-->
 
-  <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/>
+  <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher_async.py"/>
   <node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/>
-  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot"/>
-  <!--node name="rviz" pkg="rviz" type="rviz"/-->
+  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot" args="/riseq/trajectory/uav_trajectory/pose/position  /pelican/odometry_sensor1/odometry/pose/pose/position"/>
+  <!--node name="rviz" pkg="rviz" type="rviz" /-->
 
 </launch>

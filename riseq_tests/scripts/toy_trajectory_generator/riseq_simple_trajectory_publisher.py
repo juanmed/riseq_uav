@@ -34,7 +34,7 @@ class Trajectory_Generator2():
         self.mavros_state = state_msg
 
     def compute_reference_traj(self, time):
-        vel = 1.0    #max vel = 3
+        vel = .1    #max vel = 3
         trajectory_time = time - self.start_time
         #print("Time traj: {}".format(trajectory_time))
         flatout_trajectory = trajGen3D.generate_trajectory(trajectory_time, vel, self.waypoints, self.coeff_x, self.coeff_y, self.coeff_z)
@@ -135,13 +135,13 @@ class Trajectory_Generator2():
         else:
             p1 = np.array([[self.init_pose[0]],[self.init_pose[1]],[self.init_pose[2]]])
             p2 = np.array([[0],[0],[1.67]])
-            p3 = np.array([[6],[3],[1.67]])
+            p3 = np.array([[0],[0],[1.67]])
 
         point_list = [p1,p3]
-        #self.waypoints = self.get_waypoint_list(point_list)
+        self.waypoints = self.get_waypoint_list(point_list)
         #self.waypoints = self.get_goal_waypoint( 8, 0 ,1.67)
         #self.waypoints = trajGen3D.get_leminiscata_waypoints(20*np.pi, 180, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
-        self.waypoints = trajGen3D.get_helix_waypoints(20*np.pi, 180, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
+        #self.waypoints = trajGen3D.get_helix_waypoints(2*np.pi, 9, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
         #self.waypoints = trajGen3D.get_poly_waypoints(5, 2, (self.init_pose[0], self.init_pose[1], self.init_pose[2]))
         #print("Waypoints: ")
         #print(self.waypoints)
@@ -169,7 +169,7 @@ def pub_traj():
     traj_publisher = rospy.Publisher('riseq/tests/uav_simple_trajectory', riseq_uav_trajectory, queue_size=10)
 
     # wait time for simulator to get ready...
-    wait_time = int(rospy.get_param("riseq/trajectory_wait"))
+    wait_time = int(rospy.get_param("riseq/trajectory_wait",5.0))
     while( rospy.Time.now().to_sec() < wait_time ):
         if( ( rospy.Time.now().to_sec() % 1.0) == 0.0 ):
             #rospy.loginfo("Starting Trajectory Generator in {:.2f} seconds".format(wait_time - rospy.Time.now().to_sec()))
@@ -185,17 +185,17 @@ def pub_traj():
     # initialized to zero (because the node has not started fully) and the
     # time for the trajectory will be degenerated
 
-    while (not traj_gen.received_init_pose):
-        continue
+    #while (not traj_gen.received_init_pose):
+    #    continue
     
     print("\n\n >>Init pose: \n {} \n\n".format(traj_gen.init_pose))
 
     traj_gen.compute_waypoints()
 
     # publish at 10Hz
-    while ((traj_gen.mavros_state.armed != True) or (traj_gen.mavros_state.mode != 'OFFBOARD')):
-        #print(" >> Trajectory generator waiting for Drone ARMing")
-        continue
+    #while ((traj_gen.mavros_state.armed != True) or (traj_gen.mavros_state.mode != 'OFFBOARD')):
+    #    #print(" >> Trajectory generator waiting for Drone ARMing")
+    #    continue
 
 
     traj_gen.start_time = rospy.get_time()
