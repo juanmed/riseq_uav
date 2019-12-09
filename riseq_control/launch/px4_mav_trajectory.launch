@@ -7,7 +7,7 @@
   <arg name="tgt_system" default="1" />
   <arg name="tgt_component" default="1" />
   <arg name="command_input" default="2" />
-  <arg name="gazebo_simulation" default="true" />
+  <arg name="gazebo_simulation" default="false" />
   <arg name="visualization" default="true"/>
   <arg name="log_output" default="screen" />
   <arg name="fcu_protocol" default="v2.0" />
@@ -28,12 +28,13 @@
   <param name="/riseq/gate_y" value="$(arg gate_y)" type="double"/>
   <param name="/riseq/gate_z" value="$(arg gate_z)" type="double"/>
   <param name="/riseq/gate_yaw" value="$(arg gate_yaw)" type="double"/>
+  <param name="/riseq/enable_sim" value="$(arg gazebo_simulation)"/>
 
-  <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py" output="screen"/>
-
+  <node name="riseq_high_level_control_publisher_async" pkg="riseq_control" type="riseq_high_level_control_publisher_async.py" output="screen"/>
   <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py" output="screen">
     <remap from="riseq/tests/uav_simple_trajectory" to="riseq/trajectory/uav_trajectory" />
   </node>
+  <node pkg = "riseq_tests" name ="mavros_state_error_publisher" type="mavros_state_error_publisher.py"/>  
 
   <include file="$(find mavros)/launch/node.launch">
       <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
@@ -48,7 +49,10 @@
       <arg name="respawn_mavros" default="$(arg respawn_mavros)" />
   </include>
 
+  <!-- Speed up mavros topic publishing rate-->
+  <!--node pkg="mavros" type="mavcmd" name="mavcmd" args="int 511 32 100 100 1 1 1 1"/-->  
+
   <node name="rosbag_record" pkg="rosbag" type="record"
-        args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose"/>
+        args="-O $(arg rosbag_name) /riseq/trajectory/uav_trajectory /mavros/local_position/pose /mavros/local_position/velocity_local riseq/state_error_publisher /mavros/setpoint_raw/attitude"/>
 
 </launch>

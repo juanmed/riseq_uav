@@ -84,7 +84,8 @@ class uav_High_Level_Controller():
             #self.state_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.state_cb)
             #self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
             #self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
-            self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry, self.position_velocity_cb)
+            self.state_sub = rospy.Subscriber('/pelican/odometry_sensor1/odometry', Odometry, self.position_velocity_cb)
+
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
             print(' The only possible controller input states  are: true_state, estimated_state')
@@ -203,7 +204,7 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
-        #self.hlc_pub.publish(hlc_msg)
+        self.hlc_pub.publish(hlc_msg)
         #rospy.loginfo(hlc_msg)
 
         
@@ -400,6 +401,24 @@ class uav_High_Level_Controller():
         self.state.twist.twist.angular.y = vel.twist.angular.y
         self.state.twist.twist.angular.z = vel.twist.angular.z
 
+    def position_velocity_cb(self, msg):
+
+        self.state.pose.pose.position.x = msg.pose.pose.position.x
+        self.state.pose.pose.position.y = msg.pose.pose.position.y
+        self.state.pose.pose.position.z = msg.pose.pose.position.z
+
+        self.state.pose.pose.orientation.x = msg.pose.pose.orientation.x
+        self.state.pose.pose.orientation.y = msg.pose.pose.orientation.y
+        self.state.pose.pose.orientation.z = msg.pose.pose.orientation.z
+        self.state.pose.pose.orientation.w = msg.pose.pose.orientation.w
+        
+        self.state.twist.twist.linear.x = msg.twist.twist.linear.x
+        self.state.twist.twist.linear.y = msg.twist.twist.linear.y
+        self.state.twist.twist.linear.z = msg.twist.twist.linear.z
+
+        self.state.twist.twist.angular.x = msg.twist.twist.angular.x
+        self.state.twist.twist.angular.y = msg.twist.twist.angular.y
+        self.state.twist.twist.angular.z = msg.twist.twist.angular.z
 
 if __name__ == '__main__':
     try:
