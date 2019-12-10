@@ -124,7 +124,7 @@ class uav_High_Level_Controller():
         self.max_thrust = self.rotor_count*self.thrust_coeff*(self.max_rotor_speed**2)  # assuming cuadratic model for rotor thrust 
         self.min_thrust = 0.0
 
-        self.position_control_frequency_ratio = 10       # This is the factor by which the high_level_controller is slower
+        self.position_control_frequency_ratio = 5       # This is the factor by which the high_level_controller is slower
                                                          # than low_level controller
         self.position_control_loops = 0                                        
         self.pos_error_integral = np.zeros((3,1))       # Store position error integral
