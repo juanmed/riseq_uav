@@ -9,6 +9,7 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import PoseWithCovarianceStamped, PointStamped
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
 from nav_msgs.msg import Odometry
+from riseq_trajectory.msg import riseq_uav_trajectory
 
 
 
@@ -61,8 +62,6 @@ class DFKF():
         self.update(z)
         return self.KFx.x, self.KFy.x, self.KFz.x
 
-    def inverse_map(self, a):
-        return 0
 
 
 
@@ -92,6 +91,7 @@ class DF_Estimator():
         rospy.Subscriber('/pelican/imu1', Imu, self.imu_cb)
         rospy.Subscriber('riseq/control/uav_high_level_control', riseq_high_level_control, self.hlc_cb)
         rospy.Subscriber('/pelican/pose_sensor1/pose_with_covariance', PoseWithCovarianceStamped, self.pose_sensor_cb)
+        rospy.Subscriber('riseq/uav_trajectory', riseq_uav_trajectory, self.trajectory_cb)
         #rospy.Subscriber('/riseq/snap_sensor', )
         self.state_estimate_publisher = rospy.Publisher('/riseq/estimation/uav_dfkf_state', Odometry, queue_size = 10)
 
@@ -134,6 +134,21 @@ class DF_Estimator():
     def snap_sensor_cb(self, msg):
         """
         """
+        return 0
+
+    def trajectory_cb(self, msg):
+
+        self.acc = msg.acc.x 
+        self.acc = msg.acc.y 
+        self.acc = msg.acc.z 
+
+        self.jerk = msg.jerk.x 
+        self.jerk = msg.jerk.y 
+        self.jerk = msg.jerk.z 
+
+        self.jerk = msg.snap.x 
+        self.jerk = msg.snap.y 
+        self.jerk = msg.snap.z 
 
     def filter(self, timer):
         #print(self.u,self.a_m)
@@ -158,7 +173,8 @@ class DF_Estimator():
 
         self.state_estimate_publisher.publish(estimate)
         
-
+    def inverse_map(self, a):
+        return 0
         
 
 if __name__ == '__main__':
