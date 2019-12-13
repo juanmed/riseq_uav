@@ -22,10 +22,10 @@ class DFKF():
     Bt = np.array([[0.],
                    [0.],
                    [1.]])
-    Ht = np.array([[1., 0., 0.],
-                   [0., 0., 1.]])
+    Ht = np.array([[0., 0., 1.]])
+                   #[0., 0., 1.]])
     Dt = np.array([0])
-    PROCESS_NOISE = .01
+    PROCESS_NOISE = .1
 
     def __init__(self, x0, dt = 0.1, acc_var = 1e-3, gyro_var = 1e-3, pose_var = 1e-3):
         
@@ -41,8 +41,8 @@ class DFKF():
     def init_filters(self):
         F, G, H, D, dt = cont2discrete((self.At, self.Bt, self.Ht, self.Dt), self.dt)
         Q = np.eye(3)*self.PROCESS_NOISE
-        R = np.diag([self.pose_var, self.acc_var])
-        print(R)
+        #R = np.diag([self.pose_var, self.acc_var])
+        R = np.array([self.acc_var])
         self.KFx = KF(F,G,H,Q,R,x0 = np.zeros((3,1)))
         self.KFy = KF(F,G,H,Q,R,x0 = np.zeros((3,1)))
         self.KFz = KF(F,G,H,Q,R,x0 = np.zeros((3,1)))
@@ -155,7 +155,8 @@ class DF_Estimator():
 
         z = []
         for i in range(3):
-            z.append(np.array([[self.p_m[i]],[self.a_m[i][0]]])) # assemble measurement vector
+            #z.append(np.array([[self.p_m[i]],[self.a_m[i][0]]])) # assemble measurement vector
+            z.append(self.a_m[i][0])
 
         #self.u = np.zeros((3,1))
         x_dyn, y_dyn, z_dyn =self.estimator.filter(self.u, z)
