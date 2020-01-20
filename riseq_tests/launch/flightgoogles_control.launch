@@ -1,0 +1,15 @@
+<launch>
+	<arg name="mav_name" default="flightgoggles"/>
+    
+    <!--<rosparam command="load" file="$(find riseq_common)/config/drones/$(arg mav_name).yaml"/>-->
+
+    <!--<node name="riseq_high_level_control_publisher_async" pkg="riseq_control" type="riseq_high_level_control_publisher_async.py" output="screen">
+    	<remap from="/mavros/local_position/odom" to="/uav/state" />    
+    </node>-->
+    <node pkg="riseq_tests" name="riseq_simple_trajectory_publisher" type="riseq_simple_trajectory_publisher.py" output="screen">
+    	<remap from="riseq/tests/uav_simple_trajectory" to="riseq/uav/trajectory" />
+    </node>
+
+    <!--node name="rqt_plot" type="rqt_plot" pkg="rqt_plot" args="/uav/state/pose/pose/position /riseq/uav/trajectory/pose/position"/-->
+
+</launch>

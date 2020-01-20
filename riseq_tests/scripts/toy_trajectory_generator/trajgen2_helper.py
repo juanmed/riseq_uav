@@ -61,7 +61,7 @@ def get_leminiscata_waypoints(t,n, init_pos = (0,0,0)):
 
     x = k1*np.cos(w*waypoints_t/2.0)+ x0 - k1
     y = k1*np.sin(w*waypoints_t) + y0
-    z = np.ones_like(waypoints_t)*3.0 #k2*waypoints_t + z0
+    z = np.ones_like(waypoints_t)*0.5 #k2*waypoints_t + z0
 
     return np.stack((x, y, z), axis=-1)
 
@@ -83,7 +83,7 @@ def get_helix_waypoints(t, n, init_pos = (0,0,0)):
     # positions in helix
     x = a*np.cos(wx*waypoints_t) + x0 - a
     y = b*np.sin(wy*waypoints_t) + y0
-    z = np.ones_like(waypoints_t)*3.0 #c*waypoints_t + z0  #
+    z = c*waypoints_t + z0  #np.ones_like(waypoints_t)*3.0 #
 
 
     #x = 0.5*np.cos(waypoints_t)

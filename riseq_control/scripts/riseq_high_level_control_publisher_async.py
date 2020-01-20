@@ -81,9 +81,9 @@ class uav_High_Level_Controller():
 
         elif(self.state_input == 'fg_true_state'):
             # for flight googles simulator
-            #self.state_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.state_cb)
-            self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
-            self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
+            self.state_sub = rospy.Subscriber('/mavros/local_position/odom', Odometry, self.state_cb)
+            #self.pos_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_cb)
+            #self.vel_sub = rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, self.velocity_cb)
             #self.state_sub = message_filters.Subscriber('/pelican/odometry_sensor1/odometry', Odometry)
         else:
             print('riseq/controller_state_input parameter not recognized. Defaulting to true_state')
@@ -125,7 +125,8 @@ class uav_High_Level_Controller():
             print(' The only possible types are: euler_angle_controller, geometric_controller')
             self.control_timer = rospy.Timer(rospy.Duration(0.01), self.euler_angle_controller)
         
-        # PX4 SITL 
+        # PX4 SITL
+        """ 
         self.mavros_state = State()
         self.mavros_state.connected = False
         self.mavros_state_sub = rospy.Subscriber('mavros/state', State, self.mavros_state_cb)
@@ -139,7 +140,7 @@ class uav_High_Level_Controller():
         if(self.enable_sim):
             self.send_setpoints()
             self.status_timer = rospy.Timer(rospy.Duration(0.5), self.mavros_status_cb)
-
+        """
 
     def euler_angle_controller(self, timer):
         """
@@ -180,16 +181,18 @@ class uav_High_Level_Controller():
         state_ = [p,v,np.zeros((3,1)), np.zeros((3,1)), np.zeros((3,1)),Rbw]  # p, v, a, j, s, orientation
         ref_state = [p_ref, v_ref, a_ref, np.zeros((3,1)), np.zeros((3,1)), Rbw_ref, trajectory.yaw, trajectory.yawdot, trajectory.yawddot, euler_dot_ref]
 
-        #self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
-        self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
+        self.T, self.Rbw_des, w_des = self.flc.position_controller(state_, ref_state)
+        #self.T, self.Rbw_des, w_des = self.gc.position_controller(state_, ref_state)
 
         #w_des = attitude_controller(Rbw, self.Rbw_des)
 
+        """
         # Fill out message
         hlc_msg = riseq_high_level_control()
         hlc_msg.header.stamp = rospy.Time.now()
         hlc_msg.header.frame_id = 'riseq/uav'
 
+        
         #hlc_msg.thrust.x = self.Traw2 #np.linalg.norm(self.a_e)     #for debugging purposes
         #hlc_msg.thrust.y = self.Traw #np.linalg.norm(self.a_e2)    #for debugging purposes
         hlc_msg.thrust.z = self.T
@@ -203,10 +206,11 @@ class uav_High_Level_Controller():
         hlc_msg.angular_velocity_dot_ref.x = trajectory.ub.x
         hlc_msg.angular_velocity_dot_ref.y = trajectory.ub.y
         hlc_msg.angular_velocity_dot_ref.z = trajectory.ub.z
-        #self.hlc_pub.publish(hlc_msg)
+        self.hlc_pub.publish(hlc_msg)
         #rospy.loginfo(hlc_msg)
+        """
 
-        
+        """
         px4_msg = AttitudeTarget()
         px4_msg.header.stamp = rospy.Time.now()
         px4_msg.header.frame_id = 'map'
@@ -221,6 +225,19 @@ class uav_High_Level_Controller():
         px4_msg.body_rate.z = 20*w_des[2][0]
         px4_msg.thrust =  np.min([1.0, 0.06*self.T])   #0.05715
         self.px4_pub.publish(px4_msg)
+        """
+
+        fg_msg = RateThrust()
+        fg_msg.header.stamp = rospy.Time.now()
+        fg_msg.header.frame_id = 'riseq/uav'
+
+        fg_msg.angular_rates.x = w_des[0][0]
+        fg_msg.angular_rates.y = w_des[1][0]
+        fg_msg.angular_rates.z = w_des[2][0]
+
+        fg_msg.thrust.z = self.T
+        self.fg_publisher.publish(fg_msg)
+
         
     def pucci_angular_velocity_des(self, Rbw, Rbw_des, Rbw_ref_dot, w_ref):
         """
