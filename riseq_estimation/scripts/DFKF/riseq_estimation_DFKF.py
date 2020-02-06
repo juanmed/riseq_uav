@@ -1,30 +1,35 @@
 #!/usr/bin/env python
 
 import rospy
+import tf
 from KalmanFilter import KalmanFilter as KF
 from scipy.signal import cont2discrete
 import numpy as np
 
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import PoseWithCovarianceStamped, PointStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, PointStamped, PoseStamped, Vector3Stamped
 from riseq_control.msg import riseq_high_level_control, riseq_low_level_control
 from nav_msgs.msg import Odometry
 from riseq_trajectory.msg import riseq_uav_trajectory
+from mav_msgs.msg import RateThrust
 
 
 
 class DFKF():
     """Differential flatness based Kalman Filter for Quadrotor"""
 
-    At = np.array([[0., 1., 0.],
-                   [0., 0., 1.],
-                   [0., 0., 0.]])
+    At = np.array([[0., 1., 0., 0.],
+                   [0., 0., 1., 0.],
+                   [0., 0., 0., 1.],
+                   [0., 0., 0., 0.]])
     Bt = np.array([[0.],
                    [0.],
+                   [0.],
                    [1.]])
-    Ht = np.array([[0., 0., 1.]])
-                   #[0., 0., 1.]])
-    Dt = np.array([0])
+    Ht = np.array([[0., 0., 1., 0.],
+                   [0., 0., 0., 1.]])
+    Dt = np.array([[0],
+                   [0]])
     PROCESS_NOISE = .1
 
     def __init__(self, x0, dt = 0.1, acc_var = 1e-3, gyro_var = 1e-3, pose_var = 1e-3):
@@ -40,12 +45,12 @@ class DFKF():
 
     def init_filters(self):
         F, G, H, D, dt = cont2discrete((self.At, self.Bt, self.Ht, self.Dt), self.dt)
-        Q = np.eye(3)*self.PROCESS_NOISE
+        Q = np.eye(4)*self.PROCESS_NOISE
         #R = np.diag([self.pose_var, self.acc_var])
-        R = np.array([self.acc_var])
-        self.KFx = KF(F,G,H,Q,R,x0 = np.zeros((3,1)))
-        self.KFy = KF(F,G,H,Q,R,x0 = np.zeros((3,1)))
-        self.KFz = KF(F,G,H,Q,R,x0 = np.zeros((3,1)))
+        R = np.diag([self.acc_var, self.gyro_var])
+        self.KFx = KF(F,G,H,Q,R,x0 = np.zeros((4,1)))
+        self.KFy = KF(F,G,H,Q,R,x0 = np.zeros((4,1)))
+        self.KFz = KF(F,G,H,Q,R,x0 = np.zeros((4,1)))
 
     def predict(self, u):
         self.KFx.predict(u[0][0])
@@ -62,16 +67,12 @@ class DFKF():
         self.update(z)
         return self.KFx.x, self.KFy.x, self.KFz.x
 
-
-
-
 class DF_Estimator():
     """docstring for DF_Estimator"""
-    def __init__(self, dt = 0.05):
+    def __init__(self, dt = 0.01):
         self.dt = dt
 
         self.init_estimator()
-
 
     def init_estimator(self):
 
@@ -83,26 +84,36 @@ class DF_Estimator():
 
         # initial input and measurement
         self.u = np.zeros((3,1))
+        self.thrust = 0
+        self.thrust_prev = 0
+        self.thrust_dot = 0
+        self.st = 0.005 # sampling rate
+
         self.Rbw = np.eye(3)
-        self.a_m = np.zeros((3,1))
+        self.Rbw_des = np.eye(3)
+        self.a_m = np.zeros((3,1))  # acceleration measurement in world frame
+        self.j_m = np.zeros((3,1))  # jerk measurement in world frame
+        self.omega_b = np.zeros((3,1))
 
         self.imu_covariance_set = False
         self.pose_covariance_set = False
-        rospy.Subscriber('/pelican/imu1', Imu, self.imu_cb)
-        rospy.Subscriber('riseq/control/uav_high_level_control', riseq_high_level_control, self.hlc_cb)
+        rospy.Subscriber('/uav/sensors/imu', Imu, self.imu_cb)
+        #rospy.Subscriber('riseq/control/uav_high_level_control', riseq_high_level_control, self.hlc_cb)
+        rospy.Subscriber("/uav/input/rateThrust", RateThrust, self.rateThrust_cb)
+        rospy.Subscriber("/uav/input/desired_orientation", PoseStamped, self.des_or_cb)
         rospy.Subscriber('/pelican/pose_sensor1/pose_with_covariance', PoseWithCovarianceStamped, self.pose_sensor_cb)
         rospy.Subscriber('riseq/uav_trajectory', riseq_uav_trajectory, self.trajectory_cb)
+        rospy.Subscriber('/riseq/jerk', Vector3Stamped, self.jerk_cb)
         #rospy.Subscriber('/riseq/snap_sensor', )
         self.state_estimate_publisher = rospy.Publisher('/riseq/estimation/uav_dfkf_state', Odometry, queue_size = 10)
-
 
         while not self.imu_covariance_set:
             continue
 
-        while not self.pose_covariance_set:
-            continue        
+        #while not self.pose_covariance_set:
+        #    continue        
 
-        self.estimator = DFKF(dt = self.dt, acc_var = self.imu_accel_covariance , gyro_var = self.imu_gyro_covariance, pose_var = self.pose_covariance, x0 = 0)
+        self.estimator = DFKF(dt = self.dt, acc_var = self.imu_accel_covariance , gyro_var = self.imu_gyro_covariance, pose_var = 0.1, x0 = 0)
 
         self.filter_timer = rospy.Timer(rospy.Duration(self.dt), self.filter)
 
@@ -116,6 +127,37 @@ class DF_Estimator():
         self.a_m = np.dot(self.Rbw,self.a_m) - self.g*self.e3
         #print(self.a_m)
 
+    def jerk_cb(self, msg):
+        self.j_m = np.array([[msg.vector.x],[msg.vector.y],[msg.vector.z]])
+
+    def state_cb(self, state_msg):
+
+        ori_quat = [state_msg.pose.pose.orientation.x, state_msg.pose.pose.orientation.y, state_msg.pose.pose.orientation.z, state_msg.pose.pose.orientation.w]
+        Rwb = tf.transformations.quaternion_matrix(ori_quat)
+        self.Rbw = Rwb[0:3,0:3].T
+
+    def rateThrust_cb(self, msg):
+
+        self.thrust = msg.thrust.z
+        self.omega_b = np.array([msg.angular_rates.x, msg.angular_rates.y, msg.angular_rates.z]).reshape(3,1)
+
+
+        self.thrust_dot = (self.thrust - self.thrust_prev)/self.st
+        self.thrust_prev = self.thrust
+
+        # if input is acceleration
+        #self.u = -self.g*self.e3 + (msg.thrust.z/self.mass)*np.dot(self.Rbw,self.e3) 
+
+        # if input is jerk
+        self.u = -1*self.thrust_dot * self.Rbw_des[:,2].reshape(3,1)
+        self.u -= self.thrust * (self.omega_b[1][0]*self.Rbw_des[:,0].reshape(3,1))
+        self.u += self.thrust * (self.omega_b[0][0]*self.Rbw_des[:,1].reshape(3,1))
+
+    def des_or_cb(self, msg):
+
+        ori_quat = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+        self.Rbw_des = tf.transformations.quaternion_matrix(ori_quat)[0:3,0:3]
+
     def pose_sensor_cb(self,msg):
         if not self.pose_covariance_set:
             self.pose_covariance_set = True
@@ -127,8 +169,8 @@ class DF_Estimator():
         """
         High level controller input callback
         """
-        self.Rbw = np.array(msg.rot).reshape(3,3)
-        self.u = -self.g*self.e3 + (msg.thrust.z/self.mass)*np.dot(self.Rbw,self.e3) 
+        self.Rbw_des = np.array(msg.rot).reshape(3,3)
+        self.u = -self.g*self.e3 + (msg.thrust.z/self.mass)*np.dot(self.Rbw_des,self.e3) 
         #print(self.u)
 
     def snap_sensor_cb(self, msg):
@@ -153,10 +195,11 @@ class DF_Estimator():
     def filter(self, timer):
         #print(self.u,self.a_m)
 
-        z = []
+        z = []  
         for i in range(3):
             #z.append(np.array([[self.p_m[i]],[self.a_m[i][0]]])) # assemble measurement vector
-            z.append(self.a_m[i][0])
+            measurement = np.array([[self.a_m[i][0]],[self.j_m[i][0]]])
+            z.append(measurement)
 
         #self.u = np.zeros((3,1))
         x_dyn, y_dyn, z_dyn =self.estimator.filter(self.u, z)
@@ -177,7 +220,6 @@ class DF_Estimator():
     def inverse_map(self, a):
         return 0
         
-
 if __name__ == '__main__':
     try:
         rospy.init_node('riseq_dfkf_estimator', anonymous = True)

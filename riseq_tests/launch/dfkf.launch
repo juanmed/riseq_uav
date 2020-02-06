@@ -1,0 +1,9 @@
+<launch>
+	<node name="riseq_dfkf_estimator" pkg = "riseq_estimation" type="riseq_estimation_DFKF.py" output="screen">
+		<!--remap from="/pelican/imu1" to="/uav/sensors/imu"/-->
+	</node>
+  	<node name="rqt_plot" pkg="rqt_plot" type="rqt_plot" args = " /riseq/estimation/uav_dfkf_state/pose/pose/position /uav/state/pose/pose/position" />
+
+  	<!-- /pelican/odometry_sensor1/odometry/pose/pose/position /pelican/odometry_sensor1/odometry/twist/twist/linear /riseq/estimation/uav_dfkf_state/twist/twist/linear-->
+
+ </launch>

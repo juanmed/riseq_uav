@@ -43,11 +43,11 @@
     <remap from="riseq/tests/uav_simple_trajectory" to="riseq/uav_trajectory" />
   </node>
   <node name="snap_sensor" pkg="riseq_estimation" type="snap_publisher.py"/>
-  <node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/>
-  <node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/>
+  <!--node name="riseq_high_level_control_publisher" pkg="riseq_control" type="riseq_high_level_control_publisher.py"/-->
+  <!--node name="riseq_low_level_control_publisher" pkg="riseq_control" type="riseq_low_level_control_publisher.py"/-->
   <node name="riseq_dfkf_estimator" pkg = "riseq_estimation" type="riseq_estimation_DFKF.py" output="screen"/>
   <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot" args = "/pelican/odometry_sensor1/odometry/pose/pose/position /pelican/odometry_sensor1/odometry/twist/twist/linear /riseq/estimation/uav_dfkf_state/pose/pose/position /riseq/estimation/uav_dfkf_state/twist/twist/linear" />
-  <node name="rosbag" pkg="rosbag" type="record" args="-O resultados /pelican/odometry_sensor1/odometry /riseq/estimation/uav_dfkf_state"/>
+  <!--node name="rosbag" pkg="rosbag" type="record" args="-O resultados /pelican/odometry_sensor1/odometry /riseq/estimation/uav_dfkf_state"/-->
   <node name="rviz" pkg="rviz" type="rviz"/>
 
 </launch>
