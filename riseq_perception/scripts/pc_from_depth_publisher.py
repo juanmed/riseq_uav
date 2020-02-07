@@ -41,11 +41,20 @@ class Box_Registrar():
         image_msg.encoding = "mono16" 
         dimg = self.bridge.imgmsg_to_cv2(image_msg, "mono16")
         if(self.cam_pams_ready and (self.color_img.shape[0] > 1)):
-            #for i in np.unique(self.mask):
-            pc_msg = self.converter.get_pointCloud2_msg(dimg, self.color_img, 1)
-            pc_msg.header.stamp = rospy.Time.now()
-            pc_msg.header.frame_id = "world"
-            self.pc_pub.publish(pc_msg)
+            for i in np.unique(self.mask):
+                #img_patch = self.color_img[self.mask == 0].reshape(-1,-1,3)
+                #dimg_patch = dimg[self.mask == 0].reshape(-1,-1)
+                #print(img_patch.shape, dimg_patch.shape)
+                #img_patch = np.where(self.mask == 0, self.color_img, np.zeros_like(self.color_img))
+                #dimg_patch = np.where(self.mask == 0, self.dimg, np.zeros_like(self.dimg))
+                mask = np.zeros(self.color_img.shape[:2], dtype="uint8")
+                mask[self.mask == i] = 255
+                img_patch = cv2.bitwise_and(self.color_img, self.color_img, mask = mask)
+                dimg_patch = cv2.bitwise_and(dimg, dimg, mask = mask)
+                pc_msg = self.converter.get_pointCloud2_msg(dimg_patch, img_patch, 1)
+                pc_msg.header.stamp = rospy.Time.now()
+                pc_msg.header.frame_id = "world"
+                self.pc_pub.publish(pc_msg)
         else:
             rospy.loginfo("Camera params not received or image segmentation not ready.")
 
