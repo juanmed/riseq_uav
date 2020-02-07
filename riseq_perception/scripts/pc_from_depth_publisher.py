@@ -79,8 +79,8 @@ class Box_Registrar():
         self.mask, bound_img = utils.get_superpixels(blur_img, 400 , 2, True)  #fshw  = 400
         self.color_img = bound_img*255
         maxa = np.max(self.color_img)
-        #msg = self.bridge.cv2_to_imgmsg((self.color_img*255/maxa).astype(img.dtype), "rgb8")
-        #self.img_publisher.publish(msg)  
+        msg = self.bridge.cv2_to_imgmsg((self.color_img*255/maxa).astype(img.dtype), "rgb8")
+        self.img_publisher.publish(msg)  
 
     def icp(self):
         R = np.diag([1,1,1])
