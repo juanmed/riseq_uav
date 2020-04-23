@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <model name="box_lines_points">
+      <static>1</static>
+      <link name="link">
+        <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>1.0</ixx>
+            <ixy>000000</ixy>
+            <ixz>0.000000</ixz>
+            <iyy>1.0</iyy>
+            <iyz>0.000000</iyz>
+            <izz>1.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://box_lines_points/meshes/box_lines_points.dae</uri>
+                <scale>1.0 1.0 1.0</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+                <uri>model://box_lines_points/meshes/box_lines_points.dae</uri>
+                <scale>1.0 1.0 1.0</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+</sdf>
